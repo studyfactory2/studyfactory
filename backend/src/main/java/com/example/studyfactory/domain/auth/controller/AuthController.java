@@ -1,5 +1,7 @@
 package com.example.studyfactory.domain.auth.controller;
 
+import com.example.studyfactory.domain.auth.dto.AccessTokenReissueRequest;
+import com.example.studyfactory.domain.auth.dto.AccessTokenResponse;
 import com.example.studyfactory.domain.auth.dto.LoginRequest;
 import com.example.studyfactory.domain.auth.dto.LoginResponse;
 import com.example.studyfactory.domain.auth.service.AuthService;
@@ -20,5 +22,10 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/token/reissue")
+    public AccessTokenResponse reissueAccessToken(@Valid @RequestBody AccessTokenReissueRequest request) {
+        return authService.reissueAccessToken(request);
     }
 }

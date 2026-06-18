@@ -6,6 +6,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.example.studyfactory.domain.auth.domain.RefreshToken;
+import com.example.studyfactory.domain.auth.dto.AccessTokenReissueRequest;
+import com.example.studyfactory.domain.auth.dto.AccessTokenResponse;
 import com.example.studyfactory.domain.auth.dto.LoginRequest;
 import com.example.studyfactory.domain.auth.dto.LoginResponse;
 import com.example.studyfactory.domain.auth.exception.AuthException;
@@ -73,6 +75,37 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(AuthException.class)
                 .hasMessageContaining("이름 또는 비밀번호가 일치하지 않습니다.");
+    }
+
+    @Test
+    @DisplayName("저장된 리프레시 토큰이면 액세스 토큰을 재발급한다")
+    void reissueAccessToken() {
+        AccessTokenReissueRequest request = new AccessTokenReissueRequest("refresh-token");
+        Member member = createMember();
+        ReflectionTestUtils.setField(member, "id", 1L);
+        given(jwtTokenProvider.getMemberId("refresh-token")).willReturn(1L);
+        given(refreshTokenRepository.findByMemberIdAndToken(1L, "refresh-token"))
+                .willReturn(Optional.of(new RefreshToken(1L, "refresh-token")));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(jwtTokenProvider.createAccessToken(member)).willReturn("new-access-token");
+
+        AccessTokenResponse response = authService.reissueAccessToken(request);
+
+        then(jwtTokenProvider).should().validateToken("refresh-token");
+        assertThat(response.accessToken()).isEqualTo("new-access-token");
+    }
+
+    @Test
+    @DisplayName("저장되지 않은 리프레시 토큰이면 예외가 발생한다")
+    void throwExceptionWhenRefreshTokenIsNotStored() {
+        AccessTokenReissueRequest request = new AccessTokenReissueRequest("refresh-token");
+        given(jwtTokenProvider.getMemberId("refresh-token")).willReturn(1L);
+        given(refreshTokenRepository.findByMemberIdAndToken(1L, "refresh-token"))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.reissueAccessToken(request))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("유효하지 않은 인증 토큰입니다.");
     }
 
     private Member createMember() {

@@ -1,5 +1,7 @@
 package com.example.studyfactory.domain.auth.service;
 
+import com.example.studyfactory.domain.auth.dto.AccessTokenReissueRequest;
+import com.example.studyfactory.domain.auth.dto.AccessTokenResponse;
 import com.example.studyfactory.domain.auth.dto.LoginRequest;
 import com.example.studyfactory.domain.auth.dto.LoginResponse;
 import com.example.studyfactory.domain.auth.domain.RefreshToken;
@@ -33,5 +35,19 @@ public class AuthService {
         refreshTokenRepository.save(new RefreshToken(member.getId(), refreshToken));
 
         return new LoginResponse(accessToken, refreshToken);
+    }
+
+    @Transactional(readOnly = true)
+    public AccessTokenResponse reissueAccessToken(AccessTokenReissueRequest request) {
+        String refreshToken = request.refreshToken();
+        jwtTokenProvider.validateToken(refreshToken);
+        Long memberId = jwtTokenProvider.getMemberId(refreshToken);
+
+        refreshTokenRepository.findByMemberIdAndToken(memberId, refreshToken)
+                .orElseThrow(AuthException::invalidToken);
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(AuthException::invalidToken);
+
+        return new AccessTokenResponse(jwtTokenProvider.createAccessToken(member));
     }
 }

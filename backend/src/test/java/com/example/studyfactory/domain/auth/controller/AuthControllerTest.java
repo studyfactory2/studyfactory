@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.studyfactory.domain.auth.domain.RefreshToken;
+import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
 import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -31,6 +34,9 @@ class AuthControllerTest {
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
     void setUp() {
@@ -81,8 +87,45 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    @DisplayName("저장된 리프레시 토큰이면 액세스 토큰을 재발급한다")
+    void reissueAccessToken() throws Exception {
+        Member member = memberRepository.save(createMember());
+        String refreshToken = jwtTokenProvider.createRefreshToken(member);
+        refreshTokenRepository.save(new RefreshToken(member.getId(), refreshToken));
+        String requestBody = """
+                {
+                  "refreshToken": "%s"
+                }
+                """.formatted(refreshToken);
+
+        mockMvc.perform(post("/api/auth/token/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("저장되지 않은 리프레시 토큰이면 401 응답을 반환한다")
+    void reissueAccessTokenFailed() throws Exception {
+        Member member = memberRepository.save(createMember());
+        String refreshToken = jwtTokenProvider.createRefreshToken(member);
+        String requestBody = """
+                {
+                  "refreshToken": "%s"
+                }
+                """.formatted(refreshToken);
+
+        mockMvc.perform(post("/api/auth/token/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isUnauthorized());
+    }
+
     private Member createMember() {
-        return new Member(
+        Member member = new Member(
                 1L,
                 2L,
                 "hong",
@@ -94,5 +137,7 @@ class AuthControllerTest {
                 "연하게",
                 "오전 교육 예정"
         );
+        ReflectionTestUtils.setField(member, "id", null);
+        return member;
     }
 }
