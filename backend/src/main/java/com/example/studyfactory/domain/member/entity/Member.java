@@ -2,6 +2,7 @@ package com.example.studyfactory.domain.member.entity;
 
 import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -22,52 +23,46 @@ public class Member extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private Long branchId;
+    @Embedded
+    private ReferenceInformation referenceInformation;
 
-    @Column(nullable = false)
-    private Long employeeTypeId;
-
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String name;
 
     @Column(nullable = false)
-    private int seatNumber;
+    private String password;
 
-    @Column(nullable = false)
-    private LocalDate joinDate;
+    @Embedded
+    private WorkInformation workInformation;
 
-    @Column(nullable = false)
-    private Long nameplateContentId;
+    @Embedded
+    private SubInformation subInformation;
 
-    @Column(columnDefinition = "text")
-    private String drinkSetting;
+    public Member(Long branchId, Long employeeTypeId, String name, String password, int seatNumber, LocalDate joinDate,
+                  Long nameplateContentId, String drinkSetting, String drinkNote, String memberNote) {
+        this(
+                null,
+                new ReferenceInformation(branchId, employeeTypeId, nameplateContentId),
+                name,
+                password,
+                new WorkInformation(seatNumber, joinDate),
+                new SubInformation(drinkSetting, drinkNote, memberNote)
+        );
+    }
 
-    @Column(columnDefinition = "text")
-    private String drinkNote;
-
-    @Column(columnDefinition = "text")
-    private String memberNote;
-
-    public Member(
-            Long branchId,
-            Long employeeTypeId,
+    private Member(
+            Long id,
+            ReferenceInformation referenceInformation,
             String name,
-            int seatNumber,
-            LocalDate joinDate,
-            Long nameplateContentId,
-            String drinkSetting,
-            String drinkNote,
-            String memberNote
+            String password,
+            WorkInformation workInformation,
+            SubInformation subInformation
     ) {
-        this.branchId = branchId;
-        this.employeeTypeId = employeeTypeId;
+        this.id = id;
+        this.referenceInformation = referenceInformation;
         this.name = name;
-        this.seatNumber = seatNumber;
-        this.joinDate = joinDate;
-        this.nameplateContentId = nameplateContentId;
-        this.drinkSetting = drinkSetting;
-        this.drinkNote = drinkNote;
-        this.memberNote = memberNote;
+        this.password = password;
+        this.workInformation = workInformation;
+        this.subInformation = subInformation;
     }
 }
