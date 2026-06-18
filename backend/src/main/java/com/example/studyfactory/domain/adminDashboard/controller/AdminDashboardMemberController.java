@@ -6,6 +6,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -16,7 +17,10 @@ public class AdminDashboardMemberController {
     private final AdminDashboardMemberService adminDashboardMemberService;
 
     @GetMapping
-    public List<AdminDashboardMemberResponse> findAll() {
-        return adminDashboardMemberService.findAll();
+    public List<AdminDashboardMemberResponse> findAll(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long branchId
+    ) {
+        return adminDashboardMemberService.findAll(name, branchId);
     }
 }

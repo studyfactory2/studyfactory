@@ -66,9 +66,62 @@ class AdminDashboardMemberControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    @DisplayName("이름 검색어가 있으면 해당 이름이 포함된 사원 목록을 반환한다")
+    void findAllMembersByName() throws Exception {
+        Member firstMember = memberRepository.save(createMember("kim", 10));
+        memberRepository.save(createMember("lee", 11));
+        String accessToken = jwtTokenProvider.createAccessToken(firstMember);
+
+        mockMvc.perform(get("/api/admin-dashboard/members")
+                        .param("name", "ki")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("kim"))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("지점 ID 검색어가 있으면 해당 지점의 사원 목록을 반환한다")
+    void findAllMembersByBranchId() throws Exception {
+        Member firstMember = memberRepository.save(createMember("kim", 10, 1L));
+        memberRepository.save(createMember("lee", 11, 2L));
+        String accessToken = jwtTokenProvider.createAccessToken(firstMember);
+
+        mockMvc.perform(get("/api/admin-dashboard/members")
+                        .param("branchId", "1")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("kim"))
+                .andExpect(jsonPath("$[0].branchId").value(1))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("이름과 지점 ID 검색어가 모두 있으면 두 조건에 맞는 사원 목록을 반환한다")
+    void findAllMembersByNameAndBranchId() throws Exception {
+        Member firstMember = memberRepository.save(createMember("kim", 10, 1L));
+        memberRepository.save(createMember("kim", 11, 2L));
+        memberRepository.save(createMember("lee", 12, 1L));
+        String accessToken = jwtTokenProvider.createAccessToken(firstMember);
+
+        mockMvc.perform(get("/api/admin-dashboard/members")
+                        .param("name", "ki")
+                        .param("branchId", "1")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("kim"))
+                .andExpect(jsonPath("$[0].branchId").value(1))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
     private Member createMember(String name, int seatNumber) {
+        return createMember(name, seatNumber, 1L);
+    }
+
+    private Member createMember(String name, int seatNumber, Long branchId) {
         return new Member(
-                1L,
+                branchId,
                 2L,
                 name,
                 "password123",

@@ -15,10 +15,20 @@ public class AdminDashboardMemberService {
     private final MemberRepository memberRepository;
 
     @Transactional(readOnly = true)
-    public List<AdminDashboardMemberResponse> findAll() {
-        return memberRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
+    public List<AdminDashboardMemberResponse> findAll(String name, Long branchId) {
+        String searchName = toSearchName(name);
+
+        return memberRepository.search(searchName, branchId, Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
                 .map(AdminDashboardMemberResponse::from)
                 .toList();
+    }
+
+    private String toSearchName(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+
+        return name.trim();
     }
 }
