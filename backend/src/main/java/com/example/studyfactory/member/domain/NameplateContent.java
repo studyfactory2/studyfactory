@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "nameplate_contents")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NameplateContent extends BaseEntity {
-가
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
