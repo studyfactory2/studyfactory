@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: studyfactory
+
+jwt:
+  secret: studyfactory-local-development-secret-key
+  access-expiration-millis: 3600000
+  refresh-expiration-millis: 1209600000
