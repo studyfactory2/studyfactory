@@ -1,4 +1,4 @@
-package com.example.studyfactory.member.domain;
+package com.example.studyfactory.domain.branch.entity;
 
 import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -13,9 +13,9 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "employee_types")
+@Table(name = "branches")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class EmployeeType extends BaseEntity {
+public class Branch extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,7 +24,7 @@ public class EmployeeType extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String name;
 
-    public EmployeeType(String name) {
+    public Branch(String name) {
         this.name = name;
     }
 }

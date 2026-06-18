@@ -1,4 +1,4 @@
-package com.example.studyfactory.member.domain;
+package com.example.studyfactory.domain.member.entity;
 
 import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;
