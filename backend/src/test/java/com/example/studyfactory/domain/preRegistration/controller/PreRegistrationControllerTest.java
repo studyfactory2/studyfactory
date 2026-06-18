@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.preEmployeeRegistration.controller;
+package com.example.studyfactory.domain.preRegistration.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,7 +11,8 @@ import com.example.studyfactory.domain.employeeType.entity.EmployeeType;
 import com.example.studyfactory.domain.employeeType.repository.EmployeeTypeRepository;
 import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
-import com.example.studyfactory.domain.preEmployeeRegistration.repository.PreEmployeeRegistrationRepository;
+import com.example.studyfactory.domain.preRegistration.repository.PreRegistrationRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,7 +22,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class PreEmployeeRegistrationControllerTest {
+@DisplayName("사전등록 컨트롤러 테스트")
+class PreRegistrationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -36,10 +38,11 @@ class PreEmployeeRegistrationControllerTest {
     private NameplateContentRepository nameplateContentRepository;
 
     @Autowired
-    private PreEmployeeRegistrationRepository preEmployeeRegistrationRepository;
+    private PreRegistrationRepository preRegistrationRepository;
 
     @Test
-    void createPreEmployeeRegistration() throws Exception {
+    @DisplayName("사전등록 요청이 유효하면 201 응답과 생성 결과를 반환한다")
+    void createPreRegistration() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
         EmployeeType employeeType = employeeTypeRepository.save(new EmployeeType("정규직"));
         NameplateContent nameplateContent = nameplateContentRepository.save(new NameplateContent("홍길동 매니저"));
@@ -58,7 +61,7 @@ class PreEmployeeRegistrationControllerTest {
                 }
                 """.formatted(branch.getId(), employeeType.getId(), nameplateContent.getId());
 
-        mockMvc.perform(post("/api/pre-employee-registrations")
+        mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isCreated())
@@ -73,6 +76,23 @@ class PreEmployeeRegistrationControllerTest {
                 .andExpect(jsonPath("$.drinkNote").value("연하게"))
                 .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
 
-        assertThat(preEmployeeRegistrationRepository.existsByName("hong")).isTrue();
+        assertThat(preRegistrationRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("사전등록 요청 값이 유효하지 않으면 400 응답을 반환한다")
+    void createPreRegistrationWithInvalidRequest() throws Exception {
+        String requestBody = """
+                {
+                  "name": " ",
+                  "seatNumber": 0,
+                  "expectedJoinDate": null
+                }
+                """;
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
     }
 }
