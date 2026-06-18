@@ -12,6 +12,7 @@ import com.example.studyfactory.domain.employeeType.repository.EmployeeTypeRepos
 import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
 import com.example.studyfactory.domain.preRegistration.repository.PreRegistrationRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,14 @@ class PreRegistrationControllerTest {
 
     @Autowired
     private PreRegistrationRepository preRegistrationRepository;
+
+    @BeforeEach
+    void setUp() {
+        preRegistrationRepository.deleteAll();
+        branchRepository.deleteAll();
+        employeeTypeRepository.deleteAll();
+        nameplateContentRepository.deleteAll();
+    }
 
     @Test
     @DisplayName("사전등록 요청이 유효하면 201 응답과 생성 결과를 반환한다")
