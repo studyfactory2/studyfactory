@@ -1,9 +1,9 @@
-package com.example.studyfactory.domain.member.service;
+package com.example.studyfactory.domain.preEmployeeRegistration.service;
 
-import com.example.studyfactory.domain.member.entity.PreEmployeeRegistration;
-import com.example.studyfactory.domain.member.dto.PreEmployeeRegistrationCreateRequest;
-import com.example.studyfactory.domain.member.dto.PreEmployeeRegistrationResponse;
-import com.example.studyfactory.domain.member.repository.PreEmployeeRegistrationRepository;
+import com.example.studyfactory.domain.preEmployeeRegistration.entity.PreEmployeeRegistration;
+import com.example.studyfactory.domain.preEmployeeRegistration.dto.PreEmployeeRegistrationCreateRequest;
+import com.example.studyfactory.domain.preEmployeeRegistration.dto.PreEmployeeRegistrationResponse;
+import com.example.studyfactory.domain.preEmployeeRegistration.repository.PreEmployeeRegistrationRepository;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.employeeType.repository.EmployeeTypeRepository;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;

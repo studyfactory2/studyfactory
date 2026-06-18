@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.member.entity;
+package com.example.studyfactory.domain.preEmployeeRegistration.entity;
 
 import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;

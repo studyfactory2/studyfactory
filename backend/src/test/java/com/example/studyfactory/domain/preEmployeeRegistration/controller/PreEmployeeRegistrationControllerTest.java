@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.member.controller;
+package com.example.studyfactory.domain.preEmployeeRegistration.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,7 +11,7 @@ import com.example.studyfactory.domain.employeeType.entity.EmployeeType;
 import com.example.studyfactory.domain.employeeType.repository.EmployeeTypeRepository;
 import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
-import com.example.studyfactory.domain.member.repository.PreEmployeeRegistrationRepository;
+import com.example.studyfactory.domain.preEmployeeRegistration.repository.PreEmployeeRegistrationRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

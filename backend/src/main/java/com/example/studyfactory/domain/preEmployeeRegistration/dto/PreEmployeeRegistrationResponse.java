@@ -1,6 +1,6 @@
-package com.example.studyfactory.domain.member.dto;
+package com.example.studyfactory.domain.preEmployeeRegistration.dto;
 
-import com.example.studyfactory.domain.member.entity.PreEmployeeRegistration;
+import com.example.studyfactory.domain.preEmployeeRegistration.entity.PreEmployeeRegistration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 

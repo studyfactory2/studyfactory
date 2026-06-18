@@ -1,8 +1,8 @@
-package com.example.studyfactory.domain.member.controller;
+package com.example.studyfactory.domain.preEmployeeRegistration.controller;
 
-import com.example.studyfactory.domain.member.dto.PreEmployeeRegistrationCreateRequest;
-import com.example.studyfactory.domain.member.dto.PreEmployeeRegistrationResponse;
-import com.example.studyfactory.domain.member.service.PreEmployeeRegistrationService;
+import com.example.studyfactory.domain.preEmployeeRegistration.dto.PreEmployeeRegistrationCreateRequest;
+import com.example.studyfactory.domain.preEmployeeRegistration.dto.PreEmployeeRegistrationResponse;
+import com.example.studyfactory.domain.preEmployeeRegistration.service.PreEmployeeRegistrationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;

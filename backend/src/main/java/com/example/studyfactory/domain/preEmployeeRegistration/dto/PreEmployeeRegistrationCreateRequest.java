@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.member.dto;
+package com.example.studyfactory.domain.preEmployeeRegistration.dto;
 
 import java.time.LocalDate;
 
