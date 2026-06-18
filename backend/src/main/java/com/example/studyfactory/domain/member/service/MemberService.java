@@ -23,7 +23,6 @@ public class MemberService {
     @Transactional(readOnly = true)
     public PreRegistrationVerifyResponse verifyPreRegistration(PreRegistrationVerifyRequest request) {
         PreRegistration preRegistration = findPreRegistration(request.name().trim(), request.branchId());
-        validateNotSignedUp(preRegistration);
 
         return PreRegistrationVerifyResponse.from(preRegistration);
     }
@@ -31,7 +30,7 @@ public class MemberService {
     @Transactional
     public MemberSignupResponse signup(MemberSignupRequest request) {
         PreRegistration preRegistration = preRegistrationRepository.getOrThrow(request.preRegistrationId());
-        validateNotSignedUp(preRegistration);
+        validateNotSignedUp(preRegistration, request.password());
 
         Member member = new Member(
                 preRegistration.getReferenceInformation().getBranchId(),
@@ -54,10 +53,11 @@ public class MemberService {
                 .orElseThrow(MemberException::preRegistrationNotFound);
     }
 
-    private void validateNotSignedUp(PreRegistration preRegistration) {
-        if (memberRepository.existsByNameAndBranchId(
+    private void validateNotSignedUp(PreRegistration preRegistration, String password) {
+        if (memberRepository.existsByNameAndBranchIdAndPassword(
                 preRegistration.getName(),
-                preRegistration.getReferenceInformation().getBranchId()
+                preRegistration.getReferenceInformation().getBranchId(),
+                password
         )) {
             throw MemberException.alreadySignedUp();
         }

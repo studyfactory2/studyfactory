@@ -45,7 +45,6 @@ class MemberServiceTest {
         PreRegistration preRegistration = createPreRegistration();
         given(preRegistrationRepository.findByNameAndBranchId("hong", 1L))
                 .willReturn(Optional.of(preRegistration));
-        given(memberRepository.existsByNameAndBranchId("hong", 1L)).willReturn(false);
 
         PreRegistrationVerifyResponse response = memberService.verifyPreRegistration(
                 new PreRegistrationVerifyRequest(" hong ", 1L)
@@ -62,7 +61,7 @@ class MemberServiceTest {
     void signup() {
         PreRegistration preRegistration = createPreRegistration();
         given(preRegistrationRepository.getOrThrow(10L)).willReturn(preRegistration);
-        given(memberRepository.existsByNameAndBranchId("hong", 1L)).willReturn(false);
+        given(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "password123")).willReturn(false);
         given(memberRepository.save(any(Member.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         MemberSignupResponse response = memberService.signup(new MemberSignupRequest(10L, "password123"));
@@ -89,11 +88,11 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("이미 가입된 사원이면 예외가 발생한다")
-    void throwExceptionWhenMemberAlreadySignedUp() {
+    @DisplayName("이름과 지점과 비밀번호가 모두 같은 가입 정보가 있으면 예외가 발생한다")
+    void throwExceptionWhenSameNameBranchAndPasswordAlreadyExist() {
         PreRegistration preRegistration = createPreRegistration();
         given(preRegistrationRepository.getOrThrow(10L)).willReturn(preRegistration);
-        given(memberRepository.existsByNameAndBranchId("hong", 1L)).willReturn(true);
+        given(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "password123")).willReturn(true);
 
         assertThatThrownBy(() -> memberService.signup(new MemberSignupRequest(10L, "password123")))
                 .isInstanceOf(MemberException.class)

@@ -84,7 +84,7 @@ class MemberSignupControllerTest {
                 .andExpect(jsonPath("$.joinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$.nameplateContentId").value(3));
 
-        assertThat(memberRepository.existsByNameAndBranchId("hong", 1L)).isTrue();
+        assertThat(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "password123")).isTrue();
     }
 
     @Test

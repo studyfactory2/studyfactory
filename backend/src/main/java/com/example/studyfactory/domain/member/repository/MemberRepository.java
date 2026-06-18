@@ -12,6 +12,11 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             from Member m
             where m.name = :name
               and m.referenceInformation.branchId = :branchId
+              and m.password = :password
             """)
-    boolean existsByNameAndBranchId(@Param("name") String name, @Param("branchId") Long branchId);
+    boolean existsByNameAndBranchIdAndPassword(
+            @Param("name") String name,
+            @Param("branchId") Long branchId,
+            @Param("password") String password
+    );
 }
