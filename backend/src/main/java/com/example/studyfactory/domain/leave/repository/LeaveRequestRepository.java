@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
 
+    List<LeaveRequest> findByMemberIdOrderByLeaveDateDescCreatedAtDesc(Long memberId);
+
     @Query("""
             select new com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse(
                 m.name,

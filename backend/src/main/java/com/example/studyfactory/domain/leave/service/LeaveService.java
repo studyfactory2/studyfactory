@@ -40,6 +40,14 @@ public class LeaveService {
     }
 
     @Transactional(readOnly = true)
+    public List<LeaveResponse> findMine(Long memberId) {
+        return leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
+                .stream()
+                .map(LeaveResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<DailyLeaveStatusResponse> findDailyStatuses(LocalDate date, String name, Long branchId, LeaveType leaveType) {
         return leaveRequestRepository.findDailyStatuses(resolveDate(date), toSearchName(name), branchId, leaveType);
     }

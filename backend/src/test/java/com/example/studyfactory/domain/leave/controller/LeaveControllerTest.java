@@ -95,6 +95,26 @@ class LeaveControllerTest {
     }
 
     @Test
+    @DisplayName("인증된 사원이 본인 휴무 목록을 조회한다")
+    void findMyLeaves() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        Member otherMember = memberRepository.save(createMember("lee", branch.getId()));
+        leaveRequestRepository.save(new LeaveRequest(member.getId(), branch.getId(), LocalDate.of(2026, 7, 1), LeaveType.FULL));
+        leaveRequestRepository.save(new LeaveRequest(otherMember.getId(), branch.getId(), LocalDate.of(2026, 7, 2), LeaveType.MORNING));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(get("/api/leaves/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].memberId").value(member.getId()))
+                .andExpect(jsonPath("$[0].branchId").value(branch.getId()))
+                .andExpect(jsonPath("$[0].leaveDate").value("2026-07-01"))
+                .andExpect(jsonPath("$[0].leaveType").value("FULL"))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
     @DisplayName("일별 사원 휴무 현황을 조회한다")
     void findDailyStatuses() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));

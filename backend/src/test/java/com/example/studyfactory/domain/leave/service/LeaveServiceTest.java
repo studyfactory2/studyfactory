@@ -68,6 +68,21 @@ class LeaveServiceTest {
     }
 
     @Test
+    @DisplayName("토큰의 사원 ID로 본인 휴무 목록을 조회한다")
+    void findMine() {
+        LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        given(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L)).willReturn(List.of(leaveRequest));
+
+        List<LeaveResponse> responses = leaveService.findMine(1L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).memberId()).isEqualTo(1L);
+        assertThat(responses.get(0).branchId()).isEqualTo(2L);
+        assertThat(responses.get(0).leaveDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+        assertThat(responses.get(0).leaveType()).isEqualTo(LeaveType.FULL);
+    }
+
+    @Test
     @DisplayName("날짜와 검색 조건으로 일별 사원 휴무 현황을 조회한다")
     void findDailyStatuses() {
         LocalDate date = LocalDate.of(2026, 7, 1);

@@ -33,6 +33,11 @@ public class LeaveController {
         return leaveService.create(memberId, request);
     }
 
+    @GetMapping("/me")
+    public List<LeaveResponse> findMine(@CurrentMember Long memberId) {
+        return leaveService.findMine(memberId);
+    }
+
     @GetMapping("/daily-status")
     public List<DailyLeaveStatusResponse> findDailyStatuses(
             @RequestParam(required = false)
