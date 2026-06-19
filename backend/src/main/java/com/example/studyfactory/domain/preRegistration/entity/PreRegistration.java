@@ -51,4 +51,28 @@ public class PreRegistration extends BaseEntity {
         this.expectedJoinDate = expectedJoinDate;
         this.subInformation = subInformation;
     }
+
+    public Long getBranchId() {
+        return referenceInformation.getBranchId();
+    }
+
+    public Long getEmployeeTypeId() {
+        return referenceInformation.getEmployeeTypeId();
+    }
+
+    public Long getNameplateContentId() {
+        return referenceInformation.getNameplateContentId();
+    }
+
+    public String getDrinkSetting() {
+        return subInformation.getDrinkSetting();
+    }
+
+    public String getDrinkNote() {
+        return subInformation.getDrinkNote();
+    }
+
+    public String getMemberNote() {
+        return subInformation.getMemberNote();
+    }
 }

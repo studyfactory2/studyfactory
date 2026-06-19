@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,5 +39,29 @@ public class SideDishRequest extends BaseEntity {
         this.referenceInformation = referenceInformation;
         this.mealInformation = mealInformation;
         this.orderInformation = orderInformation;
+    }
+
+    public Long getMemberId() {
+        return referenceInformation.getMemberId();
+    }
+
+    public Long getBranchId() {
+        return referenceInformation.getBranchId();
+    }
+
+    public LocalDate getMealDate() {
+        return mealInformation.getMealDate();
+    }
+
+    public MealType getMealType() {
+        return mealInformation.getMealType();
+    }
+
+    public String getItems() {
+        return orderInformation.getItems();
+    }
+
+    public int getTotalPrice() {
+        return orderInformation.getTotalPrice();
     }
 }

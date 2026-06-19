@@ -49,7 +49,7 @@ public class JwtTokenProvider {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sub", member.getId());
         payload.put("name", member.getName());
-        payload.put("branchId", member.getReferenceInformation().getBranchId());
+        payload.put("branchId", member.getBranchId());
         payload.put("iat", now / 1000);
         payload.put("exp", (now + expirationMillis) / 1000);
 

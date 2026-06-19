@@ -22,15 +22,15 @@ public record MemberSignupResponse(
     public static MemberSignupResponse from(Member member) {
         return new MemberSignupResponse(
                 member.getId(),
-                member.getReferenceInformation().getBranchId(),
-                member.getReferenceInformation().getEmployeeTypeId(),
+                member.getBranchId(),
+                member.getEmployeeTypeId(),
                 member.getName(),
-                member.getWorkInformation().getSeatNumber(),
-                member.getWorkInformation().getJoinDate(),
-                member.getReferenceInformation().getNameplateContentId(),
-                member.getSubInformation().getDrinkSetting(),
-                member.getSubInformation().getDrinkNote(),
-                member.getSubInformation().getMemberNote(),
+                member.getSeatNumber(),
+                member.getJoinDate(),
+                member.getNameplateContentId(),
+                member.getDrinkSetting(),
+                member.getDrinkNote(),
+                member.getMemberNote(),
                 member.getCreatedAt(),
                 member.getUpdatedAt()
         );

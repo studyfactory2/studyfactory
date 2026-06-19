@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,5 +38,33 @@ public class Attendance extends BaseEntity {
     ) {
         this.referenceInformation = referenceInformation;
         this.slotInformation = slotInformation;
+    }
+
+    public Long getMemberId() {
+        return referenceInformation.getMemberId();
+    }
+
+    public Long getBranchId() {
+        return referenceInformation.getBranchId();
+    }
+
+    public Long getAttendanceStatusTypeId() {
+        return referenceInformation.getAttendanceStatusTypeId();
+    }
+
+    public Long getMarkedByMemberId() {
+        return referenceInformation.getMarkedByMemberId();
+    }
+
+    public LocalDate getAttendanceDate() {
+        return slotInformation.getAttendanceDate();
+    }
+
+    public int getSlot() {
+        return slotInformation.getSlot();
+    }
+
+    public String getCustomStatusText() {
+        return slotInformation.getCustomStatusText();
     }
 }

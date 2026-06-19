@@ -46,16 +46,16 @@ public class MemberService {
         validateNotSignedUp(preRegistration, request.password());
 
         Member member = new Member(
-                preRegistration.getReferenceInformation().getBranchId(),
-                preRegistration.getReferenceInformation().getEmployeeTypeId(),
+                preRegistration.getBranchId(),
+                preRegistration.getEmployeeTypeId(),
                 preRegistration.getName(),
                 request.password(),
                 preRegistration.getSeatNumber(),
                 preRegistration.getExpectedJoinDate(),
-                preRegistration.getReferenceInformation().getNameplateContentId(),
-                preRegistration.getSubInformation().getDrinkSetting(),
-                preRegistration.getSubInformation().getDrinkNote(),
-                preRegistration.getSubInformation().getMemberNote()
+                preRegistration.getNameplateContentId(),
+                preRegistration.getDrinkSetting(),
+                preRegistration.getDrinkNote(),
+                preRegistration.getMemberNote()
         );
 
         return MemberSignupResponse.from(memberRepository.save(member));
@@ -77,7 +77,7 @@ public class MemberService {
     private void validateNotSignedUp(PreRegistration preRegistration, String password) {
         if (memberRepository.existsByNameAndBranchIdAndPassword(
                 preRegistration.getName(),
-                preRegistration.getReferenceInformation().getBranchId(),
+                preRegistration.getBranchId(),
                 password
         )) {
             throw MemberException.alreadySignedUp();

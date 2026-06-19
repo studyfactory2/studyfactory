@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.leave.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -46,6 +48,50 @@ class LeaveControllerTest {
         leaveRequestRepository.deleteAll();
         memberRepository.deleteAll();
         branchRepository.deleteAll();
+    }
+
+    @Test
+    @DisplayName("인증된 사원이 휴무를 신청한다")
+    void createLeave() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String requestBody = """
+                {
+                  "leaveDate": "%s",
+                  "leaveType": "FULL"
+                }
+                """.formatted(LocalDate.now());
+
+        mockMvc.perform(post("/api/leaves")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.memberId").value(member.getId()))
+                .andExpect(jsonPath("$.branchId").value(branch.getId()))
+                .andExpect(jsonPath("$.leaveDate").value(String.valueOf(LocalDate.now())))
+                .andExpect(jsonPath("$.leaveType").value("FULL"));
+    }
+
+    @Test
+    @DisplayName("오늘보다 이전 날짜로 휴무를 신청하면 400 응답을 반환한다")
+    void createLeaveWithPastDate() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String requestBody = """
+                {
+                  "leaveDate": "%s",
+                  "leaveType": "FULL"
+                }
+                """.formatted(LocalDate.now().minusDays(1));
+
+        mockMvc.perform(post("/api/leaves")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

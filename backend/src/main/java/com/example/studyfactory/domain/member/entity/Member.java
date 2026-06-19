@@ -65,4 +65,36 @@ public class Member extends BaseEntity {
         this.workInformation = workInformation;
         this.subInformation = subInformation;
     }
+
+    public Long getBranchId() {
+        return referenceInformation.getBranchId();
+    }
+
+    public Long getEmployeeTypeId() {
+        return referenceInformation.getEmployeeTypeId();
+    }
+
+    public Long getNameplateContentId() {
+        return referenceInformation.getNameplateContentId();
+    }
+
+    public int getSeatNumber() {
+        return workInformation.getSeatNumber();
+    }
+
+    public LocalDate getJoinDate() {
+        return workInformation.getJoinDate();
+    }
+
+    public String getDrinkSetting() {
+        return subInformation.getDrinkSetting();
+    }
+
+    public String getDrinkNote() {
+        return subInformation.getDrinkNote();
+    }
+
+    public String getMemberNote() {
+        return subInformation.getMemberNote();
+    }
 }

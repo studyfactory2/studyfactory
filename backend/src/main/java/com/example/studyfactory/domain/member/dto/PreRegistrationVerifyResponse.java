@@ -19,15 +19,15 @@ public record PreRegistrationVerifyResponse(
     public static PreRegistrationVerifyResponse from(PreRegistration preRegistration) {
         return new PreRegistrationVerifyResponse(
                 preRegistration.getId(),
-                preRegistration.getReferenceInformation().getBranchId(),
-                preRegistration.getReferenceInformation().getEmployeeTypeId(),
+                preRegistration.getBranchId(),
+                preRegistration.getEmployeeTypeId(),
                 preRegistration.getName(),
                 preRegistration.getSeatNumber(),
                 preRegistration.getExpectedJoinDate(),
-                preRegistration.getReferenceInformation().getNameplateContentId(),
-                preRegistration.getSubInformation().getDrinkSetting(),
-                preRegistration.getSubInformation().getDrinkNote(),
-                preRegistration.getSubInformation().getMemberNote()
+                preRegistration.getNameplateContentId(),
+                preRegistration.getDrinkSetting(),
+                preRegistration.getDrinkNote(),
+                preRegistration.getMemberNote()
         );
     }
 }

@@ -48,4 +48,16 @@ public class Suggestion extends BaseEntity {
         this.content = content;
         this.resolved = resolved;
     }
+
+    public Long getMemberId() {
+        return referenceInformation.getMemberId();
+    }
+
+    public Long getBranchId() {
+        return referenceInformation.getBranchId();
+    }
+
+    public Long getResolvedByMemberId() {
+        return referenceInformation.getResolvedByMemberId();
+    }
 }

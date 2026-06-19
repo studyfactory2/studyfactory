@@ -22,15 +22,15 @@ public record PreRegistrationResponse(
     public static PreRegistrationResponse from(PreRegistration registration) {
         return new PreRegistrationResponse(
                 registration.getId(),
-                registration.getReferenceInformation().getBranchId(),
-                registration.getReferenceInformation().getEmployeeTypeId(),
+                registration.getBranchId(),
+                registration.getEmployeeTypeId(),
                 registration.getName(),
                 registration.getSeatNumber(),
                 registration.getExpectedJoinDate(),
-                registration.getReferenceInformation().getNameplateContentId(),
-                registration.getSubInformation().getDrinkSetting(),
-                registration.getSubInformation().getDrinkNote(),
-                registration.getSubInformation().getMemberNote(),
+                registration.getNameplateContentId(),
+                registration.getDrinkSetting(),
+                registration.getDrinkNote(),
+                registration.getMemberNote(),
                 registration.getCreatedAt(),
                 registration.getUpdatedAt()
         );
