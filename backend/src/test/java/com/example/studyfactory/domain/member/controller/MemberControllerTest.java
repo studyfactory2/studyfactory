@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.member.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -113,6 +115,29 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$[0].name").value("kim"))
                 .andExpect(jsonPath("$[0].branchId").value(1))
                 .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("인증된 사원이 본인 음료 설정과 참고사항을 수정한다")
+    void updateDrink() throws Exception {
+        Member member = memberRepository.save(createMember("kim", 10));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String requestBody = """
+                {
+                  "drinkSetting": "따뜻한 라떼",
+                  "drinkNote": "시럽 추가"
+                }
+                """;
+
+        mockMvc.perform(patch("/api/members/me/drink")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(member.getId()))
+                .andExpect(jsonPath("$.drinkSetting").value("따뜻한 라떼"))
+                .andExpect(jsonPath("$.drinkNote").value("시럽 추가"))
+                .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
     }
 
     private Member createMember(String name, int seatNumber) {

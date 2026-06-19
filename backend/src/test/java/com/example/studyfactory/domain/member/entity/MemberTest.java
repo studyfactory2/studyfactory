@@ -37,4 +37,27 @@ class MemberTest {
         assertThat(member.getDrinkNote()).isEqualTo("연하게");
         assertThat(member.getMemberNote()).isEqualTo("오전 교육 예정");
     }
+
+    @Test
+    @DisplayName("음료 설정과 음료 참고사항을 수정한다")
+    void updateDrink() {
+        Member member = new Member(
+                1L,
+                2L,
+                "hong",
+                "password123",
+                12,
+                LocalDate.of(2026, 7, 1),
+                3L,
+                "아이스 아메리카노",
+                "연하게",
+                "오전 교육 예정"
+        );
+
+        member.updateDrink("따뜻한 라떼", "시럽 추가");
+
+        assertThat(member.getDrinkSetting()).isEqualTo("따뜻한 라떼");
+        assertThat(member.getDrinkNote()).isEqualTo("시럽 추가");
+        assertThat(member.getMemberNote()).isEqualTo("오전 교육 예정");
+    }
 }

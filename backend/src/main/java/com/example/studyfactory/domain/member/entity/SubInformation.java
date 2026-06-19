@@ -25,4 +25,9 @@ public class SubInformation {
         this.drinkNote = drinkNote;
         this.memberNote = memberNote;
     }
+
+    public void updateDrink(String drinkSetting, String drinkNote) {
+        this.drinkSetting = drinkSetting;
+        this.drinkNote = drinkNote;
+    }
 }

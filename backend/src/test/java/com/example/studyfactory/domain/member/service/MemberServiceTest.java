@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import com.example.studyfactory.domain.member.dto.DrinkRequest;
+import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyRequest;
@@ -99,6 +101,29 @@ class MemberServiceTest {
                 .hasMessageContaining("이미 가입된 사원입니다.");
     }
 
+    @Test
+    @DisplayName("토큰의 사원 ID로 음료 설정과 참고사항을 수정한다")
+    void updateDrink() {
+        Member member = createMember();
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        MemberResponse response = memberService.updateDrink(1L, new DrinkRequest("따뜻한 라떼", "시럽 추가"));
+
+        assertThat(response.drinkSetting()).isEqualTo("따뜻한 라떼");
+        assertThat(response.drinkNote()).isEqualTo("시럽 추가");
+        assertThat(response.memberNote()).isEqualTo("오전 교육 예정");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사원의 음료 정보를 수정하면 예외가 발생한다")
+    void throwExceptionWhenUpdateDrinkMemberNotFound() {
+        given(memberRepository.findById(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> memberService.updateDrink(1L, new DrinkRequest("따뜻한 라떼", "시럽 추가")))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("존재하지 않는 사원입니다.");
+    }
+
     private PreRegistration createPreRegistration() {
         return new PreRegistration(
                 new ReferenceInformation(1L, 2L, 3L),
@@ -106,6 +131,21 @@ class MemberServiceTest {
                 12,
                 LocalDate.of(2026, 7, 1),
                 new SubInformation("아이스 아메리카노", "연하게", "오전 교육 예정")
+        );
+    }
+
+    private Member createMember() {
+        return new Member(
+                1L,
+                2L,
+                "hong",
+                "password123",
+                12,
+                LocalDate.of(2026, 7, 1),
+                3L,
+                "아이스 아메리카노",
+                "연하게",
+                "오전 교육 예정"
         );
     }
 }

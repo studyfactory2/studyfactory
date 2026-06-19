@@ -106,4 +106,8 @@ public class Member extends BaseEntity {
     public String getMemberNote() {
         return subInformation.getMemberNote();
     }
+
+    public void updateDrink(String drinkSetting, String drinkNote) {
+        subInformation.updateDrink(drinkSetting, drinkNote);
+    }
 }

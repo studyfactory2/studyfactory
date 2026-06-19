@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.member.service;
 
 import com.example.studyfactory.domain.member.dto.MemberResponse;
+import com.example.studyfactory.domain.member.dto.DrinkRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyRequest;
@@ -59,6 +60,14 @@ public class MemberService {
         );
 
         return MemberSignupResponse.from(memberRepository.save(member));
+    }
+
+    @Transactional
+    public MemberResponse updateDrink(Long memberId, DrinkRequest request) {
+        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        member.updateDrink(request.drinkSetting(), request.drinkNote());
+
+        return MemberResponse.from(member);
     }
 
     private PreRegistration findPreRegistration(String name, Long branchId) {
