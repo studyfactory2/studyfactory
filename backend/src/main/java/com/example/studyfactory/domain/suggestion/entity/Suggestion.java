@@ -35,18 +35,18 @@ public class Suggestion extends BaseEntity {
     private String content;
 
     @Column(nullable = false)
-    private boolean resolved;
+    private boolean isResolved;
 
     public Suggestion(
             SuggestionReferenceInformation referenceInformation,
             SuggestionCategory category,
             String content,
-            boolean resolved
+            boolean isResolved
     ) {
         this.referenceInformation = referenceInformation;
         this.category = category;
         this.content = content;
-        this.resolved = resolved;
+        this.isResolved = isResolved;
     }
 
     public Long getMemberId() {
