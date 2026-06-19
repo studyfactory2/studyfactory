@@ -4,12 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
 import com.example.studyfactory.domain.sideDish.entity.MealType;
+import com.example.studyfactory.domain.sideDish.entity.SideDishMealInformation;
+import com.example.studyfactory.domain.sideDish.entity.SideDishOrderInformation;
+import com.example.studyfactory.domain.sideDish.entity.SideDishReferenceInformation;
 import com.example.studyfactory.domain.sideDish.entity.SideDishRequest;
 import com.example.studyfactory.domain.sideDish.exception.SideDishException;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
@@ -17,6 +21,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,6 +75,29 @@ class SideDishServiceTest {
         assertThatThrownBy(() -> sideDishService.create(1L, request))
                 .isInstanceOf(SideDishException.class)
                 .hasMessageContaining("총 가격은 각 금액과 일치해야 합니다.");
+    }
+
+    @Test
+    @DisplayName("토큰의 사원 ID와 날짜로 본인 반찬 신청 목록을 조회한다")
+    void findMineByDate() {
+        LocalDate mealDate = LocalDate.of(2026, 6, 19);
+        SideDishRequest sideDishRequest = new SideDishRequest(
+                new SideDishReferenceInformation(1L, 2L),
+                new SideDishMealInformation(mealDate, MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        );
+        given(sideDishRequestRepository.findMineByDate(1L, mealDate)).willReturn(List.of(sideDishRequest));
+
+        List<SideDishResponse> responses = sideDishService.findMineByDate(1L, mealDate);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).memberId()).isEqualTo(1L);
+        assertThat(responses.get(0).branchId()).isEqualTo(2L);
+        assertThat(responses.get(0).mealDate()).isEqualTo(mealDate);
+        assertThat(responses.get(0).mealType()).isEqualTo(MealType.LUNCH);
+        assertThat(responses.get(0).items()).isEqualTo("제육볶음: 9000");
+        assertThat(responses.get(0).totalPrice()).isEqualTo(9000);
+        then(sideDishRequestRepository).should().findMineByDate(1L, mealDate);
     }
 
     @Test

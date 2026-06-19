@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.sideDish.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -9,6 +10,11 @@ import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.sideDish.entity.MealType;
+import com.example.studyfactory.domain.sideDish.entity.SideDishMealInformation;
+import com.example.studyfactory.domain.sideDish.entity.SideDishOrderInformation;
+import com.example.studyfactory.domain.sideDish.entity.SideDishReferenceInformation;
+import com.example.studyfactory.domain.sideDish.entity.SideDishRequest;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -84,6 +90,42 @@ class SideDishControllerTest {
                 .andExpect(jsonPath("$.mealType").value("LUNCH"))
                 .andExpect(jsonPath("$.items").value("제육볶음: 9000"))
                 .andExpect(jsonPath("$.totalPrice").value(9000));
+    }
+
+    @Test
+    @DisplayName("인증된 사원이 날짜로 본인 반찬 신청 목록을 조회한다")
+    void findMySideDishesByDate() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        Member otherMember = memberRepository.save(createMember("lee", branch.getId()));
+        sideDishRequestRepository.save(new SideDishRequest(
+                new SideDishReferenceInformation(member.getId(), branch.getId()),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        ));
+        sideDishRequestRepository.save(new SideDishRequest(
+                new SideDishReferenceInformation(member.getId(), branch.getId()),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 20), MealType.DINNER),
+                new SideDishOrderInformation("김치찌개: 8000", 8000)
+        ));
+        sideDishRequestRepository.save(new SideDishRequest(
+                new SideDishReferenceInformation(otherMember.getId(), branch.getId()),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("돈까스: 10000", 10000)
+        ));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(get("/api/side-dishes/me")
+                        .param("date", "2026-06-19")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].memberId").value(member.getId()))
+                .andExpect(jsonPath("$[0].branchId").value(branch.getId()))
+                .andExpect(jsonPath("$[0].mealDate").value("2026-06-19"))
+                .andExpect(jsonPath("$[0].mealType").value("LUNCH"))
+                .andExpect(jsonPath("$[0].items").value("제육볶음: 9000"))
+                .andExpect(jsonPath("$[0].totalPrice").value(9000))
+                .andExpect(jsonPath("$[1]").doesNotExist());
     }
 
     @Test

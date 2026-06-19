@@ -14,6 +14,7 @@ import com.example.studyfactory.domain.sideDish.repository.SideDishRequestReposi
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,14 @@ public class SideDishService {
         );
 
         return SideDishResponse.from(sideDishRequestRepository.save(sideDishRequest));
+    }
+
+    @Transactional(readOnly = true)
+    public List<SideDishResponse> findMineByDate(Long memberId, LocalDate date) {
+        return sideDishRequestRepository.findMineByDate(memberId, date)
+                .stream()
+                .map(SideDishResponse::from)
+                .toList();
     }
 
     private void validateTotalPrice(SideDishCreateRequest request) {
