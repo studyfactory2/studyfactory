@@ -1,6 +1,8 @@
 package com.example.studyfactory.domain.leave.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -112,6 +114,35 @@ class LeaveControllerTest {
                 .andExpect(jsonPath("$[0].leaveDate").value("2026-07-01"))
                 .andExpect(jsonPath("$[0].leaveType").value("FULL"))
                 .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("인증된 사원이 본인 휴무를 삭제한다")
+    void deleteLeave() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        LeaveRequest leaveRequest = leaveRequestRepository.save(new LeaveRequest(member.getId(), branch.getId(), LocalDate.of(2026, 7, 1), LeaveType.FULL));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(delete("/api/leaves/{leaveId}", leaveRequest.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNoContent());
+
+        assertThat(leaveRequestRepository.existsById(leaveRequest.getId())).isFalse();
+    }
+
+    @Test
+    @DisplayName("다른 사원의 휴무를 삭제하면 403 응답을 반환한다")
+    void rejectDeleteOtherMemberLeave() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        Member otherMember = memberRepository.save(createMember("lee", branch.getId()));
+        LeaveRequest leaveRequest = leaveRequestRepository.save(new LeaveRequest(otherMember.getId(), branch.getId(), LocalDate.of(2026, 7, 1), LeaveType.FULL));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(delete("/api/leaves/{leaveId}", leaveRequest.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden());
     }
 
     @Test

@@ -29,6 +29,7 @@ class MemberTest {
         assertThat(member.getEmployeeTypeId()).isEqualTo(2L);
         assertThat(member.getName()).isEqualTo("hong");
         assertThat(member.getPassword()).isEqualTo("password123");
+        assertThat(member.getRole()).isEqualTo(MemberRole.MEMBER);
         assertThat(member.getSeatNumber()).isEqualTo(12);
         assertThat(member.getJoinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(member.getNameplateContentId()).isEqualTo(3L);

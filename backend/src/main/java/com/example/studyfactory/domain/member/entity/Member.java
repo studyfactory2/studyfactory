@@ -4,6 +4,8 @@ import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,6 +34,10 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private String password;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private MemberRole role;
+
     @Embedded
     private WorkInformation workInformation;
 
@@ -45,6 +51,7 @@ public class Member extends BaseEntity {
                 new ReferenceInformation(branchId, employeeTypeId, nameplateContentId),
                 name,
                 password,
+                MemberRole.MEMBER,
                 new WorkInformation(seatNumber, joinDate),
                 new SubInformation(drinkSetting, drinkNote, memberNote)
         );
@@ -55,6 +62,7 @@ public class Member extends BaseEntity {
             ReferenceInformation referenceInformation,
             String name,
             String password,
+            MemberRole role,
             WorkInformation workInformation,
             SubInformation subInformation
     ) {
@@ -62,6 +70,7 @@ public class Member extends BaseEntity {
         this.referenceInformation = referenceInformation;
         this.name = name;
         this.password = password;
+        this.role = role;
         this.workInformation = workInformation;
         this.subInformation = subInformation;
     }

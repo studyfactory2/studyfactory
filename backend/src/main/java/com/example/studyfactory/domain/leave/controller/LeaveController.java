@@ -12,7 +12,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,6 +38,12 @@ public class LeaveController {
     @GetMapping("/me")
     public List<LeaveResponse> findMine(@CurrentMember Long memberId) {
         return leaveService.findMine(memberId);
+    }
+
+    @DeleteMapping("/{leaveId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@CurrentMember Long memberId, @PathVariable Long leaveId) {
+        leaveService.delete(memberId, leaveId);
     }
 
     @GetMapping("/daily-status")

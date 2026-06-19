@@ -83,6 +83,38 @@ class LeaveServiceTest {
     }
 
     @Test
+    @DisplayName("본인의 휴무 신청을 삭제한다")
+    void deleteLeave() {
+        LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
+
+        leaveService.delete(1L, 10L);
+
+        then(leaveRequestRepository).should().delete(leaveRequest);
+    }
+
+    @Test
+    @DisplayName("다른 사원의 휴무 신청을 삭제하면 예외가 발생한다")
+    void throwExceptionWhenDeleteOtherMemberLeave() {
+        LeaveRequest leaveRequest = new LeaveRequest(2L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
+
+        assertThatThrownBy(() -> leaveService.delete(1L, 10L))
+                .isInstanceOf(LeaveException.class)
+                .hasMessageContaining("본인의 휴무 신청만 삭제할 수 있습니다.");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 휴무 신청을 삭제하면 예외가 발생한다")
+    void throwExceptionWhenDeleteNotFoundLeave() {
+        given(leaveRequestRepository.findById(10L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveService.delete(1L, 10L))
+                .isInstanceOf(LeaveException.class)
+                .hasMessageContaining("존재하지 않는 휴무 신청입니다.");
+    }
+
+    @Test
     @DisplayName("날짜와 검색 조건으로 일별 사원 휴무 현황을 조회한다")
     void findDailyStatuses() {
         LocalDate date = LocalDate.of(2026, 7, 1);

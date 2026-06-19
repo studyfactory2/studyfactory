@@ -47,6 +47,13 @@ public class LeaveService {
                 .toList();
     }
 
+    @Transactional
+    public void delete(Long memberId, Long leaveId) {
+        LeaveRequest leaveRequest = leaveRequestRepository.findById(leaveId).orElseThrow(LeaveException::leaveNotFound);
+        validateOwner(memberId, leaveRequest);
+        leaveRequestRepository.delete(leaveRequest);
+    }
+
     @Transactional(readOnly = true)
     public List<DailyLeaveStatusResponse> findDailyStatuses(LocalDate date, String name, Long branchId, LeaveType leaveType) {
         return leaveRequestRepository.findDailyStatuses(resolveDate(date), toSearchName(name), branchId, leaveType);
@@ -63,6 +70,12 @@ public class LeaveService {
     private void validateLeaveDate(LocalDate leaveDate) {
         if (leaveDate.isBefore(LocalDate.now())) {
             throw LeaveException.pastDateNotAllowed();
+        }
+    }
+
+    private void validateOwner(Long memberId, LeaveRequest leaveRequest) {
+        if (!leaveRequest.getMemberId().equals(memberId)) {
+            throw LeaveException.notOwner();
         }
     }
 

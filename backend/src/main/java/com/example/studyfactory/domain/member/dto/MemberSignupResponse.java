@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.member.dto;
 
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -9,6 +10,7 @@ public record MemberSignupResponse(
         Long branchId,
         Long employeeTypeId,
         String name,
+        MemberRole role,
         int seatNumber,
         LocalDate joinDate,
         Long nameplateContentId,
@@ -25,6 +27,7 @@ public record MemberSignupResponse(
                 member.getBranchId(),
                 member.getEmployeeTypeId(),
                 member.getName(),
+                member.getRole(),
                 member.getSeatNumber(),
                 member.getJoinDate(),
                 member.getNameplateContentId(),
