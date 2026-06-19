@@ -60,4 +60,8 @@ public class Suggestion extends BaseEntity {
     public Long getResolvedByMemberId() {
         return referenceInformation.getResolvedByMemberId();
     }
+
+    public boolean isResolved() {
+        return isResolved;
+    }
 }
