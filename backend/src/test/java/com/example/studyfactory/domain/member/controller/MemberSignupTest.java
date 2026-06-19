@@ -57,7 +57,6 @@ class MemberSignupTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.preRegistrationId").exists())
                 .andExpect(jsonPath("$.branchId").value(1))
-                .andExpect(jsonPath("$.employeeTypeId").value(2))
                 .andExpect(jsonPath("$.name").value("hong"))
                 .andExpect(jsonPath("$.nameplateContentId").value(3));
     }
@@ -79,7 +78,6 @@ class MemberSignupTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.branchId").value(1))
-                .andExpect(jsonPath("$.employeeTypeId").value(2))
                 .andExpect(jsonPath("$.name").value("hong"))
                 .andExpect(jsonPath("$.joinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$.nameplateContentId").value(3));
@@ -121,7 +119,7 @@ class MemberSignupTest {
 
     private PreRegistration createPreRegistration() {
         return new PreRegistration(
-                new ReferenceInformation(1L, 2L, 3L),
+                new ReferenceInformation(1L, 3L),
                 "hong",
                 12,
                 LocalDate.of(2026, 7, 1),

@@ -14,15 +14,11 @@ public class ReferenceInformation {
     @Column(name = "branch_id", nullable = false)
     private Long branchId;
 
-    @Column(name = "employee_type_id", nullable = false)
-    private Long employeeTypeId;
-
     @Column(name = "nameplate_content_id", nullable = false)
     private Long nameplateContentId;
 
-    public ReferenceInformation(Long branchId, Long employeeTypeId, Long nameplateContentId) {
+    public ReferenceInformation(Long branchId, Long nameplateContentId) {
         this.branchId = branchId;
-        this.employeeTypeId = employeeTypeId;
         this.nameplateContentId = nameplateContentId;
     }
 }

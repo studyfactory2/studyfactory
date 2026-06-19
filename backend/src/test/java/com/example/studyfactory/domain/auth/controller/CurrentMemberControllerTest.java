@@ -49,7 +49,6 @@ class CurrentMemberControllerTest {
     private Member createMember() {
         return new Member(
                 1L,
-                2L,
                 "hong",
                 "password123",
                 12,

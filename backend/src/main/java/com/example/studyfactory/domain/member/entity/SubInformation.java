@@ -30,4 +30,9 @@ public class SubInformation {
         this.drinkSetting = drinkSetting;
         this.drinkNote = drinkNote;
     }
+
+    public void deleteDrink() {
+        this.drinkSetting = null;
+        this.drinkNote = null;
+    }
 }

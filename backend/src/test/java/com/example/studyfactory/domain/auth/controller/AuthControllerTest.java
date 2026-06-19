@@ -127,7 +127,6 @@ class AuthControllerTest {
     private Member createMember() {
         Member member = new Member(
                 1L,
-                2L,
                 "hong",
                 "password123",
                 12,

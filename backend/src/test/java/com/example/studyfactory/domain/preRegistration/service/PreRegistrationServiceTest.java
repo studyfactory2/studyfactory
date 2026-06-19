@@ -7,7 +7,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
-import com.example.studyfactory.domain.employeeType.repository.EmployeeTypeRepository;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
 import com.example.studyfactory.domain.preRegistration.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.preRegistration.dto.PreRegistrationResponse;
@@ -36,9 +35,6 @@ class PreRegistrationServiceTest {
     private BranchRepository branchRepository;
 
     @Mock
-    private EmployeeTypeRepository employeeTypeRepository;
-
-    @Mock
     private NameplateContentRepository nameplateContentRepository;
 
     @Test
@@ -46,7 +42,6 @@ class PreRegistrationServiceTest {
     void createPreRegistration() {
         PreRegistrationCreateRequest request = createRequest();
         given(branchRepository.existsById(1L)).willReturn(true);
-        given(employeeTypeRepository.existsById(2L)).willReturn(true);
         given(nameplateContentRepository.existsById(3L)).willReturn(true);
         given(preRegistrationRepository.save(any(PreRegistration.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -54,7 +49,6 @@ class PreRegistrationServiceTest {
         PreRegistrationResponse response = preRegistrationService.create(request);
 
         assertThat(response.branchId()).isEqualTo(1L);
-        assertThat(response.employeeTypeId()).isEqualTo(2L);
         assertThat(response.name()).isEqualTo("hong");
         assertThat(response.seatNumber()).isEqualTo(12);
         assertThat(response.expectedJoinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
@@ -77,23 +71,10 @@ class PreRegistrationServiceTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 사원구분이면 예외가 발생한다")
-    void throwExceptionWhenEmployeeTypeDoesNotExist() {
-        PreRegistrationCreateRequest request = createRequest();
-        given(branchRepository.existsById(1L)).willReturn(true);
-        given(employeeTypeRepository.existsById(2L)).willReturn(false);
-
-        assertThatThrownBy(() -> preRegistrationService.create(request))
-                .isInstanceOf(PreRegistrationException.class)
-                .hasMessageContaining("존재하지 않는 사원구분입니다.");
-    }
-
-    @Test
     @DisplayName("존재하지 않는 명패내용이면 예외가 발생한다")
     void throwExceptionWhenNameplateContentDoesNotExist() {
         PreRegistrationCreateRequest request = createRequest();
         given(branchRepository.existsById(1L)).willReturn(true);
-        given(employeeTypeRepository.existsById(2L)).willReturn(true);
         given(nameplateContentRepository.existsById(3L)).willReturn(false);
 
         assertThatThrownBy(() -> preRegistrationService.create(request))
@@ -104,7 +85,6 @@ class PreRegistrationServiceTest {
     private PreRegistrationCreateRequest createRequest() {
         return new PreRegistrationCreateRequest(
                 1L,
-                2L,
                 " hong ",
                 12,
                 LocalDate.of(2026, 7, 1),

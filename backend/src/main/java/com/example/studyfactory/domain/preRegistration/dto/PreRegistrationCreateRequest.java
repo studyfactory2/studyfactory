@@ -11,8 +11,6 @@ import java.time.LocalDate;
 public record PreRegistrationCreateRequest(
         @NotNull(message = "지점은 필수입니다.")
         Long branchId,
-        @NotNull(message = "사원구분은 필수입니다.")
-        Long employeeTypeId,
         @NotBlank(message = "이름은 필수입니다.")
         String name,
         @Positive(message = "좌석번호는 1 이상이어야 합니다.")
@@ -27,7 +25,7 @@ public record PreRegistrationCreateRequest(
 ) {
     public PreRegistration toEntity() {
         return new PreRegistration(
-                new ReferenceInformation(branchId, employeeTypeId, nameplateContentId),
+                new ReferenceInformation(branchId, nameplateContentId),
                 name.trim(),
                 seatNumber,
                 expectedJoinDate,

@@ -48,7 +48,6 @@ public class MemberService {
 
         Member member = new Member(
                 preRegistration.getBranchId(),
-                preRegistration.getEmployeeTypeId(),
                 preRegistration.getName(),
                 request.password(),
                 preRegistration.getSeatNumber(),
@@ -66,6 +65,14 @@ public class MemberService {
     public MemberResponse updateDrink(Long memberId, DrinkRequest request) {
         Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
         member.updateDrink(request.drinkSetting(), request.drinkNote());
+
+        return MemberResponse.from(member);
+    }
+
+    @Transactional
+    public MemberResponse deleteDrink(Long memberId) {
+        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        member.deleteDrink();
 
         return MemberResponse.from(member);
     }

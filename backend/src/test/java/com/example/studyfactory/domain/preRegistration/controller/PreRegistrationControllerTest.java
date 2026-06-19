@@ -7,8 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
-import com.example.studyfactory.domain.employeeType.entity.EmployeeType;
-import com.example.studyfactory.domain.employeeType.repository.EmployeeTypeRepository;
 import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
 import com.example.studyfactory.domain.preRegistration.repository.PreRegistrationRepository;
@@ -33,9 +31,6 @@ class PreRegistrationControllerTest {
     private BranchRepository branchRepository;
 
     @Autowired
-    private EmployeeTypeRepository employeeTypeRepository;
-
-    @Autowired
     private NameplateContentRepository nameplateContentRepository;
 
     @Autowired
@@ -45,7 +40,6 @@ class PreRegistrationControllerTest {
     void setUp() {
         preRegistrationRepository.deleteAll();
         branchRepository.deleteAll();
-        employeeTypeRepository.deleteAll();
         nameplateContentRepository.deleteAll();
     }
 
@@ -53,13 +47,11 @@ class PreRegistrationControllerTest {
     @DisplayName("사전등록 요청이 유효하면 201 응답과 생성 결과를 반환한다")
     void createPreRegistration() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
-        EmployeeType employeeType = employeeTypeRepository.save(new EmployeeType("정규직"));
         NameplateContent nameplateContent = nameplateContentRepository.save(new NameplateContent("홍길동 매니저"));
 
         String requestBody = """
                 {
                   "branchId": %d,
-                  "employeeTypeId": %d,
                   "name": "hong",
                   "seatNumber": 12,
                   "expectedJoinDate": "2026-07-01",
@@ -68,7 +60,7 @@ class PreRegistrationControllerTest {
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"
                 }
-                """.formatted(branch.getId(), employeeType.getId(), nameplateContent.getId());
+                """.formatted(branch.getId(), nameplateContent.getId());
 
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -76,7 +68,6 @@ class PreRegistrationControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.branchId").value(branch.getId()))
-                .andExpect(jsonPath("$.employeeTypeId").value(employeeType.getId()))
                 .andExpect(jsonPath("$.name").value("hong"))
                 .andExpect(jsonPath("$.seatNumber").value(12))
                 .andExpect(jsonPath("$.expectedJoinDate").value("2026-07-01"))

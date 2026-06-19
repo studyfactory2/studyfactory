@@ -6,7 +6,6 @@ import com.example.studyfactory.domain.preRegistration.entity.PreRegistration;
 import com.example.studyfactory.domain.preRegistration.exception.PreRegistrationException;
 import com.example.studyfactory.domain.preRegistration.repository.PreRegistrationRepository;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
-import com.example.studyfactory.domain.employeeType.repository.EmployeeTypeRepository;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,7 +17,6 @@ public class PreRegistrationService {
 
     private final PreRegistrationRepository preRegistrationRepository;
     private final BranchRepository branchRepository;
-    private final EmployeeTypeRepository employeeTypeRepository;
     private final NameplateContentRepository nameplateContentRepository;
 
     @Transactional
@@ -32,9 +30,6 @@ public class PreRegistrationService {
     private void validateRequest(PreRegistrationCreateRequest request) {
         if (!branchRepository.existsById(request.branchId())) {
             throw PreRegistrationException.invalidBranch();
-        }
-        if (!employeeTypeRepository.existsById(request.employeeTypeId())) {
-            throw PreRegistrationException.invalidEmployeeType();
         }
         if (!nameplateContentRepository.existsById(request.nameplateContentId())) {
             throw PreRegistrationException.invalidNameplateContent();

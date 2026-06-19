@@ -13,10 +13,6 @@ public class PreRegistrationException extends BaseException {
         return new PreRegistrationException(HttpStatus.BAD_REQUEST, "존재하지 않는 지점입니다.");
     }
 
-    public static PreRegistrationException invalidEmployeeType() {
-        return new PreRegistrationException(HttpStatus.BAD_REQUEST, "존재하지 않는 사원구분입니다.");
-    }
-
     public static PreRegistrationException invalidNameplateContent() {
         return new PreRegistrationException(HttpStatus.BAD_REQUEST, "존재하지 않는 명패내용입니다.");
     }

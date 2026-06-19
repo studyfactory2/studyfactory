@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 public record PreRegistrationResponse(
         Long id,
         Long branchId,
-        Long employeeTypeId,
         String name,
         int seatNumber,
         LocalDate expectedJoinDate,
@@ -23,7 +22,6 @@ public record PreRegistrationResponse(
         return new PreRegistrationResponse(
                 registration.getId(),
                 registration.getBranchId(),
-                registration.getEmployeeTypeId(),
                 registration.getName(),
                 registration.getSeatNumber(),
                 registration.getExpectedJoinDate(),

@@ -109,7 +109,6 @@ class SuggestionServiceTest {
     private Member createMember() {
         return new Member(
                 2L,
-                3L,
                 "kim",
                 "password123",
                 12,

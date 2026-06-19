@@ -53,7 +53,6 @@ class MemberServiceTest {
         );
 
         assertThat(response.branchId()).isEqualTo(1L);
-        assertThat(response.employeeTypeId()).isEqualTo(2L);
         assertThat(response.name()).isEqualTo("hong");
         assertThat(response.nameplateContentId()).isEqualTo(3L);
     }
@@ -69,7 +68,6 @@ class MemberServiceTest {
         MemberSignupResponse response = memberService.signup(new MemberSignupRequest(10L, "password123"));
 
         assertThat(response.branchId()).isEqualTo(1L);
-        assertThat(response.employeeTypeId()).isEqualTo(2L);
         assertThat(response.name()).isEqualTo("hong");
         assertThat(response.joinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(response.nameplateContentId()).isEqualTo(3L);
@@ -124,9 +122,32 @@ class MemberServiceTest {
                 .hasMessageContaining("존재하지 않는 사원입니다.");
     }
 
+    @Test
+    @DisplayName("토큰의 사원 ID로 음료 설정과 참고사항을 삭제한다")
+    void deleteDrink() {
+        Member member = createMember();
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        MemberResponse response = memberService.deleteDrink(1L);
+
+        assertThat(response.drinkSetting()).isNull();
+        assertThat(response.drinkNote()).isNull();
+        assertThat(response.memberNote()).isEqualTo("오전 교육 예정");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사원의 음료 정보를 삭제하면 예외가 발생한다")
+    void throwExceptionWhenDeleteDrinkMemberNotFound() {
+        given(memberRepository.findById(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> memberService.deleteDrink(1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("존재하지 않는 사원입니다.");
+    }
+
     private PreRegistration createPreRegistration() {
         return new PreRegistration(
-                new ReferenceInformation(1L, 2L, 3L),
+                new ReferenceInformation(1L, 3L),
                 "hong",
                 12,
                 LocalDate.of(2026, 7, 1),
@@ -137,7 +158,6 @@ class MemberServiceTest {
     private Member createMember() {
         return new Member(
                 1L,
-                2L,
                 "hong",
                 "password123",
                 12,

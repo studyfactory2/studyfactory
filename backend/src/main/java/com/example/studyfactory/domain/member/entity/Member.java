@@ -44,11 +44,11 @@ public class Member extends BaseEntity {
     @Embedded
     private SubInformation subInformation;
 
-    public Member(Long branchId, Long employeeTypeId, String name, String password, int seatNumber, LocalDate joinDate,
-                  Long nameplateContentId, String drinkSetting, String drinkNote, String memberNote) {
+    public Member(Long branchId, String name, String password, int seatNumber, LocalDate joinDate, Long nameplateContentId,
+                  String drinkSetting, String drinkNote, String memberNote) {
         this(
                 null,
-                new ReferenceInformation(branchId, employeeTypeId, nameplateContentId),
+                new ReferenceInformation(branchId, nameplateContentId),
                 name,
                 password,
                 MemberRole.MEMBER,
@@ -79,10 +79,6 @@ public class Member extends BaseEntity {
         return referenceInformation.getBranchId();
     }
 
-    public Long getEmployeeTypeId() {
-        return referenceInformation.getEmployeeTypeId();
-    }
-
     public Long getNameplateContentId() {
         return referenceInformation.getNameplateContentId();
     }
@@ -109,5 +105,9 @@ public class Member extends BaseEntity {
 
     public void updateDrink(String drinkSetting, String drinkNote) {
         subInformation.updateDrink(drinkSetting, drinkNote);
+    }
+
+    public void deleteDrink() {
+        subInformation.deleteDrink();
     }
 }

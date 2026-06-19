@@ -56,10 +56,6 @@ public class PreRegistration extends BaseEntity {
         return referenceInformation.getBranchId();
     }
 
-    public Long getEmployeeTypeId() {
-        return referenceInformation.getEmployeeTypeId();
-    }
-
     public Long getNameplateContentId() {
         return referenceInformation.getNameplateContentId();
     }

@@ -11,6 +11,7 @@ import com.example.studyfactory.domain.member.service.MemberService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -52,5 +53,10 @@ public class MemberController {
     @PatchMapping("/me/drink")
     public MemberResponse updateDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
         return memberService.updateDrink(memberId, request);
+    }
+
+    @DeleteMapping("/me/drink")
+    public MemberResponse deleteDrink(@CurrentMember Long memberId) {
+        return memberService.deleteDrink(memberId);
     }
 }

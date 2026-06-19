@@ -215,7 +215,6 @@ class SideDishControllerTest {
     private Member createMember(String name, Long branchId) {
         return new Member(
                 branchId,
-                2L,
                 name,
                 "password123",
                 12,

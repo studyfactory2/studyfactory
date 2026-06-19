@@ -6,7 +6,6 @@ import java.time.LocalDate;
 public record PreRegistrationVerifyResponse(
         Long preRegistrationId,
         Long branchId,
-        Long employeeTypeId,
         String name,
         int seatNumber,
         LocalDate expectedJoinDate,
@@ -20,7 +19,6 @@ public record PreRegistrationVerifyResponse(
         return new PreRegistrationVerifyResponse(
                 preRegistration.getId(),
                 preRegistration.getBranchId(),
-                preRegistration.getEmployeeTypeId(),
                 preRegistration.getName(),
                 preRegistration.getSeatNumber(),
                 preRegistration.getExpectedJoinDate(),

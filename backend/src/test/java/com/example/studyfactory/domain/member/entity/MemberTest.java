@@ -14,7 +14,6 @@ class MemberTest {
     void createMember() {
         Member member = new Member(
                 1L,
-                2L,
                 "hong",
                 "password123",
                 12,
@@ -26,7 +25,6 @@ class MemberTest {
         );
 
         assertThat(member.getBranchId()).isEqualTo(1L);
-        assertThat(member.getEmployeeTypeId()).isEqualTo(2L);
         assertThat(member.getName()).isEqualTo("hong");
         assertThat(member.getPassword()).isEqualTo("password123");
         assertThat(member.getRole()).isEqualTo(MemberRole.MEMBER);
@@ -43,7 +41,6 @@ class MemberTest {
     void updateDrink() {
         Member member = new Member(
                 1L,
-                2L,
                 "hong",
                 "password123",
                 12,
@@ -58,6 +55,28 @@ class MemberTest {
 
         assertThat(member.getDrinkSetting()).isEqualTo("따뜻한 라떼");
         assertThat(member.getDrinkNote()).isEqualTo("시럽 추가");
+        assertThat(member.getMemberNote()).isEqualTo("오전 교육 예정");
+    }
+
+    @Test
+    @DisplayName("음료 설정과 음료 참고사항을 삭제한다")
+    void deleteDrink() {
+        Member member = new Member(
+                1L,
+                "hong",
+                "password123",
+                12,
+                LocalDate.of(2026, 7, 1),
+                3L,
+                "아이스 아메리카노",
+                "연하게",
+                "오전 교육 예정"
+        );
+
+        member.deleteDrink();
+
+        assertThat(member.getDrinkSetting()).isNull();
+        assertThat(member.getDrinkNote()).isNull();
         assertThat(member.getMemberNote()).isEqualTo("오전 교육 예정");
     }
 }

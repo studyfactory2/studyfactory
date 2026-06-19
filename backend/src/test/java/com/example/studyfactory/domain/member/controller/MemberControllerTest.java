@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.member.controller;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,7 +51,6 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$[0].id").value(firstMember.getId()))
                 .andExpect(jsonPath("$[0].name").value("kim"))
                 .andExpect(jsonPath("$[0].branchId").value(1))
-                .andExpect(jsonPath("$[0].employeeTypeId").value(2))
                 .andExpect(jsonPath("$[0].seatNumber").value(10))
                 .andExpect(jsonPath("$[0].joinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$[0].nameplateContentId").value(3))
@@ -140,6 +140,21 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
     }
 
+    @Test
+    @DisplayName("인증된 사원이 본인 음료 설정과 참고사항을 삭제한다")
+    void deleteDrink() throws Exception {
+        Member member = memberRepository.save(createMember("kim", 10));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(delete("/api/members/me/drink")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(member.getId()))
+                .andExpect(jsonPath("$.drinkSetting").doesNotExist())
+                .andExpect(jsonPath("$.drinkNote").doesNotExist())
+                .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
+    }
+
     private Member createMember(String name, int seatNumber) {
         return createMember(name, seatNumber, 1L);
     }
@@ -147,7 +162,6 @@ class MemberControllerTest {
     private Member createMember(String name, int seatNumber, Long branchId) {
         return new Member(
                 branchId,
-                2L,
                 name,
                 "password123",
                 seatNumber,

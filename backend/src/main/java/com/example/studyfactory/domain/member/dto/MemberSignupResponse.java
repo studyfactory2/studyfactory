@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 public record MemberSignupResponse(
         Long id,
         Long branchId,
-        Long employeeTypeId,
         String name,
         MemberRole role,
         int seatNumber,
@@ -25,7 +24,6 @@ public record MemberSignupResponse(
         return new MemberSignupResponse(
                 member.getId(),
                 member.getBranchId(),
-                member.getEmployeeTypeId(),
                 member.getName(),
                 member.getRole(),
                 member.getSeatNumber(),

@@ -121,7 +121,6 @@ class MemberFindServiceTest {
     private Member createMember(String name, int seatNumber, Long branchId) {
         return new Member(
                 branchId,
-                2L,
                 name,
                 "password123",
                 seatNumber,

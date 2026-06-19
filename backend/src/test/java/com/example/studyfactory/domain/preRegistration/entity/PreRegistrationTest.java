@@ -15,7 +15,6 @@ class PreRegistrationTest {
     void createPreRegistrationFromRequest() {
         PreRegistrationCreateRequest request = new PreRegistrationCreateRequest(
                 1L,
-                2L,
                 " hong ",
                 12,
                 LocalDate.of(2026, 7, 1),
@@ -28,7 +27,6 @@ class PreRegistrationTest {
         PreRegistration preRegistration = request.toEntity();
 
         assertThat(preRegistration.getBranchId()).isEqualTo(1L);
-        assertThat(preRegistration.getEmployeeTypeId()).isEqualTo(2L);
         assertThat(preRegistration.getNameplateContentId()).isEqualTo(3L);
         assertThat(preRegistration.getName()).isEqualTo("hong");
         assertThat(preRegistration.getSeatNumber()).isEqualTo(12);
