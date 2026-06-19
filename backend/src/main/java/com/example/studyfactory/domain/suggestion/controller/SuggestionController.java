@@ -32,4 +32,9 @@ public class SuggestionController {
     public List<SuggestionResponse> findMine(@CurrentMember Long memberId) {
         return suggestionService.findMine(memberId);
     }
+
+    @GetMapping
+    public List<SuggestionResponse> findAll(@CurrentMember Long memberId) {
+        return suggestionService.findAll();
+    }
 }

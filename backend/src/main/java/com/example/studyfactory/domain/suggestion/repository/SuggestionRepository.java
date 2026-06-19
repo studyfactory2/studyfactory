@@ -14,4 +14,6 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long> {
             order by s.createdAt desc
             """)
     List<Suggestion> findMine(Long memberId);
+
+    List<Suggestion> findAllByOrderByCreatedAtDesc();
 }

@@ -40,4 +40,12 @@ public class SuggestionService {
                 .map(SuggestionResponse::from)
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public List<SuggestionResponse> findAll() {
+        return suggestionRepository.findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(SuggestionResponse::from)
+                .toList();
+    }
 }

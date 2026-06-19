@@ -109,6 +109,42 @@ class SuggestionControllerTest {
                 .andExpect(jsonPath("$[1]").doesNotExist());
     }
 
+    @Test
+    @DisplayName("인증된 사원이 모든 건의사항 목록을 조회한다")
+    void findAllSuggestions() throws Exception {
+        Branch firstBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch secondBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member member = memberRepository.save(createMember("kim", firstBranch.getId()));
+        Member otherMember = memberRepository.save(createMember("lee", secondBranch.getId()));
+        suggestionRepository.save(new Suggestion(
+                new SuggestionReferenceInformation(member.getId(), firstBranch.getId(), null),
+                SuggestionCategory.STUDY,
+                "스터디룸이 추워요.",
+                false
+        ));
+        suggestionRepository.save(new Suggestion(
+                new SuggestionReferenceInformation(otherMember.getId(), secondBranch.getId(), null),
+                SuggestionCategory.GENERAL,
+                "화장실 비품이 부족해요.",
+                false
+        ));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(get("/api/suggestions")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].memberId").exists())
+                .andExpect(jsonPath("$[0].branchId").exists())
+                .andExpect(jsonPath("$[0].category").exists())
+                .andExpect(jsonPath("$[0].content").exists())
+                .andExpect(jsonPath("$[0].isResolved").value(false))
+                .andExpect(jsonPath("$[1].memberId").exists())
+                .andExpect(jsonPath("$[1].branchId").exists())
+                .andExpect(jsonPath("$[1].category").exists())
+                .andExpect(jsonPath("$[1].content").exists())
+                .andExpect(jsonPath("$[1].isResolved").value(false));
+    }
+
     private Member createMember(String name, Long branchId) {
         return new Member(
                 branchId,

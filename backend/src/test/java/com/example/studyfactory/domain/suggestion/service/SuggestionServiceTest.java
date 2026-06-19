@@ -79,6 +79,33 @@ class SuggestionServiceTest {
         then(suggestionRepository).should().findMine(1L);
     }
 
+    @Test
+    @DisplayName("모든 건의사항 목록을 조회한다")
+    void findAll() {
+        Suggestion firstSuggestion = new Suggestion(
+                new SuggestionReferenceInformation(1L, 2L, null),
+                SuggestionCategory.STUDY,
+                "스터디룸이 추워요.",
+                false
+        );
+        Suggestion secondSuggestion = new Suggestion(
+                new SuggestionReferenceInformation(3L, 4L, null),
+                SuggestionCategory.GENERAL,
+                "화장실 비품이 부족해요.",
+                false
+        );
+        given(suggestionRepository.findAllByOrderByCreatedAtDesc()).willReturn(List.of(firstSuggestion, secondSuggestion));
+
+        List<SuggestionResponse> responses = suggestionService.findAll();
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses.get(0).memberId()).isEqualTo(1L);
+        assertThat(responses.get(0).category()).isEqualTo(SuggestionCategory.STUDY);
+        assertThat(responses.get(1).memberId()).isEqualTo(3L);
+        assertThat(responses.get(1).category()).isEqualTo(SuggestionCategory.GENERAL);
+        then(suggestionRepository).should().findAllByOrderByCreatedAtDesc();
+    }
+
     private Member createMember() {
         return new Member(
                 2L,
