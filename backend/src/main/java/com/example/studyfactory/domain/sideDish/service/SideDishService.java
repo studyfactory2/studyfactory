@@ -49,6 +49,13 @@ public class SideDishService {
                 .toList();
     }
 
+    @Transactional
+    public void delete(Long memberId, Long sideDishId) {
+        SideDishRequest sideDishRequest = sideDishRequestRepository.findById(sideDishId).orElseThrow(SideDishException::sideDishNotFound);
+        validateOwner(memberId, sideDishRequest);
+        sideDishRequestRepository.delete(sideDishRequest);
+    }
+
     private void validateTotalPrice(SideDishCreateRequest request) {
         if (request.itemPrice() != request.totalPrice()) {
             throw SideDishException.invalidTotalPrice();
@@ -72,6 +79,12 @@ public class SideDishService {
     private void validateDinnerDeadline(LocalTime now) {
         if (now.isAfter(LocalTime.of(16, 30))) {
             throw SideDishException.dinnerDeadlineExceeded();
+        }
+    }
+
+    private void validateOwner(Long memberId, SideDishRequest sideDishRequest) {
+        if (!sideDishRequest.getMemberId().equals(memberId)) {
+            throw SideDishException.notOwner();
         }
     }
 

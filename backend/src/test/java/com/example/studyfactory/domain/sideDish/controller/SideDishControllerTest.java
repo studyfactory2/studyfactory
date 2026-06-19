@@ -1,5 +1,7 @@
 package com.example.studyfactory.domain.sideDish.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -126,6 +128,43 @@ class SideDishControllerTest {
                 .andExpect(jsonPath("$[0].items").value("제육볶음: 9000"))
                 .andExpect(jsonPath("$[0].totalPrice").value(9000))
                 .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("인증된 사원이 본인 반찬 신청을 삭제한다")
+    void deleteSideDish() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        SideDishRequest sideDishRequest = sideDishRequestRepository.save(new SideDishRequest(
+                new SideDishReferenceInformation(member.getId(), branch.getId()),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        ));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(delete("/api/side-dishes/{sideDishId}", sideDishRequest.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNoContent());
+
+        assertThat(sideDishRequestRepository.existsById(sideDishRequest.getId())).isFalse();
+    }
+
+    @Test
+    @DisplayName("다른 사원의 반찬 신청을 삭제하면 403 응답을 반환한다")
+    void rejectDeleteOtherMemberSideDish() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        Member otherMember = memberRepository.save(createMember("lee", branch.getId()));
+        SideDishRequest sideDishRequest = sideDishRequestRepository.save(new SideDishRequest(
+                new SideDishReferenceInformation(otherMember.getId(), branch.getId()),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        ));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(delete("/api/side-dishes/{sideDishId}", sideDishRequest.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden());
     }
 
     @Test

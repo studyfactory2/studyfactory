@@ -101,6 +101,46 @@ class SideDishServiceTest {
     }
 
     @Test
+    @DisplayName("본인의 반찬 신청을 삭제한다")
+    void deleteSideDish() {
+        SideDishRequest sideDishRequest = new SideDishRequest(
+                new SideDishReferenceInformation(1L, 2L),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        );
+        given(sideDishRequestRepository.findById(10L)).willReturn(Optional.of(sideDishRequest));
+
+        sideDishService.delete(1L, 10L);
+
+        then(sideDishRequestRepository).should().delete(sideDishRequest);
+    }
+
+    @Test
+    @DisplayName("다른 사원의 반찬 신청을 삭제하면 예외가 발생한다")
+    void throwExceptionWhenDeleteOtherMemberSideDish() {
+        SideDishRequest sideDishRequest = new SideDishRequest(
+                new SideDishReferenceInformation(2L, 2L),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        );
+        given(sideDishRequestRepository.findById(10L)).willReturn(Optional.of(sideDishRequest));
+
+        assertThatThrownBy(() -> sideDishService.delete(1L, 10L))
+                .isInstanceOf(SideDishException.class)
+                .hasMessageContaining("본인의 반찬 신청만 삭제할 수 있습니다.");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 반찬 신청을 삭제하면 예외가 발생한다")
+    void throwExceptionWhenDeleteNotFoundSideDish() {
+        given(sideDishRequestRepository.findById(10L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> sideDishService.delete(1L, 10L))
+                .isInstanceOf(SideDishException.class)
+                .hasMessageContaining("존재하지 않는 반찬 신청입니다.");
+    }
+
+    @Test
     @DisplayName("오전 10시 45분이 지나 점심 반찬을 신청하면 예외가 발생한다")
     void throwExceptionWhenLunchDeadlineExceeded() {
         setNow(LocalDateTime.of(2026, 6, 19, 10, 46));

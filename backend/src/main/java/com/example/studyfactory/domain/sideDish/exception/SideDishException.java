@@ -20,4 +20,12 @@ public class SideDishException extends BaseException {
     public static SideDishException dinnerDeadlineExceeded() {
         return new SideDishException(HttpStatus.BAD_REQUEST, "저녁 반찬 신청은 당일 오후 4시 30분까지만 가능합니다.");
     }
+
+    public static SideDishException sideDishNotFound() {
+        return new SideDishException(HttpStatus.NOT_FOUND, "존재하지 않는 반찬 신청입니다.");
+    }
+
+    public static SideDishException notOwner() {
+        return new SideDishException(HttpStatus.FORBIDDEN, "본인의 반찬 신청만 삭제할 수 있습니다.");
+    }
 }
