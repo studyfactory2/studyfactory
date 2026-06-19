@@ -1,9 +1,9 @@
-package com.example.studyfactory.domain.adminDashboard.service;
+package com.example.studyfactory.domain.member.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
-import com.example.studyfactory.domain.adminDashboard.dto.AdminDashboardMemberResponse;
+import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
@@ -18,11 +18,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("관리자 대시보드 사원 서비스 테스트")
-class AdminDashboardMemberServiceTest {
+@DisplayName("회원 조회 서비스 테스트")
+class MemberFindServiceTest {
 
     @InjectMocks
-    private AdminDashboardMemberService adminDashboardMemberService;
+    private MemberService memberService;
 
     @Mock
     private MemberRepository memberRepository;
@@ -37,12 +37,12 @@ class AdminDashboardMemberServiceTest {
         given(memberRepository.search(null, null, Sort.by(Sort.Direction.ASC, "id")))
                 .willReturn(List.of(firstMember, secondMember));
 
-        List<AdminDashboardMemberResponse> responses = adminDashboardMemberService.findAll(null, null);
+        List<MemberResponse> responses = memberService.findAll(null, null);
 
         assertThat(responses).hasSize(2);
-        assertThat(responses).extracting(AdminDashboardMemberResponse::id)
+        assertThat(responses).extracting(MemberResponse::id)
                 .containsExactly(1L, 2L);
-        assertThat(responses).extracting(AdminDashboardMemberResponse::name)
+        assertThat(responses).extracting(MemberResponse::name)
                 .containsExactly("kim", "lee");
     }
 
@@ -52,7 +52,7 @@ class AdminDashboardMemberServiceTest {
         given(memberRepository.search(null, null, Sort.by(Sort.Direction.ASC, "id")))
                 .willReturn(List.of());
 
-        List<AdminDashboardMemberResponse> responses = adminDashboardMemberService.findAll(null, null);
+        List<MemberResponse> responses = memberService.findAll(null, null);
 
         assertThat(responses).isEmpty();
     }
@@ -65,7 +65,7 @@ class AdminDashboardMemberServiceTest {
         given(memberRepository.search("ki", null, Sort.by(Sort.Direction.ASC, "id")))
                 .willReturn(List.of(member));
 
-        List<AdminDashboardMemberResponse> responses = adminDashboardMemberService.findAll(" ki ", null);
+        List<MemberResponse> responses = memberService.findAll(" ki ", null);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).name()).isEqualTo("kim");
@@ -79,7 +79,7 @@ class AdminDashboardMemberServiceTest {
         given(memberRepository.search(null, null, Sort.by(Sort.Direction.ASC, "id")))
                 .willReturn(List.of(member));
 
-        List<AdminDashboardMemberResponse> responses = adminDashboardMemberService.findAll(" ", null);
+        List<MemberResponse> responses = memberService.findAll(" ", null);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).name()).isEqualTo("kim");
@@ -93,7 +93,7 @@ class AdminDashboardMemberServiceTest {
         given(memberRepository.search(null, 1L, Sort.by(Sort.Direction.ASC, "id")))
                 .willReturn(List.of(member));
 
-        List<AdminDashboardMemberResponse> responses = adminDashboardMemberService.findAll(null, 1L);
+        List<MemberResponse> responses = memberService.findAll(null, 1L);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).branchId()).isEqualTo(1L);
@@ -107,7 +107,7 @@ class AdminDashboardMemberServiceTest {
         given(memberRepository.search("ki", 1L, Sort.by(Sort.Direction.ASC, "id")))
                 .willReturn(List.of(member));
 
-        List<AdminDashboardMemberResponse> responses = adminDashboardMemberService.findAll(" ki ", 1L);
+        List<MemberResponse> responses = memberService.findAll(" ki ", 1L);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).name()).isEqualTo("kim");

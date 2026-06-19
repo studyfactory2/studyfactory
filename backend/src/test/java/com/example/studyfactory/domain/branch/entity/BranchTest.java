@@ -12,10 +12,21 @@ class BranchTest {
     @Test
     @DisplayName("지점 생성 요청 DTO로 지점 엔티티를 생성한다")
     void createBranchFromRequest() {
-        BranchCreateRequest request = new BranchCreateRequest(" 강남점 ");
+        BranchCreateRequest request = new BranchCreateRequest(" 강남점 ", " 서울 강남구 ");
 
         Branch branch = request.toEntity();
 
         assertThat(branch.getName()).isEqualTo("강남점");
+        assertThat(branch.getAddress()).isEqualTo("서울 강남구");
+    }
+
+    @Test
+    @DisplayName("주소가 공백이면 null로 저장한다")
+    void createBranchWithoutAddress() {
+        BranchCreateRequest request = new BranchCreateRequest("강남점", " ");
+
+        Branch branch = request.toEntity();
+
+        assertThat(branch.getAddress()).isNull();
     }
 }

@@ -1,10 +1,10 @@
-package com.example.studyfactory.domain.adminDashboard.dto;
+package com.example.studyfactory.domain.member.dto;
 
 import com.example.studyfactory.domain.member.entity.Member;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record AdminDashboardMemberResponse(
+public record MemberResponse(
         Long id,
         Long branchId,
         Long employeeTypeId,
@@ -19,8 +19,8 @@ public record AdminDashboardMemberResponse(
         LocalDateTime updatedAt
 ) {
 
-    public static AdminDashboardMemberResponse from(Member member) {
-        return new AdminDashboardMemberResponse(
+    public static MemberResponse from(Member member) {
+        return new MemberResponse(
                 member.getId(),
                 member.getReferenceInformation().getBranchId(),
                 member.getReferenceInformation().getEmployeeTypeId(),

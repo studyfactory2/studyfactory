@@ -5,10 +5,20 @@ import jakarta.validation.constraints.NotBlank;
 
 public record BranchCreateRequest(
         @NotBlank(message = "지점 이름은 필수입니다.")
-        String name
+        String name,
+
+        String address
 ) {
 
     public Branch toEntity() {
-        return new Branch(name.trim());
+        return new Branch(name.trim(), trimToNull(address));
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
     }
 }

@@ -31,20 +31,21 @@ class BranchServiceTest {
     @Test
     @DisplayName("지점 이름을 저장하고 응답을 반환한다")
     void createBranch() {
-        BranchCreateRequest request = new BranchCreateRequest(" 강남점 ");
+        BranchCreateRequest request = new BranchCreateRequest(" 강남점 ", " 서울 강남구 ");
         given(branchRepository.existsByName("강남점")).willReturn(false);
         given(branchRepository.save(any(Branch.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         BranchResponse response = branchService.create(request);
 
         assertThat(response.name()).isEqualTo("강남점");
+        assertThat(response.address()).isEqualTo("서울 강남구");
         verify(branchRepository).save(any(Branch.class));
     }
 
     @Test
     @DisplayName("이미 등록된 지점 이름이면 예외가 발생한다")
     void throwExceptionWhenBranchNameIsDuplicated() {
-        BranchCreateRequest request = new BranchCreateRequest("강남점");
+        BranchCreateRequest request = new BranchCreateRequest("강남점", "서울 강남구");
         given(branchRepository.existsByName("강남점")).willReturn(true);
 
         assertThatThrownBy(() -> branchService.create(request))

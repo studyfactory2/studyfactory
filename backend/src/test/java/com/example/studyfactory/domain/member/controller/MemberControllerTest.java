@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.adminDashboard.controller;
+package com.example.studyfactory.domain.member.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,8 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@DisplayName("관리자 대시보드 사원 컨트롤러 테스트")
-class AdminDashboardMemberControllerTest {
+@DisplayName("회원 컨트롤러 테스트")
+class MemberControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -42,7 +42,7 @@ class AdminDashboardMemberControllerTest {
         memberRepository.save(createMember("lee", 11));
         String accessToken = jwtTokenProvider.createAccessToken(firstMember);
 
-        mockMvc.perform(get("/api/admin-dashboard/members")
+        mockMvc.perform(get("/api/members")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(firstMember.getId()))
@@ -62,7 +62,7 @@ class AdminDashboardMemberControllerTest {
     @Test
     @DisplayName("인증 토큰이 없으면 401 응답을 반환한다")
     void rejectRequestWithoutToken() throws Exception {
-        mockMvc.perform(get("/api/admin-dashboard/members"))
+        mockMvc.perform(get("/api/members"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -73,7 +73,7 @@ class AdminDashboardMemberControllerTest {
         memberRepository.save(createMember("lee", 11));
         String accessToken = jwtTokenProvider.createAccessToken(firstMember);
 
-        mockMvc.perform(get("/api/admin-dashboard/members")
+        mockMvc.perform(get("/api/members")
                         .param("name", "ki")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -88,7 +88,7 @@ class AdminDashboardMemberControllerTest {
         memberRepository.save(createMember("lee", 11, 2L));
         String accessToken = jwtTokenProvider.createAccessToken(firstMember);
 
-        mockMvc.perform(get("/api/admin-dashboard/members")
+        mockMvc.perform(get("/api/members")
                         .param("branchId", "1")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -105,7 +105,7 @@ class AdminDashboardMemberControllerTest {
         memberRepository.save(createMember("lee", 12, 1L));
         String accessToken = jwtTokenProvider.createAccessToken(firstMember);
 
-        mockMvc.perform(get("/api/admin-dashboard/members")
+        mockMvc.perform(get("/api/members")
                         .param("name", "ki")
                         .param("branchId", "1")
                         .header("Authorization", "Bearer " + accessToken))

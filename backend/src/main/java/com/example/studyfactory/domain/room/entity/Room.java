@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.branch.entity;
+package com.example.studyfactory.domain.room.entity;
 
 import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -13,26 +13,30 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "branches")
+@Table(name = "rooms")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Branch extends BaseEntity {
+public class Room extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(name = "branch_id", nullable = false)
+    private Long branchId;
+
+    @Column(nullable = false, length = 50)
     private String name;
 
-    @Column(length = 255)
-    private String address;
+    @Column(nullable = false)
+    private int rows;
 
-    public Branch(String name) {
-        this(name, null);
-    }
+    @Column(nullable = false)
+    private int cols;
 
-    public Branch(String name, String address) {
+    public Room(Long branchId, String name, int rows, int cols) {
+        this.branchId = branchId;
         this.name = name;
-        this.address = address;
+        this.rows = rows;
+        this.cols = cols;
     }
 }

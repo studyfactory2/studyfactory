@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.branch.entity;
+package com.example.studyfactory.domain.attendance.entity;
 
 import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -13,9 +13,9 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "branches")
+@Table(name = "attendance_status_types")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Branch extends BaseEntity {
+public class AttendanceStatusType extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,15 +24,11 @@ public class Branch extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String name;
 
-    @Column(length = 255)
-    private String address;
+    @Column(nullable = false)
+    private boolean customAllowed;
 
-    public Branch(String name) {
-        this(name, null);
-    }
-
-    public Branch(String name, String address) {
+    public AttendanceStatusType(String name, boolean customAllowed) {
         this.name = name;
-        this.address = address;
+        this.customAllowed = customAllowed;
     }
 }
