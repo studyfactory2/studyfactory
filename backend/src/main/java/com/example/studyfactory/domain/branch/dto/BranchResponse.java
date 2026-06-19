@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public record BranchResponse(
         Long id,
         String name,
+        String address,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -14,6 +15,7 @@ public record BranchResponse(
         return new BranchResponse(
                 branch.getId(),
                 branch.getName(),
+                branch.getAddress(),
                 branch.getCreatedAt(),
                 branch.getUpdatedAt()
         );

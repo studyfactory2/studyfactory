@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.member.service;
 
+import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyRequest;
@@ -9,7 +10,9 @@ import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.preRegistration.entity.PreRegistration;
 import com.example.studyfactory.domain.preRegistration.repository.PreRegistrationRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,16 @@ public class MemberService {
 
     private final PreRegistrationRepository preRegistrationRepository;
     private final MemberRepository memberRepository;
+
+    @Transactional(readOnly = true)
+    public List<MemberResponse> findAll(String name, Long branchId) {
+        String searchName = toSearchName(name);
+
+        return memberRepository.search(searchName, branchId, Sort.by(Sort.Direction.ASC, "id"))
+                .stream()
+                .map(MemberResponse::from)
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     public PreRegistrationVerifyResponse verifyPreRegistration(PreRegistrationVerifyRequest request) {
@@ -33,16 +46,16 @@ public class MemberService {
         validateNotSignedUp(preRegistration, request.password());
 
         Member member = new Member(
-                preRegistration.getReferenceInformation().getBranchId(),
-                preRegistration.getReferenceInformation().getEmployeeTypeId(),
+                preRegistration.getBranchId(),
+                preRegistration.getEmployeeTypeId(),
                 preRegistration.getName(),
                 request.password(),
                 preRegistration.getSeatNumber(),
                 preRegistration.getExpectedJoinDate(),
-                preRegistration.getReferenceInformation().getNameplateContentId(),
-                preRegistration.getSubInformation().getDrinkSetting(),
-                preRegistration.getSubInformation().getDrinkNote(),
-                preRegistration.getSubInformation().getMemberNote()
+                preRegistration.getNameplateContentId(),
+                preRegistration.getDrinkSetting(),
+                preRegistration.getDrinkNote(),
+                preRegistration.getMemberNote()
         );
 
         return MemberSignupResponse.from(memberRepository.save(member));
@@ -53,10 +66,18 @@ public class MemberService {
                 .orElseThrow(MemberException::preRegistrationNotFound);
     }
 
+    private String toSearchName(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+
+        return name.trim();
+    }
+
     private void validateNotSignedUp(PreRegistration preRegistration, String password) {
         if (memberRepository.existsByNameAndBranchIdAndPassword(
                 preRegistration.getName(),
-                preRegistration.getReferenceInformation().getBranchId(),
+                preRegistration.getBranchId(),
                 password
         )) {
             throw MemberException.alreadySignedUp();

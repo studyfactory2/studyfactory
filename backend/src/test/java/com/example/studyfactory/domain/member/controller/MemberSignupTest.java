@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @DisplayName("회원가입 컨트롤러 테스트")
-class MemberSignupControllerTest {
+class MemberSignupTest {
 
     @Autowired
     private MockMvc mockMvc;

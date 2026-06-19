@@ -24,7 +24,15 @@ public class Branch extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String name;
 
+    @Column(length = 255)
+    private String address;
+
     public Branch(String name) {
+        this(name, null);
+    }
+
+    public Branch(String name, String address) {
         this.name = name;
+        this.address = address;
     }
 }

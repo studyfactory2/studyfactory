@@ -37,7 +37,8 @@ class BranchControllerTest {
     void createBranch() throws Exception {
         String requestBody = """
                 {
-                  "name": "강남점"
+                  "name": "강남점",
+                  "address": "서울 강남구"
                 }
                 """;
 
@@ -46,9 +47,11 @@ class BranchControllerTest {
                         .content(requestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value("강남점"));
+                .andExpect(jsonPath("$.name").value("강남점"))
+                .andExpect(jsonPath("$.address").value("서울 강남구"));
 
         assertThat(branchRepository.existsByName("강남점")).isTrue();
+        assertThat(branchRepository.findAll().get(0).getAddress()).isEqualTo("서울 강남구");
     }
 
     @Test

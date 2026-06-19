@@ -16,4 +16,8 @@ public class MemberException extends BaseException {
     public static MemberException alreadySignedUp() {
         return new MemberException(HttpStatus.CONFLICT, "이미 가입된 사원입니다.");
     }
+
+    public static MemberException memberNotFound() {
+        return new MemberException(HttpStatus.NOT_FOUND, "존재하지 않는 사원입니다.");
+    }
 }

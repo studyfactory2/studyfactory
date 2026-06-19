@@ -25,12 +25,16 @@ class MemberTest {
                 "오전 교육 예정"
         );
 
-        assertThat(member.getReferenceInformation().getBranchId()).isEqualTo(1L);
-        assertThat(member.getReferenceInformation().getEmployeeTypeId()).isEqualTo(2L);
+        assertThat(member.getBranchId()).isEqualTo(1L);
+        assertThat(member.getEmployeeTypeId()).isEqualTo(2L);
         assertThat(member.getName()).isEqualTo("hong");
         assertThat(member.getPassword()).isEqualTo("password123");
-        assertThat(member.getWorkInformation().getSeatNumber()).isEqualTo(12);
-        assertThat(member.getWorkInformation().getJoinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
-        assertThat(member.getReferenceInformation().getNameplateContentId()).isEqualTo(3L);
+        assertThat(member.getRole()).isEqualTo(MemberRole.MEMBER);
+        assertThat(member.getSeatNumber()).isEqualTo(12);
+        assertThat(member.getJoinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
+        assertThat(member.getNameplateContentId()).isEqualTo(3L);
+        assertThat(member.getDrinkSetting()).isEqualTo("아이스 아메리카노");
+        assertThat(member.getDrinkNote()).isEqualTo("연하게");
+        assertThat(member.getMemberNote()).isEqualTo("오전 교육 예정");
     }
 }
