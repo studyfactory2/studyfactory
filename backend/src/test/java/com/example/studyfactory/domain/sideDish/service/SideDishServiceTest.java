@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
@@ -108,7 +109,43 @@ class SideDishServiceTest {
                 new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
                 new SideDishOrderInformation("제육볶음: 9000", 9000)
         );
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
         given(sideDishRequestRepository.findById(10L)).willReturn(Optional.of(sideDishRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        sideDishService.delete(1L, 10L);
+
+        then(sideDishRequestRepository).should().delete(sideDishRequest);
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 사원의 반찬 신청을 삭제한다")
+    void adminDeleteOtherMemberSideDish() {
+        SideDishRequest sideDishRequest = new SideDishRequest(
+                new SideDishReferenceInformation(2L, 2L),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        );
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        given(sideDishRequestRepository.findById(10L)).willReturn(Optional.of(sideDishRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+
+        sideDishService.delete(1L, 10L);
+
+        then(sideDishRequestRepository).should().delete(sideDishRequest);
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 사원의 반찬 신청을 삭제한다")
+    void staffDeleteOtherMemberSideDish() {
+        SideDishRequest sideDishRequest = new SideDishRequest(
+                new SideDishReferenceInformation(2L, 2L),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        );
+        Member staff = createMemberWithId(1L, MemberRole.STAFF);
+        given(sideDishRequestRepository.findById(10L)).willReturn(Optional.of(sideDishRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
 
         sideDishService.delete(1L, 10L);
 
@@ -123,7 +160,9 @@ class SideDishServiceTest {
                 new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
                 new SideDishOrderInformation("제육볶음: 9000", 9000)
         );
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
         given(sideDishRequestRepository.findById(10L)).willReturn(Optional.of(sideDishRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> sideDishService.delete(1L, 10L))
                 .isInstanceOf(SideDishException.class)
@@ -180,5 +219,12 @@ class SideDishServiceTest {
                 "연하게",
                 "오전 교육 예정"
         );
+    }
+
+    private Member createMemberWithId(Long id, MemberRole role) {
+        Member member = createMember();
+        ReflectionTestUtils.setField(member, "id", id);
+        ReflectionTestUtils.setField(member, "role", role);
+        return member;
     }
 }

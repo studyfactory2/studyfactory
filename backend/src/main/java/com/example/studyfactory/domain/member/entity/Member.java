@@ -110,4 +110,8 @@ public class Member extends BaseEntity {
     public void deleteDrink() {
         subInformation.deleteDrink();
     }
+
+    public boolean hasAllPermissions() {
+        return role.hasAllPermissions();
+    }
 }

@@ -52,7 +52,8 @@ public class SideDishService {
     @Transactional
     public void delete(Long memberId, Long sideDishId) {
         SideDishRequest sideDishRequest = sideDishRequestRepository.findById(sideDishId).orElseThrow(SideDishException::sideDishNotFound);
-        validateOwner(memberId, sideDishRequest);
+        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        validateOwner(member, sideDishRequest);
         sideDishRequestRepository.delete(sideDishRequest);
     }
 
@@ -82,8 +83,11 @@ public class SideDishService {
         }
     }
 
-    private void validateOwner(Long memberId, SideDishRequest sideDishRequest) {
-        if (!sideDishRequest.getMemberId().equals(memberId)) {
+    private void validateOwner(Member member, SideDishRequest sideDishRequest) {
+        if (member.hasAllPermissions()) {
+            return;
+        }
+        if (!sideDishRequest.getMemberId().equals(member.getId())) {
             throw SideDishException.notOwner();
         }
     }

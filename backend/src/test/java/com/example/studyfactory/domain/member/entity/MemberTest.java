@@ -79,4 +79,12 @@ class MemberTest {
         assertThat(member.getDrinkNote()).isNull();
         assertThat(member.getMemberNote()).isEqualTo("오전 교육 예정");
     }
+
+    @Test
+    @DisplayName("관리자와 스태프는 전체 권한을 가진다")
+    void adminAndStaffHaveAllPermissions() {
+        assertThat(MemberRole.ADMIN.hasAllPermissions()).isTrue();
+        assertThat(MemberRole.STAFF.hasAllPermissions()).isTrue();
+        assertThat(MemberRole.MEMBER.hasAllPermissions()).isFalse();
+    }
 }

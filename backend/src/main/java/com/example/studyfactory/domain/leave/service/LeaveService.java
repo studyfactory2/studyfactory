@@ -50,7 +50,8 @@ public class LeaveService {
     @Transactional
     public void delete(Long memberId, Long leaveId) {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(leaveId).orElseThrow(LeaveException::leaveNotFound);
-        validateOwner(memberId, leaveRequest);
+        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        validateOwner(member, leaveRequest);
         leaveRequestRepository.delete(leaveRequest);
     }
 
@@ -73,8 +74,11 @@ public class LeaveService {
         }
     }
 
-    private void validateOwner(Long memberId, LeaveRequest leaveRequest) {
-        if (!leaveRequest.getMemberId().equals(memberId)) {
+    private void validateOwner(Member member, LeaveRequest leaveRequest) {
+        if (member.hasAllPermissions()) {
+            return;
+        }
+        if (!leaveRequest.getMemberId().equals(member.getId())) {
             throw LeaveException.notOwner();
         }
     }

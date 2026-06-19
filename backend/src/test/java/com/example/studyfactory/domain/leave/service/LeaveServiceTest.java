@@ -14,6 +14,7 @@ import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.exception.LeaveException;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -86,7 +87,35 @@ class LeaveServiceTest {
     @DisplayName("본인의 휴무 신청을 삭제한다")
     void deleteLeave() {
         LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
         given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        leaveService.delete(1L, 10L);
+
+        then(leaveRequestRepository).should().delete(leaveRequest);
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 사원의 휴무 신청을 삭제한다")
+    void adminDeleteOtherMemberLeave() {
+        LeaveRequest leaveRequest = new LeaveRequest(2L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+
+        leaveService.delete(1L, 10L);
+
+        then(leaveRequestRepository).should().delete(leaveRequest);
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 사원의 휴무 신청을 삭제한다")
+    void staffDeleteOtherMemberLeave() {
+        LeaveRequest leaveRequest = new LeaveRequest(2L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        Member staff = createMemberWithId(1L, MemberRole.STAFF);
+        given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
 
         leaveService.delete(1L, 10L);
 
@@ -97,7 +126,9 @@ class LeaveServiceTest {
     @DisplayName("다른 사원의 휴무 신청을 삭제하면 예외가 발생한다")
     void throwExceptionWhenDeleteOtherMemberLeave() {
         LeaveRequest leaveRequest = new LeaveRequest(2L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
         given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> leaveService.delete(1L, 10L))
                 .isInstanceOf(LeaveException.class)
@@ -161,5 +192,12 @@ class LeaveServiceTest {
                 "연하게",
                 "오전 교육 예정"
         );
+    }
+
+    private Member createMemberWithId(Long id, MemberRole role) {
+        Member member = createMember();
+        ReflectionTestUtils.setField(member, "id", id);
+        ReflectionTestUtils.setField(member, "role", role);
+        return member;
     }
 }
