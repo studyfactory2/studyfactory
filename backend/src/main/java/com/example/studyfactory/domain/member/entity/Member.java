@@ -31,7 +31,7 @@ public class Member extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
-    @Column(nullable = false)
+    @Column
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -41,19 +41,24 @@ public class Member extends BaseEntity {
     @Embedded
     private WorkInformation workInformation;
 
-    @Embedded
-    private SubInformation subInformation;
+    @Column(columnDefinition = "text")
+    private String memberNote;
 
-    public Member(Long branchId, Long employeeTypeId, String name, String password, int seatNumber, LocalDate joinDate,
-                  Long nameplateContentId, String drinkSetting, String drinkNote, String memberNote) {
+    public Member(Long branchId, String name, String password, int seatNumber, LocalDate joinDate, Long nameplateContentId,
+                  String memberNote) {
+        this(branchId, name, password, MemberRole.MEMBER, seatNumber, joinDate, nameplateContentId, memberNote);
+    }
+
+    public Member(Long branchId, String name, String password, MemberRole role, int seatNumber, LocalDate joinDate,
+                  Long nameplateContentId, String memberNote) {
         this(
                 null,
-                new ReferenceInformation(branchId, employeeTypeId, nameplateContentId),
+                new ReferenceInformation(branchId, nameplateContentId),
                 name,
                 password,
-                MemberRole.MEMBER,
+                role,
                 new WorkInformation(seatNumber, joinDate),
-                new SubInformation(drinkSetting, drinkNote, memberNote)
+                memberNote
         );
     }
 
@@ -64,7 +69,7 @@ public class Member extends BaseEntity {
             String password,
             MemberRole role,
             WorkInformation workInformation,
-            SubInformation subInformation
+            String memberNote
     ) {
         this.id = id;
         this.referenceInformation = referenceInformation;
@@ -72,15 +77,11 @@ public class Member extends BaseEntity {
         this.password = password;
         this.role = role;
         this.workInformation = workInformation;
-        this.subInformation = subInformation;
+        this.memberNote = memberNote;
     }
 
     public Long getBranchId() {
         return referenceInformation.getBranchId();
-    }
-
-    public Long getEmployeeTypeId() {
-        return referenceInformation.getEmployeeTypeId();
     }
 
     public Long getNameplateContentId() {
@@ -95,15 +96,11 @@ public class Member extends BaseEntity {
         return workInformation.getJoinDate();
     }
 
-    public String getDrinkSetting() {
-        return subInformation.getDrinkSetting();
+    public void signup(String password) {
+        this.password = password;
     }
 
-    public String getDrinkNote() {
-        return subInformation.getDrinkNote();
-    }
-
-    public String getMemberNote() {
-        return subInformation.getMemberNote();
+    public boolean hasAllPermissions() {
+        return role.hasAllPermissions();
     }
 }

@@ -37,6 +37,17 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("""
             select m
             from Member m
+            where m.name = :name
+              and m.referenceInformation.branchId = :branchId
+            """)
+    Optional<Member> findByNameAndBranchId(
+            @Param("name") String name,
+            @Param("branchId") Long branchId
+    );
+
+    @Query("""
+            select m
+            from Member m
             where (:name is null or m.name like concat('%', :name, '%'))
               and (:branchId is null or m.referenceInformation.branchId = :branchId)
             """)

@@ -8,14 +8,11 @@ import java.time.LocalDateTime;
 public record MemberResponse(
         Long id,
         Long branchId,
-        Long employeeTypeId,
         String name,
         MemberRole role,
         int seatNumber,
         LocalDate joinDate,
         Long nameplateContentId,
-        String drinkSetting,
-        String drinkNote,
         String memberNote,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -25,14 +22,11 @@ public record MemberResponse(
         return new MemberResponse(
                 member.getId(),
                 member.getBranchId(),
-                member.getEmployeeTypeId(),
                 member.getName(),
                 member.getRole(),
                 member.getSeatNumber(),
                 member.getJoinDate(),
                 member.getNameplateContentId(),
-                member.getDrinkSetting(),
-                member.getDrinkNote(),
                 member.getMemberNote(),
                 member.getCreatedAt(),
                 member.getUpdatedAt()

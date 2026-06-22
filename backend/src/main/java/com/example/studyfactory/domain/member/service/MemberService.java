@@ -1,5 +1,9 @@
 package com.example.studyfactory.domain.member.service;
 
+import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
+import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
+import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.member.dto.DrinkRequest;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
@@ -8,8 +12,6 @@ import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyResponse;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
-import com.example.studyfactory.domain.preRegistration.entity.PreRegistration;
-import com.example.studyfactory.domain.preRegistration.repository.PreRegistrationRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -20,8 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MemberService {
 
-    private final PreRegistrationRepository preRegistrationRepository;
     private final MemberRepository memberRepository;
+    private final BeveragePreferenceRepository beveragePreferenceRepository;
 
     @Transactional(readOnly = true)
     public List<MemberResponse> findAll(String name, Long branchId) {
@@ -35,35 +37,113 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public PreRegistrationVerifyResponse verifyPreRegistration(PreRegistrationVerifyRequest request) {
-        PreRegistration preRegistration = findPreRegistration(request.name().trim(), request.branchId());
+        Member member = findPreRegisteredMember(request.name().trim(), request.branchId());
+        BeveragePreference beveragePreference = findLatestBeveragePreference(member);
 
-        return PreRegistrationVerifyResponse.from(preRegistration);
+        return PreRegistrationVerifyResponse.from(member, beveragePreference);
     }
 
     @Transactional
     public MemberSignupResponse signup(MemberSignupRequest request) {
-        PreRegistration preRegistration = preRegistrationRepository.getOrThrow(request.preRegistrationId());
-        validateNotSignedUp(preRegistration, request.password());
+        Member member = findPreRegisteredMember(request.name().trim(), request.branchId());
+        validateNotSignedUp(member);
+        member.signup(request.password());
 
-        Member member = new Member(
-                preRegistration.getBranchId(),
-                preRegistration.getEmployeeTypeId(),
-                preRegistration.getName(),
-                request.password(),
-                preRegistration.getSeatNumber(),
-                preRegistration.getExpectedJoinDate(),
-                preRegistration.getNameplateContentId(),
-                preRegistration.getDrinkSetting(),
-                preRegistration.getDrinkNote(),
-                preRegistration.getMemberNote()
-        );
-
-        return MemberSignupResponse.from(memberRepository.save(member));
+        return MemberSignupResponse.from(member);
     }
 
-    private PreRegistration findPreRegistration(String name, Long branchId) {
-        return preRegistrationRepository.findByNameAndBranchId(name, branchId)
+    @Transactional
+    public BeveragePreferenceResponse updateDrink(Long memberId, DrinkRequest request) {
+        Member member = findMember(memberId);
+        BeveragePreference beveragePreference = beveragePreferenceRepository
+                .findFirstByMemberIdOrderByCreatedAtDesc(memberId)
+                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), request.drinkSetting(), request.drinkNote()));
+        beveragePreference.update(request.drinkSetting(), request.drinkNote());
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse addDrink(Long memberId, DrinkRequest request) {
+        Member member = findMember(memberId);
+        BeveragePreference beveragePreference = addDrink(member, request);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse addDrinkForMember(Long currentMemberId, Long targetMemberId, DrinkRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member targetMember = findMember(targetMemberId);
+        BeveragePreference beveragePreference = addDrink(targetMember, request);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    private BeveragePreference addDrink(Member member, DrinkRequest request) {
+        BeveragePreference beveragePreference = beveragePreferenceRepository
+                .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", request.drinkNote()));
+        beveragePreference.addDrinks(request.drinkSetting(), request.drinkNote());
+
+        return beveragePreference;
+    }
+
+    @Transactional
+    public void deleteDrink(Long memberId) {
+        if (!memberRepository.existsById(memberId)) {
+            throw MemberException.memberNotFound();
+        }
+        beveragePreferenceRepository.deleteAll(beveragePreferenceRepository.findByMemberId(memberId));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse deleteDrinkItem(Long memberId, String drinkSetting) {
+        Member member = findMember(memberId);
+        BeveragePreference beveragePreference = deleteDrinkItem(member, drinkSetting);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse deleteDrinkItemForMember(Long currentMemberId, Long targetMemberId, String drinkSetting) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member targetMember = findMember(targetMemberId);
+        BeveragePreference beveragePreference = deleteDrinkItem(targetMember, drinkSetting);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    private BeveragePreference deleteDrinkItem(Member member, String drinkSetting) {
+        BeveragePreference beveragePreference = beveragePreferenceRepository
+                .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseThrow(MemberException::beveragePreferenceNotFound);
+        if (!beveragePreference.removeDrink(drinkSetting)) {
+            throw MemberException.drinkNotFound();
+        }
+
+        return beveragePreference;
+    }
+
+    private Member findPreRegisteredMember(String name, Long branchId) {
+        Member member = memberRepository.findByNameAndBranchId(name, branchId)
                 .orElseThrow(MemberException::preRegistrationNotFound);
+        if (member.getPassword() != null) {
+            throw MemberException.alreadySignedUp();
+        }
+
+        return member;
+    }
+
+    private Member findMember(Long memberId) {
+        return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+    }
+
+    private BeveragePreference findLatestBeveragePreference(Member member) {
+        return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", null));
     }
 
     private String toSearchName(String name) {
@@ -74,13 +154,15 @@ public class MemberService {
         return name.trim();
     }
 
-    private void validateNotSignedUp(PreRegistration preRegistration, String password) {
-        if (memberRepository.existsByNameAndBranchIdAndPassword(
-                preRegistration.getName(),
-                preRegistration.getBranchId(),
-                password
-        )) {
+    private void validateNotSignedUp(Member member) {
+        if (member.getPassword() != null) {
             throw MemberException.alreadySignedUp();
+        }
+    }
+
+    private void validateAllPermissions(Member member) {
+        if (!member.hasAllPermissions()) {
+            throw MemberException.forbidden();
         }
     }
 }

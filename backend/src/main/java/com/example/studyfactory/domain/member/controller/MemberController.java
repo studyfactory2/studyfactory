@@ -1,5 +1,8 @@
 package com.example.studyfactory.domain.member.controller;
 
+import com.example.studyfactory.domain.auth.annotation.CurrentMember;
+import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
+import com.example.studyfactory.domain.member.dto.DrinkRequest;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
@@ -9,8 +12,11 @@ import com.example.studyfactory.domain.member.service.MemberService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,5 +50,47 @@ public class MemberController {
     @ResponseStatus(HttpStatus.CREATED)
     public MemberSignupResponse signup(@Valid @RequestBody MemberSignupRequest request) {
         return memberService.signup(request);
+    }
+
+    @PatchMapping("/me/drink")
+    public BeveragePreferenceResponse updateDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
+        return memberService.updateDrink(memberId, request);
+    }
+
+    @PostMapping("/me/drink")
+    public BeveragePreferenceResponse addDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
+        return memberService.addDrink(memberId, request);
+    }
+
+    @PostMapping("/{memberId}/drink")
+    public BeveragePreferenceResponse addDrinkForMember(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId,
+            @Valid @RequestBody DrinkRequest request
+    ) {
+        return memberService.addDrinkForMember(currentMemberId, memberId, request);
+    }
+
+    @DeleteMapping("/me/drink")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteDrink(@CurrentMember Long memberId) {
+        memberService.deleteDrink(memberId);
+    }
+
+    @DeleteMapping("/me/drink/items")
+    public BeveragePreferenceResponse deleteDrinkItem(
+            @CurrentMember Long memberId,
+            @RequestParam String drinkSetting
+    ) {
+        return memberService.deleteDrinkItem(memberId, drinkSetting);
+    }
+
+    @DeleteMapping("/{memberId}/drink/items")
+    public BeveragePreferenceResponse deleteDrinkItemForMember(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId,
+            @RequestParam String drinkSetting
+    ) {
+        return memberService.deleteDrinkItemForMember(currentMemberId, memberId, drinkSetting);
     }
 }
