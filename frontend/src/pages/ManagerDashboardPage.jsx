@@ -74,10 +74,20 @@ export default function ManagerDashboardPage() {
 }
 
 function ManagerTopBar() {
+  const logout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('memberName');
+    localStorage.removeItem('memberId');
+    localStorage.removeItem('branchId');
+    localStorage.removeItem('memberRole');
+    window.location.href = '/login';
+  };
+
   return (
     <div className="manager-topbar">
-      <button className="round-action" type="button" aria-label="나가기">
-        <span>↪</span>
+      <button className="round-action" type="button" aria-label="로그아웃" onClick={logout}>
+        <LogoutIcon />
       </button>
       <div className="round-logo">
         <img src="/studyfactory-character.png" alt="자격증공장" />
@@ -86,6 +96,16 @@ function ManagerTopBar() {
         <span>↻</span>
       </button>
     </div>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg className="logout-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M10 4H6.5C5.7 4 5 4.7 5 5.5v13C5 19.3 5.7 20 6.5 20H10" />
+      <path d="M10 12h8" />
+      <path d="m15 8 4 4-4 4" />
+    </svg>
   );
 }
 
@@ -126,6 +146,26 @@ function ManagerTabs({ currentView }) {
 
 function PreRegistrationPanel({ branches, nameplates }) {
   const branchOptions = branches.length > 0 ? branches : [{ id: 1, name: '망미점' }];
+  const roleOptions = [
+    { value: 'MEMBER', label: '회원' },
+    { value: 'STAFF', label: '스탭' },
+    { value: 'ADMIN', label: '관리자' },
+  ];
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [selectedRole, setSelectedRole] = useState('MEMBER');
+  const [branchOpen, setBranchOpen] = useState(false);
+  const [roleOpen, setRoleOpen] = useState(false);
+
+  useEffect(() => {
+    if (selectedBranchId || branchOptions.length === 0) {
+      return;
+    }
+
+    setSelectedBranchId(String(branchOptions[0].id));
+  }, [branchOptions, selectedBranchId]);
+
+  const selectedBranch = branchOptions.find((branch) => String(branch.id) === selectedBranchId) || branchOptions[0];
+  const selectedRoleOption = roleOptions.find((role) => role.value === selectedRole) || roleOptions[0];
 
   return (
     <div className="pre-register-panel">
@@ -134,24 +174,40 @@ function PreRegistrationPanel({ branches, nameplates }) {
         <h1>사원 사전 등록</h1>
       </header>
       <form className="pre-register-form">
-        <label>
+        <div className="form-field">
           <span>지점</span>
-          <select defaultValue={branchOptions[0]?.id}>
-            {branchOptions.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
+          <FormDropdown
+            label="지점"
+            open={branchOpen}
+            options={branchOptions.map((branch) => ({ value: String(branch.id), label: branch.name }))}
+            selectedOption={{ value: String(selectedBranch?.id), label: selectedBranch?.name || '지점을 선택해주세요' }}
+            onToggle={() => {
+              setBranchOpen((current) => !current);
+              setRoleOpen(false);
+            }}
+            onSelect={(value) => {
+              setSelectedBranchId(value);
+              setBranchOpen(false);
+            }}
+          />
+        </div>
+        <div className="form-field">
           <span>사원 구분</span>
-          <select defaultValue="MEMBER">
-            <option value="MEMBER">회원</option>
-            <option value="STAFF">스탭</option>
-            <option value="ADMIN">관리자</option>
-          </select>
-        </label>
+          <FormDropdown
+            label="사원 구분"
+            open={roleOpen}
+            options={roleOptions}
+            selectedOption={selectedRoleOption}
+            onToggle={() => {
+              setRoleOpen((current) => !current);
+              setBranchOpen(false);
+            }}
+            onSelect={(value) => {
+              setSelectedRole(value);
+              setRoleOpen(false);
+            }}
+          />
+        </div>
         <label className="wide-field">
           <span>이름 (로그인 ID)</span>
           <input type="text" placeholder="이름을 입력하여 주세요." />
@@ -191,6 +247,39 @@ function PreRegistrationPanel({ branches, nameplates }) {
         <h2>등록 대기 현황 (0)</h2>
         <p>대기 중인 인원이 없습니다.</p>
       </section>
+    </div>
+  );
+}
+
+function FormDropdown({ label, open, options, selectedOption, onToggle, onSelect }) {
+  return (
+    <div className="form-dropdown">
+      <button
+        className={`form-dropdown-button${open ? ' open' : ''}`}
+        type="button"
+        aria-label={selectedOption.label}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={onToggle}
+      >
+        <span>{selectedOption.label}</span>
+      </button>
+      {open && (
+        <div className="form-dropdown-menu" role="listbox" aria-label={label}>
+          {options.map((option) => (
+            <button
+              className={`form-dropdown-option${option.value === selectedOption.value ? ' selected' : ''}`}
+              key={option.value}
+              type="button"
+              role="option"
+              aria-selected={option.value === selectedOption.value}
+              onClick={() => onSelect(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

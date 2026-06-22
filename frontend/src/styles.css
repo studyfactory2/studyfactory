@@ -382,9 +382,18 @@ button {
 .round-action {
   display: grid;
   place-items: center;
-  font-size: 22px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.logout-icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
 }
 
 .round-action:last-child {
@@ -397,12 +406,16 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(36, 125, 130, 0.34);
+  background: linear-gradient(180deg, #eef7fb 0%, #f7fbfd 100%);
+  box-shadow: 0 6px 16px rgba(36, 125, 130, 0.12);
 }
 
 .round-logo img {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(36, 49, 56, 0.14));
 }
 
 .manager-tabs {
@@ -512,9 +525,19 @@ button {
   gap: 16px 10px;
 }
 
-.pre-register-form label {
+.pre-register-form label,
+.pre-register-form .form-field {
   display: grid;
   gap: 7px;
+}
+
+.pre-register-form .form-field {
+  position: relative;
+  z-index: 5;
+}
+
+.pre-register-form .form-field:focus-within {
+  z-index: 30;
 }
 
 .pre-register-form label.wide-field {
@@ -526,15 +549,16 @@ button {
   grid-column: 1 / -1;
 }
 
-.pre-register-form span {
+.pre-register-form label > span,
+.pre-register-form .form-field > span {
   color: #69777f;
   font-size: 13px;
   font-weight: 700;
 }
 
 .pre-register-form input,
-.pre-register-form select,
-.pre-register-form textarea {
+.pre-register-form textarea,
+.form-dropdown-button {
   width: 100%;
   min-height: 44px;
   padding: 0 14px;
@@ -544,6 +568,76 @@ button {
   color: #25313a;
   font-size: 16px;
   outline: none;
+}
+
+.form-dropdown {
+  position: relative;
+}
+
+.form-dropdown-button {
+  padding-right: 38px;
+  cursor: pointer;
+  position: relative;
+  text-align: left;
+}
+
+.form-dropdown-button span {
+  color: #25313a;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.form-dropdown-button::after {
+  content: "";
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #3f555b;
+  border-bottom: 2px solid #3f555b;
+  transform: translateY(-68%) rotate(45deg);
+  transition: transform 0.16s ease;
+}
+
+.form-dropdown-button.open {
+  border-color: #8fc5c8;
+  box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
+}
+
+.form-dropdown-button.open::after {
+  transform: translateY(-28%) rotate(225deg);
+}
+
+.form-dropdown-menu {
+  position: absolute;
+  z-index: 25;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  padding: 6px;
+  border: 1px solid #dce7eb;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(38, 52, 60, 0.14);
+}
+
+.form-dropdown-option {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 5px;
+  background: #fff;
+  color: #25313a;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.form-dropdown-option:hover,
+.form-dropdown-option.selected {
+  background: #eef7fb;
+  color: #247d82;
 }
 
 .pre-register-form textarea {
@@ -557,7 +651,6 @@ button {
 }
 
 .pre-register-form input:focus,
-.pre-register-form select:focus,
 .pre-register-form textarea:focus {
   border-color: #8fc5c8;
   box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
