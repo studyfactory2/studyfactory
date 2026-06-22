@@ -754,6 +754,237 @@ button {
   font-weight: 700;
 }
 
+.member-dashboard-main {
+  min-height: 560px;
+}
+
+.member-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.member-calendar-header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 12px;
+}
+
+.member-calendar-header button {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #eef7fb;
+  color: #247d82;
+  font-size: 26px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.member-calendar-header strong {
+  color: #202931;
+  font-size: 20px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.member-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-weekday {
+  min-height: 24px;
+  color: #7f8d94;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.member-calendar-grid button {
+  aspect-ratio: 1;
+  border: 1px solid #e2ebef;
+  border-radius: 12px;
+  background: #fff;
+  color: #2b343b;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.member-calendar-grid button.selected {
+  border-color: #247d82;
+  background: #247d82;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(36, 125, 130, 0.22);
+}
+
+.leave-type-actions,
+.meal-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.meal-toggle {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.leave-type-actions button,
+.meal-toggle button,
+.suggestion-grid button {
+  min-height: 46px;
+  border: 1px solid #dce7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #2b343b;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.meal-toggle button.active,
+.leave-type-actions button:hover,
+.suggestion-grid button:hover {
+  border-color: #247d82;
+  background: #eef7fb;
+  color: #247d82;
+}
+
+.member-primary-action,
+.member-secondary-action {
+  min-height: 48px;
+  border-radius: 10px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.member-primary-action {
+  background: #247d82;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(36, 125, 130, 0.22);
+}
+
+.member-secondary-action {
+  width: 100%;
+  border: 1px solid #dce7eb;
+  background: #fff;
+  color: #247d82;
+}
+
+.member-list-box,
+.member-notice-box,
+.beverage-intro {
+  padding: 18px;
+  border: 1px solid #e3edf1;
+  border-radius: 14px;
+  background: #f8fbfc;
+}
+
+.member-list-box strong,
+.member-notice-box strong,
+.beverage-intro strong {
+  display: block;
+  color: #25313a;
+  font-weight: 900;
+}
+
+.member-list-box p,
+.member-notice-box p,
+.beverage-intro p {
+  margin: 8px 0 0;
+  color: #7b8991;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.member-notice-box a {
+  display: inline-flex;
+  margin-top: 10px;
+  color: #247d82;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.section-heading {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-heading p {
+  margin-top: 4px;
+}
+
+.section-heading span {
+  color: #247d82;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.empty-dashed {
+  min-height: 72px;
+  margin-bottom: 12px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #cbd9de;
+  border-radius: 12px;
+  color: #849198;
+  font-weight: 800;
+  text-align: center;
+}
+
+.suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.member-field {
+  display: grid;
+  gap: 8px;
+}
+
+.member-field span {
+  color: #69777f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.member-field input,
+.member-field textarea {
+  width: 100%;
+  border: 1px solid #e1e8ec;
+  border-radius: 10px;
+  background: #fff;
+  color: #25313a;
+  font: inherit;
+  outline: none;
+}
+
+.member-field input {
+  min-height: 48px;
+  padding: 0 14px;
+}
+
+.member-field textarea {
+  padding: 13px 14px;
+  resize: vertical;
+}
+
+.member-field input:focus,
+.member-field textarea:focus {
+  border-color: #8fc5c8;
+  box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
+}
+
+.beverage-form {
+  display: grid;
+  gap: 14px;
+}
+
 @media (max-width: 820px) {
   .login-page {
     display: block;
@@ -824,6 +1055,31 @@ button {
 
   .pre-register-form label.wide-field {
     grid-column: 1;
+  }
+
+  .member-dashboard-main {
+    min-height: 0;
+  }
+
+  .member-calendar-grid {
+    gap: 6px;
+  }
+
+  .member-calendar-grid button {
+    border-radius: 10px;
+    font-size: 14px;
+  }
+
+  .leave-type-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading {
+    display: grid;
+  }
+
+  .section-heading span {
+    white-space: normal;
   }
 }
 

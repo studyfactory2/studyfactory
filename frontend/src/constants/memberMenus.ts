@@ -1,0 +1,21 @@
+export type MemberMenuId = 'leave-plan' | 'side-dish' | 'suggestion' | 'beverage';
+
+export type MemberMenu = {
+  id: MemberMenuId;
+  label: string;
+};
+
+export const MEMBER_MENUS: MemberMenu[] = [
+  { id: 'leave-plan', label: '휴무계획' },
+  { id: 'side-dish', label: '반찬신청' },
+  { id: 'suggestion', label: '건의' },
+  { id: 'beverage', label: '음료' },
+];
+
+export function resolveMemberMenuId(value: string | null): MemberMenuId {
+  return MEMBER_MENUS.some((menu) => menu.id === value) ? (value as MemberMenuId) : 'leave-plan';
+}
+
+export function getMemberMenuLabel(menuId: MemberMenuId): string {
+  return MEMBER_MENUS.find((menu) => menu.id === menuId)?.label || '휴무계획';
+}
