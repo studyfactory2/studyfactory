@@ -5,7 +5,9 @@ import com.example.studyfactory.domain.branch.dto.BranchResponse;
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.exception.BranchException;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class BranchService {
 
     private final BranchRepository branchRepository;
+
+    @Transactional(readOnly = true)
+    public List<BranchResponse> findAll() {
+        return branchRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
+                .stream()
+                .map(BranchResponse::from)
+                .toList();
+    }
 
     @Transactional
     public BranchResponse create(BranchCreateRequest request) {

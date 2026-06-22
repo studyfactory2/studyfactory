@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.branch.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,6 +31,20 @@ class BranchControllerTest {
     @BeforeEach
     void setUp() {
         branchRepository.deleteAll();
+    }
+
+    @Test
+    @DisplayName("등록된 지점 목록을 조회한다")
+    void findAllBranches() throws Exception {
+        branchRepository.save(new Branch("강남점", "서울 강남구"));
+        branchRepository.save(new Branch("센텀점", "부산 해운대구"));
+
+        mockMvc.perform(get("/api/branches"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("강남점"))
+                .andExpect(jsonPath("$[0].address").value("서울 강남구"))
+                .andExpect(jsonPath("$[1].name").value("센텀점"))
+                .andExpect(jsonPath("$[1].address").value("부산 해운대구"));
     }
 
     @Test
