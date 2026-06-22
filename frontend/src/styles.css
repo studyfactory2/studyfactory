@@ -454,9 +454,10 @@ button {
 
 .manager-tabs .tab-arrow {
   color: #247d82;
-  font-size: 30px;
+  font-size: 34px;
   line-height: 1;
   text-align: center;
+  transform: translateY(-3px);
 }
 
 .tab-arrow-placeholder {
