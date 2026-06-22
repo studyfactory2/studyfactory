@@ -11,6 +11,7 @@ import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
 import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
 import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
@@ -170,6 +171,51 @@ class MemberControllerTest {
     }
 
     @Test
+    @DisplayName("스태프가 다른 사원의 음료 설정에 새 음료를 추가한다")
+    void addDrinkForMemberByStaff() throws Exception {
+        Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
+        Member targetMember = memberRepository.save(createMember("kim", 11));
+        beveragePreferenceRepository.save(new BeveragePreference(targetMember.getId(), targetMember.getBranchId(), "콜라", "제로칼로리로 해주세요"));
+        String accessToken = jwtTokenProvider.createAccessToken(staff);
+        String requestBody = """
+                {
+                  "drinkSetting": "사이다",
+                  "drinkNote": "차갑게 주세요"
+                }
+                """;
+
+        mockMvc.perform(post("/api/members/{memberId}/drink", targetMember.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberId").value(targetMember.getId()))
+                .andExpect(jsonPath("$.branchId").value(targetMember.getBranchId()))
+                .andExpect(jsonPath("$.drinks").value("콜라\n사이다"))
+                .andExpect(jsonPath("$.notes").value("차갑게 주세요"));
+    }
+
+    @Test
+    @DisplayName("일반 사원이 다른 사원의 음료 설정에 새 음료를 추가하면 403 응답을 반환한다")
+    void rejectAddDrinkForMemberWithoutPermission() throws Exception {
+        Member member = memberRepository.save(createMember("member", 10));
+        Member targetMember = memberRepository.save(createMember("kim", 11));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String requestBody = """
+                {
+                  "drinkSetting": "사이다",
+                  "drinkNote": "차갑게 주세요"
+                }
+                """;
+
+        mockMvc.perform(post("/api/members/{memberId}/drink", targetMember.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("인증된 사원이 본인 음료 설정과 참고사항을 삭제한다")
     void deleteDrink() throws Exception {
         Member member = memberRepository.save(createMember("kim", 10));
@@ -185,10 +231,15 @@ class MemberControllerTest {
     }
 
     private Member createMember(String name, int seatNumber, Long branchId) {
+        return createMember(name, seatNumber, branchId, MemberRole.MEMBER);
+    }
+
+    private Member createMember(String name, int seatNumber, Long branchId, MemberRole role) {
         return new Member(
                 branchId,
                 name,
                 "password123",
+                role,
                 seatNumber,
                 LocalDate.of(2026, 7, 1),
                 3L,

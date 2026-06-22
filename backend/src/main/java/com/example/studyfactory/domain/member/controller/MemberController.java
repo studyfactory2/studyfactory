@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -59,6 +60,15 @@ public class MemberController {
     @PostMapping("/me/drink")
     public BeveragePreferenceResponse addDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
         return memberService.addDrink(memberId, request);
+    }
+
+    @PostMapping("/{memberId}/drink")
+    public BeveragePreferenceResponse addDrinkForMember(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId,
+            @Valid @RequestBody DrinkRequest request
+    ) {
+        return memberService.addDrinkForMember(currentMemberId, memberId, request);
     }
 
     @DeleteMapping("/me/drink")

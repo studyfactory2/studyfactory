@@ -15,6 +15,7 @@ import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyResponse;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
@@ -129,6 +130,36 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("스태프가 다른 사원의 음료 설정에 새 음료를 추가한다")
+    void addDrinkForMemberByStaff() {
+        Member staff = createRegisteredMember(MemberRole.STAFF);
+        Member targetMember = createRegisteredMember();
+        ReflectionTestUtils.setField(staff, "id", 2L);
+        BeveragePreference beveragePreference = new BeveragePreference(1L, 1L, "콜라", "제로칼로리로 해주세요");
+        given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(targetMember));
+        given(beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(1L)).willReturn(Optional.of(beveragePreference));
+        given(beveragePreferenceRepository.save(any(BeveragePreference.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        BeveragePreferenceResponse response = memberService.addDrinkForMember(2L, 1L, new DrinkRequest("사이다", "차갑게 주세요"));
+
+        assertThat(response.memberId()).isEqualTo(1L);
+        assertThat(response.drinks()).isEqualTo("콜라\n사이다");
+        assertThat(response.notes()).isEqualTo("차갑게 주세요");
+    }
+
+    @Test
+    @DisplayName("일반 사원이 다른 사원의 음료 설정에 새 음료를 추가하면 예외가 발생한다")
+    void throwExceptionWhenAddDrinkForMemberWithoutPermission() {
+        Member member = createRegisteredMember();
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> memberService.addDrinkForMember(1L, 2L, new DrinkRequest("사이다", "차갑게 주세요")))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
     @DisplayName("음료 설정이 없으면 새 음료 설정을 생성한다")
     void addDrinkWhenBeveragePreferenceDoesNotExist() {
         Member member = createRegisteredMember();
@@ -193,7 +224,14 @@ class MemberServiceTest {
     }
 
     private Member createRegisteredMember() {
+        return createRegisteredMember(MemberRole.MEMBER);
+    }
+
+    private Member createRegisteredMember(MemberRole role) {
         Member member = new Member(1L, "hong", "password123", 12, LocalDate.of(2026, 7, 1), 3L, "오전 교육 예정");
+        if (role != MemberRole.MEMBER) {
+            member = new Member(1L, "hong", "password123", role, 12, LocalDate.of(2026, 7, 1), 3L, "오전 교육 예정");
+        }
         ReflectionTestUtils.setField(member, "id", 1L);
         return member;
     }

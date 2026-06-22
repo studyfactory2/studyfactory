@@ -54,7 +54,7 @@ public class MemberService {
 
     @Transactional
     public BeveragePreferenceResponse updateDrink(Long memberId, DrinkRequest request) {
-        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        Member member = findMember(memberId);
         BeveragePreference beveragePreference = beveragePreferenceRepository
                 .findFirstByMemberIdOrderByCreatedAtDesc(memberId)
                 .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), request.drinkSetting(), request.drinkNote()));
@@ -65,13 +65,29 @@ public class MemberService {
 
     @Transactional
     public BeveragePreferenceResponse addDrink(Long memberId, DrinkRequest request) {
-        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        Member member = findMember(memberId);
+        BeveragePreference beveragePreference = addDrink(member, request);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse addDrinkForMember(Long currentMemberId, Long targetMemberId, DrinkRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member targetMember = findMember(targetMemberId);
+        BeveragePreference beveragePreference = addDrink(targetMember, request);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    private BeveragePreference addDrink(Member member, DrinkRequest request) {
         BeveragePreference beveragePreference = beveragePreferenceRepository
-                .findFirstByMemberIdOrderByCreatedAtDesc(memberId)
+                .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
                 .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", request.drinkNote()));
         beveragePreference.addDrinks(request.drinkSetting(), request.drinkNote());
 
-        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+        return beveragePreference;
     }
 
     @Transactional
@@ -92,6 +108,10 @@ public class MemberService {
         return member;
     }
 
+    private Member findMember(Long memberId) {
+        return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+    }
+
     private BeveragePreference findLatestBeveragePreference(Member member) {
         return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
                 .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", null));
@@ -108,6 +128,12 @@ public class MemberService {
     private void validateNotSignedUp(Member member) {
         if (member.getPassword() != null) {
             throw MemberException.alreadySignedUp();
+        }
+    }
+
+    private void validateAllPermissions(Member member) {
+        if (!member.hasAllPermissions()) {
+            throw MemberException.forbidden();
         }
     }
 }

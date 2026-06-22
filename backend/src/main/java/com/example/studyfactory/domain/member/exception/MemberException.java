@@ -20,4 +20,8 @@ public class MemberException extends BaseException {
     public static MemberException memberNotFound() {
         return new MemberException(HttpStatus.NOT_FOUND, "존재하지 않는 사원입니다.");
     }
+
+    public static MemberException forbidden() {
+        return new MemberException(HttpStatus.FORBIDDEN, "권한이 없습니다.");
+    }
 }
