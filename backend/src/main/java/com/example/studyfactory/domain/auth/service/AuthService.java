@@ -32,6 +32,7 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(member);
         String refreshToken = jwtTokenProvider.createRefreshToken(member);
         refreshTokenRepository.deleteByMemberId(member.getId());
+        refreshTokenRepository.flush();
         refreshTokenRepository.save(new RefreshToken(member.getId(), refreshToken));
 
         return new LoginResponse(accessToken, refreshToken);

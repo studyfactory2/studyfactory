@@ -7,6 +7,8 @@ import com.example.studyfactory.domain.auth.exception.AuthException;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
+import java.util.Base64;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,7 @@ class JwtTokenProviderTest {
 
         assertThat(token).contains(".");
         assertThat(jwtTokenProvider.getMemberId(token)).isEqualTo(1L);
+        assertThat(decodePayload(token).get("role")).isEqualTo("MEMBER");
     }
 
     @Test
@@ -70,5 +73,15 @@ class JwtTokenProviderTest {
                 3L,
                 "오전 교육 예정"
         );
+    }
+
+    private Map<?, ?> decodePayload(String token) {
+        try {
+            String payload = token.split("\\.")[1];
+            byte[] decodedPayload = Base64.getUrlDecoder().decode(payload);
+            return new ObjectMapper().readValue(decodedPayload, Map.class);
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
     }
 }

@@ -50,6 +50,7 @@ public class JwtTokenProvider {
         payload.put("sub", member.getId());
         payload.put("name", member.getName());
         payload.put("branchId", member.getBranchId());
+        payload.put("role", member.getRole());
         payload.put("iat", now / 1000);
         payload.put("exp", (now + expirationMillis) / 1000);
 

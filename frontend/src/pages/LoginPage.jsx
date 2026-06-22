@@ -101,6 +101,12 @@ export default function LoginPage() {
       localStorage.setItem('memberName', payload.name || form.loginName.trim());
       localStorage.setItem('memberId', payload.sub || '');
       localStorage.setItem('branchId', payload.branchId || '');
+      localStorage.setItem('memberRole', payload.role || '');
+
+      if (payload.role === 'ADMIN') {
+        window.location.href = '/managerdashboard?view=register';
+        return;
+      }
 
       window.location.href = '/memberdashboard';
     } catch (error) {
