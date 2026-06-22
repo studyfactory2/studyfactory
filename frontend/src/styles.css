@@ -406,16 +406,16 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(36, 125, 130, 0.34);
-  background: linear-gradient(180deg, #eef7fb 0%, #f7fbfd 100%);
-  box-shadow: 0 6px 16px rgba(36, 125, 130, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #247d82;
+  box-shadow: 0 6px 16px rgba(36, 125, 130, 0.24);
 }
 
 .round-logo img {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 3px rgba(36, 49, 56, 0.14));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.16));
 }
 
 .manager-tabs {

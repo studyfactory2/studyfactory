@@ -90,7 +90,7 @@ function ManagerTopBar() {
         <LogoutIcon />
       </button>
       <div className="round-logo">
-        <img src="/studyfactory-character.png" alt="자격증공장" />
+        <img src="/studyfactory-character-transparent.png" alt="자격증공장" />
       </div>
       <button className="round-action" type="button" aria-label="새로고침" onClick={() => window.location.reload()}>
         <span>↻</span>
