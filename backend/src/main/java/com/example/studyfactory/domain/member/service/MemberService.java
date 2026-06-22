@@ -98,6 +98,35 @@ public class MemberService {
         beveragePreferenceRepository.deleteAll(beveragePreferenceRepository.findByMemberId(memberId));
     }
 
+    @Transactional
+    public BeveragePreferenceResponse deleteDrinkItem(Long memberId, String drinkSetting) {
+        Member member = findMember(memberId);
+        BeveragePreference beveragePreference = deleteDrinkItem(member, drinkSetting);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse deleteDrinkItemForMember(Long currentMemberId, Long targetMemberId, String drinkSetting) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member targetMember = findMember(targetMemberId);
+        BeveragePreference beveragePreference = deleteDrinkItem(targetMember, drinkSetting);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    private BeveragePreference deleteDrinkItem(Member member, String drinkSetting) {
+        BeveragePreference beveragePreference = beveragePreferenceRepository
+                .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseThrow(MemberException::beveragePreferenceNotFound);
+        if (!beveragePreference.removeDrink(drinkSetting)) {
+            throw MemberException.drinkNotFound();
+        }
+
+        return beveragePreference;
+    }
+
     private Member findPreRegisteredMember(String name, Long branchId) {
         Member member = memberRepository.findByNameAndBranchId(name, branchId)
                 .orElseThrow(MemberException::preRegistrationNotFound);

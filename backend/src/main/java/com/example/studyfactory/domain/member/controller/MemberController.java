@@ -76,4 +76,21 @@ public class MemberController {
     public void deleteDrink(@CurrentMember Long memberId) {
         memberService.deleteDrink(memberId);
     }
+
+    @DeleteMapping("/me/drink/items")
+    public BeveragePreferenceResponse deleteDrinkItem(
+            @CurrentMember Long memberId,
+            @RequestParam String drinkSetting
+    ) {
+        return memberService.deleteDrinkItem(memberId, drinkSetting);
+    }
+
+    @DeleteMapping("/{memberId}/drink/items")
+    public BeveragePreferenceResponse deleteDrinkItemForMember(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId,
+            @RequestParam String drinkSetting
+    ) {
+        return memberService.deleteDrinkItemForMember(currentMemberId, memberId, drinkSetting);
+    }
 }
