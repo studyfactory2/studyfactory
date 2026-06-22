@@ -408,29 +408,65 @@ button {
 .manager-tabs {
   width: min(560px, 100%);
   margin: 0 auto 22px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) 26px minmax(140px, auto) 26px minmax(80px, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 24px;
-  white-space: nowrap;
+  gap: 12px;
 }
 
 .manager-tabs a {
-  color: #8a9aa2;
-  font-size: 13px;
   font-weight: 800;
   text-decoration: none;
 }
 
-.manager-tabs a.active {
+.current-tab {
   color: #247d82;
   font-size: 18px;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.tab-arrow {
+.adjacent-tab {
+  min-width: 0;
+  color: rgba(36, 49, 56, 0.36);
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-shadow: 0 3px 12px rgba(36, 125, 130, 0.16);
+  white-space: nowrap;
+}
+
+.adjacent-tab span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.previous-tab {
+  text-align: right;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 42%, #000 100%);
+}
+
+.next-tab {
+  text-align: left;
+  mask-image: linear-gradient(90deg, #000 0%, #000 58%, transparent 100%);
+}
+
+.manager-tabs .tab-arrow {
   color: #247d82;
   font-size: 30px;
   line-height: 1;
+  text-align: center;
+}
+
+.tab-arrow-placeholder {
+  width: 26px;
+  height: 30px;
+}
+
+.previous-arrow,
+.next-arrow {
+  display: block;
 }
 
 .manager-card {
@@ -665,10 +701,17 @@ button {
   }
 
   .manager-tabs {
-    gap: 12px;
-    overflow-x: auto;
-    justify-content: flex-start;
-    padding: 0 8px 6px;
+    grid-template-columns: minmax(58px, 1fr) 24px minmax(118px, auto) 24px minmax(58px, 1fr);
+    gap: 8px;
+    padding: 0 4px;
+  }
+
+  .current-tab {
+    font-size: 16px;
+  }
+
+  .adjacent-tab {
+    font-size: 12px;
   }
 
   .manager-card {

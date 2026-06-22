@@ -90,15 +90,36 @@ function ManagerTopBar() {
 }
 
 function ManagerTabs({ currentView }) {
+  const currentIndex = Math.max(ADMIN_MENUS.findIndex((menu) => menu.id === currentView), 0);
+  const previousMenu = ADMIN_MENUS[currentIndex - 1];
+  const currentMenu = ADMIN_MENUS[currentIndex];
+  const nextMenu = ADMIN_MENUS[currentIndex + 1];
+
   return (
     <nav className="manager-tabs" aria-label="관리자 메뉴">
-      <span className="tab-arrow">‹</span>
-      {ADMIN_MENUS.map((menu) => (
-        <a className={currentView === menu.id ? 'active' : ''} href={`/managerdashboard?view=${menu.id}`} key={menu.id}>
-          {menu.label}
+      <div className="adjacent-tab previous-tab">
+        {previousMenu && <span>{previousMenu.label}</span>}
+      </div>
+      {previousMenu ? (
+        <a className="tab-arrow previous-arrow" href={`/managerdashboard?view=${previousMenu.id}`} aria-label="이전 페이지">
+          ‹
         </a>
-      ))}
-      <span className="tab-arrow">›</span>
+      ) : (
+        <span className="tab-arrow-placeholder" />
+      )}
+      <a className="current-tab" href={`/managerdashboard?view=${currentMenu.id}`} aria-current="page">
+        {currentMenu.label}
+      </a>
+      {nextMenu ? (
+        <a className="tab-arrow next-arrow" href={`/managerdashboard?view=${nextMenu.id}`} aria-label="다음 페이지">
+          ›
+        </a>
+      ) : (
+        <span className="tab-arrow-placeholder" />
+      )}
+      <div className="adjacent-tab next-tab">
+        {nextMenu && <span>{nextMenu.label}</span>}
+      </div>
     </nav>
   );
 }
