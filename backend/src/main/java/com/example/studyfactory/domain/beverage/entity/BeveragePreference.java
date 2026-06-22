@@ -44,4 +44,18 @@ public class BeveragePreference extends BaseEntity {
         this.drinks = drinks;
         this.notes = notes;
     }
+
+    public void addDrinks(String drinks, String notes) {
+        this.drinks = mergeDrinks(drinks);
+        this.notes = notes;
+    }
+
+    private String mergeDrinks(String newDrinks) {
+        String trimmedDrinks = newDrinks.trim();
+        if (drinks == null || drinks.isBlank()) {
+            return trimmedDrinks;
+        }
+
+        return drinks + "\n" + trimmedDrinks;
+    }
 }

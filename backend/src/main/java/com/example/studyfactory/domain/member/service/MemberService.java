@@ -64,6 +64,17 @@ public class MemberService {
     }
 
     @Transactional
+    public BeveragePreferenceResponse addDrink(Long memberId, DrinkRequest request) {
+        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        BeveragePreference beveragePreference = beveragePreferenceRepository
+                .findFirstByMemberIdOrderByCreatedAtDesc(memberId)
+                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", request.drinkNote()));
+        beveragePreference.addDrinks(request.drinkSetting(), request.drinkNote());
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
     public void deleteDrink(Long memberId) {
         if (!memberRepository.existsById(memberId)) {
             throw MemberException.memberNotFound();

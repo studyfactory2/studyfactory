@@ -3,10 +3,13 @@ package com.example.studyfactory.domain.member.controller;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
+import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
+import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
@@ -31,10 +34,14 @@ class MemberControllerTest {
     private MemberRepository memberRepository;
 
     @Autowired
+    private BeveragePreferenceRepository beveragePreferenceRepository;
+
+    @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
     void setUp() {
+        beveragePreferenceRepository.deleteAll();
         memberRepository.deleteAll();
     }
 
@@ -136,6 +143,30 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.branchId").value(member.getBranchId()))
                 .andExpect(jsonPath("$.drinks").value("따뜻한 라떼"))
                 .andExpect(jsonPath("$.notes").value("시럽 추가"));
+    }
+
+    @Test
+    @DisplayName("인증된 사원이 본인 음료 설정에 새 음료를 추가한다")
+    void addDrink() throws Exception {
+        Member member = memberRepository.save(createMember("kim", 10));
+        beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "콜라", "제로칼로리로 해주세요"));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String requestBody = """
+                {
+                  "drinkSetting": "사이다\\n식혜",
+                  "drinkNote": "차갑게 주세요"
+                }
+                """;
+
+        mockMvc.perform(post("/api/members/me/drink")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberId").value(member.getId()))
+                .andExpect(jsonPath("$.branchId").value(member.getBranchId()))
+                .andExpect(jsonPath("$.drinks").value("콜라\n사이다\n식혜"))
+                .andExpect(jsonPath("$.notes").value("차갑게 주세요"));
     }
 
     @Test

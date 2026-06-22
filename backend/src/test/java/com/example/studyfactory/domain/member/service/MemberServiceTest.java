@@ -114,11 +114,52 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("토큰의 사원 ID로 기존 음료 설정에 새 음료를 추가한다")
+    void addDrink() {
+        Member member = createRegisteredMember();
+        BeveragePreference beveragePreference = new BeveragePreference(1L, 1L, "콜라", "제로칼로리로 해주세요");
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(1L)).willReturn(Optional.of(beveragePreference));
+        given(beveragePreferenceRepository.save(any(BeveragePreference.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        BeveragePreferenceResponse response = memberService.addDrink(1L, new DrinkRequest("사이다\n식혜", "차갑게 주세요"));
+
+        assertThat(response.drinks()).isEqualTo("콜라\n사이다\n식혜");
+        assertThat(response.notes()).isEqualTo("차갑게 주세요");
+    }
+
+    @Test
+    @DisplayName("음료 설정이 없으면 새 음료 설정을 생성한다")
+    void addDrinkWhenBeveragePreferenceDoesNotExist() {
+        Member member = createRegisteredMember();
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(1L)).willReturn(Optional.empty());
+        given(beveragePreferenceRepository.save(any(BeveragePreference.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        BeveragePreferenceResponse response = memberService.addDrink(1L, new DrinkRequest("콜라", "제로칼로리로 해주세요"));
+
+        assertThat(response.memberId()).isEqualTo(1L);
+        assertThat(response.branchId()).isEqualTo(1L);
+        assertThat(response.drinks()).isEqualTo("콜라");
+        assertThat(response.notes()).isEqualTo("제로칼로리로 해주세요");
+    }
+
+    @Test
     @DisplayName("존재하지 않는 사원의 음료 정보를 수정하면 예외가 발생한다")
     void throwExceptionWhenUpdateDrinkMemberNotFound() {
         given(memberRepository.findById(1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> memberService.updateDrink(1L, new DrinkRequest("따뜻한 라떼", "시럽 추가")))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("존재하지 않는 사원입니다.");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사원의 음료 정보를 추가하면 예외가 발생한다")
+    void throwExceptionWhenAddDrinkMemberNotFound() {
+        given(memberRepository.findById(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> memberService.addDrink(1L, new DrinkRequest("콜라", "제로칼로리로 해주세요")))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("존재하지 않는 사원입니다.");
     }

@@ -56,6 +56,11 @@ public class MemberController {
         return memberService.updateDrink(memberId, request);
     }
 
+    @PostMapping("/me/drink")
+    public BeveragePreferenceResponse addDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
+        return memberService.addDrink(memberId, request);
+    }
+
     @DeleteMapping("/me/drink")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDrink(@CurrentMember Long memberId) {
