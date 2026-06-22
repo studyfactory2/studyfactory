@@ -54,8 +54,6 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$[0].seatNumber").value(10))
                 .andExpect(jsonPath("$[0].joinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$[0].nameplateContentId").value(3))
-                .andExpect(jsonPath("$[0].drinkSetting").value("아이스 아메리카노"))
-                .andExpect(jsonPath("$[0].drinkNote").value("연하게"))
                 .andExpect(jsonPath("$[0].memberNote").value("오전 교육 예정"))
                 .andExpect(jsonPath("$[0].password").doesNotExist())
                 .andExpect(jsonPath("$[1].name").value("lee"));
@@ -131,13 +129,13 @@ class MemberControllerTest {
 
         mockMvc.perform(patch("/api/members/me/drink")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody)
-                        .header("Authorization", "Bearer " + accessToken))
+                .content(requestBody)
+                .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(member.getId()))
-                .andExpect(jsonPath("$.drinkSetting").value("따뜻한 라떼"))
-                .andExpect(jsonPath("$.drinkNote").value("시럽 추가"))
-                .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
+                .andExpect(jsonPath("$.memberId").value(member.getId()))
+                .andExpect(jsonPath("$.branchId").value(member.getBranchId()))
+                .andExpect(jsonPath("$.drinks").value("따뜻한 라떼"))
+                .andExpect(jsonPath("$.notes").value("시럽 추가"));
     }
 
     @Test
@@ -148,11 +146,7 @@ class MemberControllerTest {
 
         mockMvc.perform(delete("/api/members/me/drink")
                         .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(member.getId()))
-                .andExpect(jsonPath("$.drinkSetting").doesNotExist())
-                .andExpect(jsonPath("$.drinkNote").doesNotExist())
-                .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
+                .andExpect(status().isNoContent());
     }
 
     private Member createMember(String name, int seatNumber) {
@@ -167,8 +161,6 @@ class MemberControllerTest {
                 seatNumber,
                 LocalDate.of(2026, 7, 1),
                 3L,
-                "아이스 아메리카노",
-                "연하게",
                 "오전 교육 예정"
         );
     }

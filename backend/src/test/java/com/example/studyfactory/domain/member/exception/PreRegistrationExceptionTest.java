@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.preRegistration.exception;
+package com.example.studyfactory.domain.member.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

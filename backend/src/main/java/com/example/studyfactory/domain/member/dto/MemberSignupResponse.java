@@ -13,8 +13,6 @@ public record MemberSignupResponse(
         int seatNumber,
         LocalDate joinDate,
         Long nameplateContentId,
-        String drinkSetting,
-        String drinkNote,
         String memberNote,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -29,8 +27,6 @@ public record MemberSignupResponse(
                 member.getSeatNumber(),
                 member.getJoinDate(),
                 member.getNameplateContentId(),
-                member.getDrinkSetting(),
-                member.getDrinkNote(),
                 member.getMemberNote(),
                 member.getCreatedAt(),
                 member.getUpdatedAt()

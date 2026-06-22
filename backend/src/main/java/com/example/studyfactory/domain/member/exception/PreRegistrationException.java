@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.preRegistration.exception;
+package com.example.studyfactory.domain.member.exception;
 
 import com.example.studyfactory.common.exception.BaseException;
 import org.springframework.http.HttpStatus;

@@ -204,8 +204,6 @@ class LeaveControllerTest {
                 12,
                 LocalDate.of(2026, 7, 1),
                 3L,
-                "아이스 아메리카노",
-                "연하게",
                 "오전 교육 예정"
         );
     }

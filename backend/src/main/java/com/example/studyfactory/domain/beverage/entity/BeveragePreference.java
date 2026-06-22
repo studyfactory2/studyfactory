@@ -21,7 +21,7 @@ public class BeveragePreference extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "member_id", nullable = false, unique = true)
+    @Column(name = "member_id", nullable = false)
     private Long memberId;
 
     @Column(name = "branch_id", nullable = false)
@@ -36,6 +36,11 @@ public class BeveragePreference extends BaseEntity {
     public BeveragePreference(Long memberId, Long branchId, String drinks, String notes) {
         this.memberId = memberId;
         this.branchId = branchId;
+        this.drinks = drinks;
+        this.notes = notes;
+    }
+
+    public void update(String drinks, String notes) {
         this.drinks = drinks;
         this.notes = notes;
     }

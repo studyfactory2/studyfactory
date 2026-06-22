@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.member.controller;
 
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
+import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
 import com.example.studyfactory.domain.member.dto.DrinkRequest;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
@@ -51,12 +52,13 @@ public class MemberController {
     }
 
     @PatchMapping("/me/drink")
-    public MemberResponse updateDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
+    public BeveragePreferenceResponse updateDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
         return memberService.updateDrink(memberId, request);
     }
 
     @DeleteMapping("/me/drink")
-    public MemberResponse deleteDrink(@CurrentMember Long memberId) {
-        return memberService.deleteDrink(memberId);
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteDrink(@CurrentMember Long memberId) {
+        memberService.deleteDrink(memberId);
     }
 }

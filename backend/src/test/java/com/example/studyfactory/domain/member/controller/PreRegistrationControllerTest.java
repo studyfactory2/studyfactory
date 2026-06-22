@@ -1,15 +1,16 @@
-package com.example.studyfactory.domain.preRegistration.controller;
+package com.example.studyfactory.domain.member.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
-import com.example.studyfactory.domain.preRegistration.repository.PreRegistrationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,11 +35,15 @@ class PreRegistrationControllerTest {
     private NameplateContentRepository nameplateContentRepository;
 
     @Autowired
-    private PreRegistrationRepository preRegistrationRepository;
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private BeveragePreferenceRepository beveragePreferenceRepository;
 
     @BeforeEach
     void setUp() {
-        preRegistrationRepository.deleteAll();
+        beveragePreferenceRepository.deleteAll();
+        memberRepository.deleteAll();
         branchRepository.deleteAll();
         nameplateContentRepository.deleteAll();
     }
@@ -53,6 +58,7 @@ class PreRegistrationControllerTest {
                 {
                   "branchId": %d,
                   "name": "hong",
+                  "role": "STAFF",
                   "seatNumber": 12,
                   "expectedJoinDate": "2026-07-01",
                   "nameplateContentId": %d,
@@ -69,6 +75,7 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.branchId").value(branch.getId()))
                 .andExpect(jsonPath("$.name").value("hong"))
+                .andExpect(jsonPath("$.role").value("STAFF"))
                 .andExpect(jsonPath("$.seatNumber").value(12))
                 .andExpect(jsonPath("$.expectedJoinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$.nameplateContentId").value(nameplateContent.getId()))
@@ -76,7 +83,8 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.drinkNote").value("연하게"))
                 .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
 
-        assertThat(preRegistrationRepository.count()).isEqualTo(1);
+        assertThat(memberRepository.count()).isEqualTo(1);
+        assertThat(beveragePreferenceRepository.count()).isEqualTo(1);
     }
 
     @Test

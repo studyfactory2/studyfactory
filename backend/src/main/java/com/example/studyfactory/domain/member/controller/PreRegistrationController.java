@@ -1,8 +1,8 @@
-package com.example.studyfactory.domain.preRegistration.controller;
+package com.example.studyfactory.domain.member.controller;
 
-import com.example.studyfactory.domain.preRegistration.dto.PreRegistrationCreateRequest;
-import com.example.studyfactory.domain.preRegistration.dto.PreRegistrationResponse;
-import com.example.studyfactory.domain.preRegistration.service.PreRegistrationService;
+import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
+import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
+import com.example.studyfactory.domain.member.service.PreRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

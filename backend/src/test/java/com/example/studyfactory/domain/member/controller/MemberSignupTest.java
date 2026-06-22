@@ -5,11 +5,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
+import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
-import com.example.studyfactory.domain.preRegistration.entity.PreRegistration;
-import com.example.studyfactory.domain.preRegistration.entity.ReferenceInformation;
-import com.example.studyfactory.domain.preRegistration.entity.SubInformation;
-import com.example.studyfactory.domain.preRegistration.repository.PreRegistrationRepository;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,21 +28,22 @@ class MemberSignupTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private PreRegistrationRepository preRegistrationRepository;
+    private MemberRepository memberRepository;
 
     @Autowired
-    private MemberRepository memberRepository;
+    private BeveragePreferenceRepository beveragePreferenceRepository;
 
     @BeforeEach
     void setUp() {
+        beveragePreferenceRepository.deleteAll();
         memberRepository.deleteAll();
-        preRegistrationRepository.deleteAll();
     }
 
     @Test
-    @DisplayName("이름과 지점이 일치하면 사전등록 정보를 반환한다")
+    @DisplayName("이름과 지점이 일치하면 사전등록된 사원 정보를 반환한다")
     void verifyPreRegistration() throws Exception {
-        preRegistrationRepository.save(createPreRegistration());
+        Member member = memberRepository.save(createPreRegisteredMember());
+        beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "아이스 아메리카노", "연하게"));
         String requestBody = """
                 {
                   "name": "hong",
@@ -55,22 +55,25 @@ class MemberSignupTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.preRegistrationId").exists())
+                .andExpect(jsonPath("$.memberId").value(member.getId()))
                 .andExpect(jsonPath("$.branchId").value(1))
                 .andExpect(jsonPath("$.name").value("hong"))
-                .andExpect(jsonPath("$.nameplateContentId").value(3));
+                .andExpect(jsonPath("$.nameplateContentId").value(3))
+                .andExpect(jsonPath("$.drinkSetting").value("아이스 아메리카노"))
+                .andExpect(jsonPath("$.drinkNote").value("연하게"));
     }
 
     @Test
-    @DisplayName("사전등록 정보와 비밀번호가 유효하면 회원가입을 완료한다")
+    @DisplayName("사전등록 사원 정보와 비밀번호가 유효하면 회원가입을 완료한다")
     void signup() throws Exception {
-        PreRegistration preRegistration = preRegistrationRepository.save(createPreRegistration());
+        memberRepository.save(createPreRegisteredMember());
         String requestBody = """
                 {
-                  "preRegistrationId": %d,
+                  "name": "hong",
+                  "branchId": 1,
                   "password": "password123"
                 }
-                """.formatted(preRegistration.getId());
+                """;
 
         mockMvc.perform(post("/api/members/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -106,7 +109,8 @@ class MemberSignupTest {
     void signupWithInvalidPassword() throws Exception {
         String requestBody = """
                 {
-                  "preRegistrationId": 1,
+                  "name": "hong",
+                  "branchId": 1,
                   "password": " "
                 }
                 """;
@@ -117,13 +121,7 @@ class MemberSignupTest {
                 .andExpect(status().isBadRequest());
     }
 
-    private PreRegistration createPreRegistration() {
-        return new PreRegistration(
-                new ReferenceInformation(1L, 3L),
-                "hong",
-                12,
-                LocalDate.of(2026, 7, 1),
-                new SubInformation("아이스 아메리카노", "연하게", "오전 교육 예정")
-        );
+    private Member createPreRegisteredMember() {
+        return new Member(1L, "hong", null, 12, LocalDate.of(2026, 7, 1), 3L, "오전 교육 예정");
     }
 }
