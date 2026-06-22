@@ -802,6 +802,20 @@ button {
   text-align: center;
 }
 
+.calendar-weekday.sunday,
+.member-calendar-grid button.sunday {
+  color: #d84b4b;
+}
+
+.calendar-weekday.saturday,
+.member-calendar-grid button.saturday {
+  color: #2f74c0;
+}
+
+.calendar-empty {
+  aspect-ratio: 1;
+}
+
 .member-calendar-grid button {
   aspect-ratio: 1;
   border: 1px solid #e2ebef;
@@ -810,6 +824,14 @@ button {
   color: #2b343b;
   font-weight: 900;
   cursor: pointer;
+}
+
+.member-calendar-grid button.past {
+  border-color: #edf1f3;
+  background: #f4f6f7;
+  color: #a9b3b8;
+  box-shadow: inset 0 8px 18px rgba(38, 52, 60, 0.08);
+  cursor: not-allowed;
 }
 
 .member-calendar-grid button.selected {
@@ -843,11 +865,18 @@ button {
 }
 
 .meal-toggle button.active,
+.leave-type-actions button.active,
 .leave-type-actions button:hover,
 .suggestion-grid button:hover {
   border-color: #247d82;
   background: #eef7fb;
   color: #247d82;
+}
+
+.leave-type-actions button.monthly.active {
+  border-color: #d84b4b;
+  background: #fff1f1;
+  color: #d84b4b;
 }
 
 .member-primary-action,
@@ -859,9 +888,25 @@ button {
 }
 
 .member-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: #247d82;
   color: #fff;
   box-shadow: 0 10px 22px rgba(36, 125, 130, 0.22);
+}
+
+.check-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #247d82;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .member-secondary-action {
@@ -1071,7 +1116,15 @@ button {
   }
 
   .leave-type-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .leave-type-actions button {
+    min-height: 42px;
+    padding: 0 4px;
+    border-radius: 9px;
+    font-size: 13px;
   }
 
   .section-heading {
