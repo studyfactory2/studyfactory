@@ -8,6 +8,7 @@ import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class PreRegistrationService {
     @Transactional
     public PreRegistrationResponse create(PreRegistrationCreateRequest request) {
         validateRequest(request);
+        Long nameplateContentId = getNameplateContentId(request);
         Member member = new Member(
                 request.branchId(),
                 request.name().trim(),
@@ -32,7 +34,7 @@ public class PreRegistrationService {
                 request.role(),
                 request.seatNumber(),
                 request.expectedJoinDate(),
-                request.nameplateContentId(),
+                nameplateContentId,
                 request.memberNote()
         );
         Member savedMember = memberRepository.save(member);
@@ -50,8 +52,19 @@ public class PreRegistrationService {
         if (!branchRepository.existsById(request.branchId())) {
             throw PreRegistrationException.invalidBranch();
         }
-        if (!nameplateContentRepository.existsById(request.nameplateContentId())) {
-            throw PreRegistrationException.invalidNameplateContent();
+    }
+
+    private Long getNameplateContentId(PreRegistrationCreateRequest request) {
+        if (request.nameplateContent() == null || request.nameplateContent().isBlank()) {
+            return null;
         }
+
+        return saveOrGetNameplateContentId(request.nameplateContent().trim());
+    }
+
+    private Long saveOrGetNameplateContentId(String content) {
+        return nameplateContentRepository.findByContent(content)
+                .map(NameplateContent::getId)
+                .orElseGet(() -> nameplateContentRepository.save(new NameplateContent(content)).getId());
     }
 }

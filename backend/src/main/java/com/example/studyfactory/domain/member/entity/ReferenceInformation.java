@@ -14,7 +14,7 @@ public class ReferenceInformation {
     @Column(name = "branch_id", nullable = false)
     private Long branchId;
 
-    @Column(name = "nameplate_content_id", nullable = false)
+    @Column(name = "nameplate_content_id")
     private Long nameplateContentId;
 
     public ReferenceInformation(Long branchId, Long nameplateContentId) {

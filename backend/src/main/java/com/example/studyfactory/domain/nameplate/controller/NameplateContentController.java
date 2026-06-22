@@ -4,8 +4,10 @@ import com.example.studyfactory.domain.nameplate.dto.NameplateContentCreateReque
 import com.example.studyfactory.domain.nameplate.dto.NameplateContentResponse;
 import com.example.studyfactory.domain.nameplate.service.NameplateContentService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class NameplateContentController {
 
     private final NameplateContentService nameplateContentService;
+
+    @GetMapping
+    public List<NameplateContentResponse> findAll() {
+        return nameplateContentService.findAll();
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

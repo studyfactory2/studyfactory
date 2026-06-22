@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.nameplate.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,6 +31,18 @@ class NameplateContentControllerTest {
     @BeforeEach
     void setUp() {
         nameplateContentRepository.deleteAll();
+    }
+
+    @Test
+    @DisplayName("명패내용 목록 조회 요청이면 등록된 명패내용을 반환한다")
+    void findAllNameplateContents() throws Exception {
+        nameplateContentRepository.save(new NameplateContent("회계사"));
+        nameplateContentRepository.save(new NameplateContent("세무사"));
+
+        mockMvc.perform(get("/api/nameplate-contents"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].content").value("회계사"))
+                .andExpect(jsonPath("$[1].content").value("세무사"));
     }
 
     @Test

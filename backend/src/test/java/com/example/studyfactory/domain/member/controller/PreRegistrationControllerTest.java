@@ -61,12 +61,12 @@ class PreRegistrationControllerTest {
                   "role": "STAFF",
                   "seatNumber": 12,
                   "expectedJoinDate": "2026-07-01",
-                  "nameplateContentId": %d,
+                  "nameplateContent": "홍길동 매니저",
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"
                 }
-                """.formatted(branch.getId(), nameplateContent.getId());
+                """.formatted(branch.getId());
 
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -85,6 +85,65 @@ class PreRegistrationControllerTest {
 
         assertThat(memberRepository.count()).isEqualTo(1);
         assertThat(beveragePreferenceRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("직접 입력한 명패내용으로 사전등록하면 명패내용을 저장하고 201 응답을 반환한다")
+    void createPreRegistrationWithCustomNameplateContent() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+
+        String requestBody = """
+                {
+                  "branchId": %d,
+                  "name": "hong",
+                  "role": "STAFF",
+                  "seatNumber": 12,
+                  "expectedJoinDate": "2026-07-01",
+                  "nameplateContent": "회계사",
+                  "drinkSetting": "아이스 아메리카노",
+                  "drinkNote": "연하게",
+                  "memberNote": "오전 교육 예정"
+                }
+                """.formatted(branch.getId());
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.nameplateContentId").exists());
+
+        assertThat(nameplateContentRepository.existsByContent("회계사")).isTrue();
+        assertThat(memberRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("명패내용 없이 사전등록하면 201 응답과 생성 결과를 반환한다")
+    void createPreRegistrationWithoutNameplateContent() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+
+        String requestBody = """
+                {
+                  "branchId": %d,
+                  "name": "hong",
+                  "role": "STAFF",
+                  "seatNumber": 12,
+                  "expectedJoinDate": "2026-07-01",
+                  "nameplateContent": null,
+                  "drinkSetting": "아이스 아메리카노",
+                  "drinkNote": "연하게",
+                  "memberNote": "오전 교육 예정"
+                }
+                """.formatted(branch.getId());
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.nameplateContentId").doesNotExist());
+
+        assertThat(memberRepository.count()).isEqualTo(1);
     }
 
     @Test

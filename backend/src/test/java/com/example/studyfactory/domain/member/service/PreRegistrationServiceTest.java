@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
 import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
@@ -12,11 +13,13 @@ import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
 import java.time.LocalDate;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,7 +52,9 @@ class PreRegistrationServiceTest {
     void createPreRegistration() {
         PreRegistrationCreateRequest request = createRequest();
         given(branchRepository.existsById(1L)).willReturn(true);
-        given(nameplateContentRepository.existsById(3L)).willReturn(true);
+        NameplateContent nameplateContent = new NameplateContent("홍길동 매니저");
+        ReflectionTestUtils.setField(nameplateContent, "id", 3L);
+        given(nameplateContentRepository.findByContent("홍길동 매니저")).willReturn(Optional.of(nameplateContent));
         given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
             Member member = invocation.getArgument(0);
             ReflectionTestUtils.setField(member, "id", 1L);
@@ -75,6 +80,71 @@ class PreRegistrationServiceTest {
     }
 
     @Test
+    @DisplayName("직접 입력한 명패내용이 기존에 없으면 새로 저장한 뒤 사원에 연결한다")
+    void createPreRegistrationWithCustomNameplateContent() {
+        PreRegistrationCreateRequest request = new PreRegistrationCreateRequest(
+                1L,
+                " hong ",
+                MemberRole.STAFF,
+                12,
+                LocalDate.of(2026, 7, 1),
+                " 회계사 ",
+                "아이스 아메리카노",
+                "연하게",
+                "오전 교육 예정"
+        );
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(nameplateContentRepository.findByContent("회계사")).willReturn(Optional.empty());
+        given(nameplateContentRepository.save(any(NameplateContent.class))).willAnswer(invocation -> {
+            NameplateContent nameplateContent = invocation.getArgument(0);
+            ReflectionTestUtils.setField(nameplateContent, "id", 7L);
+            return nameplateContent;
+        });
+        given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
+            Member member = invocation.getArgument(0);
+            ReflectionTestUtils.setField(member, "id", 1L);
+            return member;
+        });
+        given(beveragePreferenceRepository.save(any(BeveragePreference.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        PreRegistrationResponse response = preRegistrationService.create(request);
+
+        assertThat(response.nameplateContentId()).isEqualTo(7L);
+        then(nameplateContentRepository).should(never()).existsById(any());
+        then(nameplateContentRepository).should().save(any(NameplateContent.class));
+    }
+
+    @Test
+    @DisplayName("명패내용이 비어있으면 null로 사원을 저장한다")
+    void createPreRegistrationWithoutNameplateContent() {
+        PreRegistrationCreateRequest request = new PreRegistrationCreateRequest(
+                1L,
+                " hong ",
+                MemberRole.STAFF,
+                12,
+                LocalDate.of(2026, 7, 1),
+                " ",
+                "아이스 아메리카노",
+                "연하게",
+                "오전 교육 예정"
+        );
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
+            Member member = invocation.getArgument(0);
+            ReflectionTestUtils.setField(member, "id", 1L);
+            return member;
+        });
+        given(beveragePreferenceRepository.save(any(BeveragePreference.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        PreRegistrationResponse response = preRegistrationService.create(request);
+
+        assertThat(response.nameplateContentId()).isNull();
+        then(nameplateContentRepository).should(never()).findByContent(any());
+    }
+
+    @Test
     @DisplayName("존재하지 않는 지점이면 예외가 발생한다")
     void throwExceptionWhenBranchDoesNotExist() {
         PreRegistrationCreateRequest request = createRequest();
@@ -85,18 +155,6 @@ class PreRegistrationServiceTest {
                 .hasMessageContaining("존재하지 않는 지점입니다.");
     }
 
-    @Test
-    @DisplayName("존재하지 않는 명패내용이면 예외가 발생한다")
-    void throwExceptionWhenNameplateContentDoesNotExist() {
-        PreRegistrationCreateRequest request = createRequest();
-        given(branchRepository.existsById(1L)).willReturn(true);
-        given(nameplateContentRepository.existsById(3L)).willReturn(false);
-
-        assertThatThrownBy(() -> preRegistrationService.create(request))
-                .isInstanceOf(PreRegistrationException.class)
-                .hasMessageContaining("존재하지 않는 명패내용입니다.");
-    }
-
     private PreRegistrationCreateRequest createRequest() {
         return new PreRegistrationCreateRequest(
                 1L,
@@ -104,7 +162,7 @@ class PreRegistrationServiceTest {
                 MemberRole.STAFF,
                 12,
                 LocalDate.of(2026, 7, 1),
-                3L,
+                "홍길동 매니저",
                 "아이스 아메리카노",
                 "연하게",
                 "오전 교육 예정"

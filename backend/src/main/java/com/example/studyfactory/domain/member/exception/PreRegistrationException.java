@@ -16,4 +16,8 @@ public class PreRegistrationException extends BaseException {
     public static PreRegistrationException invalidNameplateContent() {
         return new PreRegistrationException(HttpStatus.BAD_REQUEST, "존재하지 않는 명패내용입니다.");
     }
+
+    public static PreRegistrationException requiredNameplateContent() {
+        return new PreRegistrationException(HttpStatus.BAD_REQUEST, "명패내용은 필수입니다.");
+    }
 }
