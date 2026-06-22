@@ -39,3 +39,17 @@ export type PreRegistrationVerifyResponse = {
   drinkNote?: string | null;
   memberNote?: string | null;
 };
+
+export type SuggestionCategory = 'SUPPLIES' | 'STUDY' | 'GENERAL' | 'COUNSELING';
+
+export type SuggestionResponse = {
+  id: number;
+  memberId: number;
+  branchId: number;
+  resolvedByMemberId?: number | null;
+  category: SuggestionCategory;
+  content: string;
+  isResolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
