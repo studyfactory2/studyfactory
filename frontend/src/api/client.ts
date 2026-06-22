@@ -1,6 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
-export async function apiRequest(path, options = {}) {
+export async function apiRequest<TResponse>(path: string, options: RequestInit = {}): Promise<TResponse> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
@@ -14,16 +14,16 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (response.status === 204) {
-    return null;
+    return null as TResponse;
   }
 
-  return response.json();
+  return response.json() as Promise<TResponse>;
 }
 
-async function resolveErrorMessage(response) {
-  let fallbackMessage = '요청을 처리하지 못했습니다.';
+async function resolveErrorMessage(response: Response): Promise<string> {
+  const fallbackMessage = '요청을 처리하지 못했습니다.';
   try {
-    const error = await response.json();
+    const error = (await response.json()) as { message?: string; reason?: string; error?: string };
     return error.message || error.reason || error.error || fallbackMessage;
   } catch {
     const message = await response.text();
