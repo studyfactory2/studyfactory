@@ -97,6 +97,10 @@ public class SideDishService {
     }
 
     private String toItems(SideDishCreateRequest request) {
+        if (request.menuName().contains(":")) {
+            return request.menuName().trim();
+        }
+
         return request.menuName().trim() + ": " + request.itemPrice();
     }
 

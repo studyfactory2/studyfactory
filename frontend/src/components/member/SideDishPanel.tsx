@@ -28,6 +28,11 @@ type Message = {
   text: string;
 };
 
+type AlertState = {
+  title: string;
+  description: string;
+};
+
 function getDateClassName(day: number, selectedDate: number) {
   const classNames = ['calendar-day'];
   const weekday = new Date(2026, 5, day).getDay();
@@ -64,12 +69,37 @@ function toApiMealType(mealType: MealType): ApiMealType {
   return mealType === '점심' ? 'LUNCH' : 'DINNER';
 }
 
-function parseSideDishItem(items: string) {
-  const [menuName, price] = items.split(':').map((value) => value.trim());
+function parseSideDishItems(items: string) {
+  return items
+    .split(/\n/)
+    .map((item) => {
+      const [menuName, price] = item.split(':').map((value) => value.trim());
+
+      return {
+        menuName: menuName || item,
+        price: Number(price || 0),
+      };
+    })
+    .filter((item) => item.menuName);
+}
+
+function toOrderItems(items: Array<{ menuName: string; price: number }>) {
+  return items.map((item) => `${item.menuName}: ${item.price}`).join('\n');
+}
+
+function formatCreatedAt(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      date: value,
+      time: '',
+    };
+  }
 
   return {
-    menuName: menuName || items,
-    price: Number(price || 0),
+    date: `${date.getFullYear()}. ${String(date.getMonth() + 1).padStart(2, '0')}. ${String(date.getDate()).padStart(2, '0')}.`,
+    time: `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`,
   };
 }
 
@@ -83,12 +113,16 @@ export function SideDishPanel() {
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  const [alertState, setAlertState] = useState<AlertState | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<SideDishResponse | null>(null);
   const selectedDateLabel = formatSelectedDate(selectedDate);
   const selectedDateValue = formatSelectedDateValue(selectedDate);
   const selectedMealType = toApiMealType(selectedMeal);
   const deadlineText = selectedMeal === '점심' ? '당일 10:45AM 마감' : '당일 16:30PM 마감';
   const totalPrice = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const selectedMealSideDishes = sideDishes.filter((sideDish) => sideDish.mealType === selectedMealType);
+  const selectedMealOrderTotal = selectedMealSideDishes.reduce((sum, sideDish) => sum + sideDish.totalPrice, 0);
+  const latestOrderCreatedAt = selectedMealSideDishes[0] ? formatCreatedAt(selectedMealSideDishes[0].createdAt) : null;
 
   useEffect(() => {
     void loadSideDishes();
@@ -150,24 +184,24 @@ export function SideDishPanel() {
     setSubmitLoading(true);
     setMessage(null);
     try {
-      await Promise.all(
-        validItems.map((item) =>
-          apiRequest<SideDishResponse>('/api/side-dishes', {
-            method: 'POST',
-            body: JSON.stringify({
-              mealDate: selectedDateValue,
-              mealType: selectedMealType,
-              menuName: item.menuName,
-              itemPrice: item.price,
-              totalPrice: item.price,
-            }),
-          })
-        )
-      );
+      const orderTotalPrice = validItems.reduce((sum, item) => sum + item.price, 0);
+      await apiRequest<SideDishResponse>('/api/side-dishes', {
+        method: 'POST',
+        body: JSON.stringify({
+          mealDate: selectedDateValue,
+          mealType: selectedMealType,
+          menuName: toOrderItems(validItems),
+          itemPrice: orderTotalPrice,
+          totalPrice: orderTotalPrice,
+        }),
+      });
       setItems([]);
       setConfirmOpen(false);
       setTransferChecked(false);
-      setMessage({ type: 'success', text: '반찬 신청이 완료되었습니다.' });
+      setAlertState({
+        title: '신청 완료',
+        description: '반찬 신청이 완료되었습니다.',
+      });
       await loadSideDishes();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청에 실패했습니다.' });
@@ -176,13 +210,21 @@ export function SideDishPanel() {
     }
   };
 
-  const deleteSideDish = async (sideDishId: number) => {
+  const deleteSideDish = async () => {
+    if (!cancelTarget) {
+      return;
+    }
+
     setMessage(null);
     try {
-      await apiRequest<void>(`/api/side-dishes/${sideDishId}`, {
+      await apiRequest<void>(`/api/side-dishes/${cancelTarget.id}`, {
         method: 'DELETE',
       });
-      setMessage({ type: 'success', text: '반찬 신청이 삭제되었습니다.' });
+      setCancelTarget(null);
+      setAlertState({
+        title: '취소 완료',
+        description: '반찬 신청이 정상적으로 취소되었습니다.',
+      });
       await loadSideDishes();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청 삭제에 실패했습니다.' });
@@ -239,6 +281,7 @@ export function SideDishPanel() {
           <div>
             <strong>{selectedDateLabel} {selectedMeal} 반찬 신청</strong>
             <p>{deadlineText}</p>
+            <p className="side-dish-live-total">실시간 공장반찬 주문합계 금액: {selectedMealOrderTotal.toLocaleString()}원</p>
           </div>
           <span>합계: {totalPrice.toLocaleString()}원</span>
         </div>
@@ -279,28 +322,50 @@ export function SideDishPanel() {
       </button>
       {message && <p className={`side-dish-message ${message.type}`}>{message.text}</p>}
       <section className="member-list-box">
-        <strong>{selectedDateLabel} {selectedMeal} 신청목록</strong>
+        <div className="side-dish-list-header">
+          <strong>{selectedDateLabel} {selectedMeal} 신청목록</strong>
+          {latestOrderCreatedAt && (
+            <span>
+              {latestOrderCreatedAt.date}
+              <br />
+              {latestOrderCreatedAt.time}
+            </span>
+          )}
+        </div>
         {loading ? (
           <p>신청목록을 불러오는 중입니다.</p>
         ) : selectedMealSideDishes.length === 0 ? (
           <p>아직 신청한 반찬이 없습니다.</p>
         ) : (
           <div className="side-dish-history-list">
-            {selectedMealSideDishes.map((sideDish) => {
-              const sideDishItem = parseSideDishItem(sideDish.items);
+            {selectedMealSideDishes.map((sideDish, orderIndex) => {
+              const orderItems = parseSideDishItems(sideDish.items);
+              const createdAt = formatCreatedAt(sideDish.createdAt);
 
               return (
                 <article className="side-dish-history-item" key={sideDish.id}>
-                  <div>
-                    <strong>{sideDishItem.menuName}</strong>
-                    <span>{sideDish.totalPrice.toLocaleString()}원</span>
+                  <div className="side-dish-order-card-header">
+                    <strong>{orderIndex + 1}번째 주문</strong>
+                    <button type="button" onClick={() => setCancelTarget(sideDish)}>
+                      주문취소
+                    </button>
                   </div>
-                  <button type="button" onClick={() => deleteSideDish(sideDish.id)}>
-                    삭제
-                  </button>
+                  <span className="side-dish-order-created-at">{createdAt.date} {createdAt.time}</span>
+                  <div className="side-dish-order-content">
+                    <ol>
+                      {orderItems.map((item, index) => (
+                        <li key={`${item.menuName}-${index}`}>
+                          <span>{item.menuName}</span>
+                          <strong>{item.price.toLocaleString()}원</strong>
+                        </li>
+                      ))}
+                    </ol>
+                    <span>세트 합계: {sideDish.totalPrice.toLocaleString()}원</span>
+                  </div>
                 </article>
               );
             })}
+            <strong className="side-dish-list-total">합계: {selectedMealOrderTotal.toLocaleString()}원</strong>
           </div>
         )}
       </section>
@@ -315,6 +380,23 @@ export function SideDishPanel() {
             onTransferChange={setTransferChecked}
             onClose={() => setConfirmOpen(false)}
             onSubmit={submitSideDishes}
+          />,
+          document.body
+        )}
+      {cancelTarget &&
+        createPortal(
+          <SideDishCancelModal
+            onClose={() => setCancelTarget(null)}
+            onSubmit={deleteSideDish}
+          />,
+          document.body
+        )}
+      {alertState &&
+        createPortal(
+          <SideDishAlertModal
+            title={alertState.title}
+            description={alertState.description}
+            onClose={() => setAlertState(null)}
           />,
           document.body
         )}
@@ -381,6 +463,44 @@ function SideDishConfirmModal({
             {submitLoading ? '신청 중' : '신청하기'}
           </button>
         </section>
+      </section>
+    </div>
+  );
+}
+
+type SideDishCancelModalProps = {
+  onClose: () => void;
+  onSubmit: () => void;
+};
+
+function SideDishCancelModal({ onClose, onSubmit }: SideDishCancelModalProps) {
+  return (
+    <div className="side-dish-modal-backdrop" role="presentation">
+      <section className="side-dish-small-modal" role="dialog" aria-modal="true" aria-labelledby="side-dish-cancel-title">
+        <h2 id="side-dish-cancel-title">주문 취소</h2>
+        <p>정말 주문을 취소하시겠습니까?</p>
+        <div className="side-dish-modal-actions">
+          <button className="side-dish-modal-cancel" type="button" onClick={onClose}>닫기</button>
+          <button className="side-dish-modal-danger" type="button" onClick={onSubmit}>주문취소</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+type SideDishAlertModalProps = {
+  title: string;
+  description: string;
+  onClose: () => void;
+};
+
+function SideDishAlertModal({ title, description, onClose }: SideDishAlertModalProps) {
+  return (
+    <div className="side-dish-modal-backdrop" role="presentation">
+      <section className="side-dish-small-modal" role="alertdialog" aria-modal="true" aria-labelledby="side-dish-alert-title">
+        <h2 id="side-dish-alert-title">{title}</h2>
+        <p>{description}</p>
+        <button className="side-dish-alert-close" type="button" onClick={onClose}>확인</button>
       </section>
     </div>
   );
