@@ -12,8 +12,9 @@ public record MemberResponse(
         MemberRole role,
         Integer seatNumber,
         LocalDate joinDate,
-        Long nameplateContentId,
+        Long certificationId,
         String memberNote,
+        String preparingCertifications,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -26,8 +27,9 @@ public record MemberResponse(
                 member.getRole(),
                 member.getSeatNumber(),
                 member.getJoinDate(),
-                member.getNameplateContentId(),
+                member.getCertificationId(),
                 member.getMemberNote(),
+                member.getPreparingCertifications(),
                 member.getCreatedAt(),
                 member.getUpdatedAt()
         );

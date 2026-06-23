@@ -19,11 +19,11 @@ class PreRegistrationExceptionTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 명패내용 예외를 생성한다")
-    void createInvalidNameplateContentException() {
-        PreRegistrationException exception = PreRegistrationException.invalidNameplateContent();
+    @DisplayName("존재하지 않는 자격증 예외를 생성한다")
+    void createInvalidCertificationException() {
+        PreRegistrationException exception = PreRegistrationException.invalidCertification();
 
         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(exception.getReason()).isEqualTo("존재하지 않는 명패내용입니다.");
+        assertThat(exception.getReason()).isEqualTo("존재하지 않는 자격증입니다.");
     }
 }

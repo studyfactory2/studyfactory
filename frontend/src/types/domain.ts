@@ -8,7 +8,7 @@ export type Branch = {
   updatedAt?: string;
 };
 
-export type NameplateContent = {
+export type Certification = {
   id: number;
   content: string;
   createdAt?: string;
@@ -34,7 +34,7 @@ export type PreRegistrationVerifyResponse = {
   role: MemberRole;
   seatNumber?: number | null;
   expectedJoinDate?: string;
-  nameplateContentId?: number | null;
+  certificationId?: number | null;
   drinkSetting?: string | null;
   drinkNote?: string | null;
   memberNote?: string | null;
@@ -53,8 +53,9 @@ export type MemberResponse = {
   seatNumber?: number | null;
   joinDate?: string | null;
   expectedJoinDate?: string | null;
-  nameplateContentId?: number | null;
+  certificationId?: number | null;
   memberNote?: string | null;
+  preparingCertifications?: string | null;
   createdAt: string;
   updatedAt: string;
 };

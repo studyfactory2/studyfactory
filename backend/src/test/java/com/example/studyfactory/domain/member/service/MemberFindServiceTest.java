@@ -34,7 +34,7 @@ class MemberFindServiceTest {
         Member secondMember = createMember("lee", 11);
         ReflectionTestUtils.setField(firstMember, "id", 1L);
         ReflectionTestUtils.setField(secondMember, "id", 2L);
-        given(memberRepository.search(null, null, Sort.by(Sort.Direction.ASC, "id")))
+        given(memberRepository.findAllByOrderByIdAsc())
                 .willReturn(List.of(firstMember, secondMember));
 
         List<MemberResponse> responses = memberService.findAll(null, null);
@@ -49,7 +49,7 @@ class MemberFindServiceTest {
     @Test
     @DisplayName("사원이 없으면 빈 목록을 반환한다")
     void findAllMembersWhenEmpty() {
-        given(memberRepository.search(null, null, Sort.by(Sort.Direction.ASC, "id")))
+        given(memberRepository.findAllByOrderByIdAsc())
                 .willReturn(List.of());
 
         List<MemberResponse> responses = memberService.findAll(null, null);
@@ -62,7 +62,7 @@ class MemberFindServiceTest {
     void findAllMembersByName() {
         Member member = createMember("kim", 10);
         ReflectionTestUtils.setField(member, "id", 1L);
-        given(memberRepository.search("ki", null, Sort.by(Sort.Direction.ASC, "id")))
+        given(memberRepository.findByNameContainingOrderByIdAsc("ki"))
                 .willReturn(List.of(member));
 
         List<MemberResponse> responses = memberService.findAll(" ki ", null);
@@ -76,7 +76,7 @@ class MemberFindServiceTest {
     void findAllMembersWhenNameIsBlank() {
         Member member = createMember("kim", 10);
         ReflectionTestUtils.setField(member, "id", 1L);
-        given(memberRepository.search(null, null, Sort.by(Sort.Direction.ASC, "id")))
+        given(memberRepository.findAllByOrderByIdAsc())
                 .willReturn(List.of(member));
 
         List<MemberResponse> responses = memberService.findAll(" ", null);
@@ -90,7 +90,7 @@ class MemberFindServiceTest {
     void findAllMembersByBranchId() {
         Member member = createMember("kim", 10, 1L);
         ReflectionTestUtils.setField(member, "id", 1L);
-        given(memberRepository.search(null, 1L, Sort.by(Sort.Direction.ASC, "id")))
+        given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L))
                 .willReturn(List.of(member));
 
         List<MemberResponse> responses = memberService.findAll(null, 1L);
@@ -104,7 +104,7 @@ class MemberFindServiceTest {
     void findAllMembersByNameAndBranchId() {
         Member member = createMember("kim", 10, 1L);
         ReflectionTestUtils.setField(member, "id", 1L);
-        given(memberRepository.search("ki", 1L, Sort.by(Sort.Direction.ASC, "id")))
+        given(memberRepository.findByNameContainingAndReferenceInformationBranchIdOrderByIdAsc("ki", 1L))
                 .willReturn(List.of(member));
 
         List<MemberResponse> responses = memberService.findAll(" ki ", 1L);

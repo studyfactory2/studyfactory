@@ -58,7 +58,7 @@ class MemberSignupTest {
                 .andExpect(jsonPath("$.memberId").value(member.getId()))
                 .andExpect(jsonPath("$.branchId").value(1))
                 .andExpect(jsonPath("$.name").value("hong"))
-                .andExpect(jsonPath("$.nameplateContentId").value(3))
+                .andExpect(jsonPath("$.certificationId").value(3))
                 .andExpect(jsonPath("$.drinkSetting").value("아이스 아메리카노"))
                 .andExpect(jsonPath("$.drinkNote").value("연하게"));
     }
@@ -83,7 +83,7 @@ class MemberSignupTest {
                 .andExpect(jsonPath("$.branchId").value(1))
                 .andExpect(jsonPath("$.name").value("hong"))
                 .andExpect(jsonPath("$.joinDate").value("2026-07-01"))
-                .andExpect(jsonPath("$.nameplateContentId").value(3));
+                .andExpect(jsonPath("$.certificationId").value(3));
 
         assertThat(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "password123")).isTrue();
     }

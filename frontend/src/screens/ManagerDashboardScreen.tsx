@@ -1,6 +1,7 @@
 import { AdminGridPanel } from '../components/manager/AdminGridPanel';
 import { ManagerTabs } from '../components/manager/ManagerTabs';
 import { ManagerTopBar } from '../components/manager/ManagerTopBar';
+import { MemberStatusPanel } from '../components/manager/MemberStatusPanel';
 import { PlaceholderPanel } from '../components/manager/PlaceholderPanel';
 import { PreRegistrationPanel } from '../components/manager/PreRegistrationPanel';
 import { resolveAdminMenuId } from '../constants/adminMenus';
@@ -12,7 +13,7 @@ export function ManagerDashboardScreen() {
   const memberName = localStorage.getItem('memberName') || '사용자';
   const searchParams = new URLSearchParams(window.location.search);
   const currentView = resolveAdminMenuId(searchParams.get('view'));
-  const { branches, nameplates } = useManagerOptions(role === 'ADMIN');
+  const { branches, certifications } = useManagerOptions(role === 'ADMIN');
 
   if (role !== 'ADMIN') {
     return (
@@ -34,7 +35,9 @@ export function ManagerDashboardScreen() {
         {currentView === 'grid' ? (
           <AdminGridPanel />
         ) : currentView === 'register' ? (
-          <PreRegistrationPanel branches={branches} nameplates={nameplates} />
+          <PreRegistrationPanel branches={branches} certifications={certifications} />
+        ) : currentView === 'status' ? (
+          <MemberStatusPanel branches={branches} certifications={certifications} />
         ) : (
           <PlaceholderPanel currentView={currentView} />
         )}

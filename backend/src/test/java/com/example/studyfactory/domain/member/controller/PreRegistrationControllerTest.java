@@ -15,8 +15,8 @@ import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
-import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
-import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
+import com.example.studyfactory.domain.certification.entity.Certification;
+import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +39,7 @@ class PreRegistrationControllerTest {
     private BranchRepository branchRepository;
 
     @Autowired
-    private NameplateContentRepository nameplateContentRepository;
+    private CertificationRepository certificationRepository;
 
     @Autowired
     private MemberRepository memberRepository;
@@ -55,14 +55,14 @@ class PreRegistrationControllerTest {
         beveragePreferenceRepository.deleteAll();
         memberRepository.deleteAll();
         branchRepository.deleteAll();
-        nameplateContentRepository.deleteAll();
+        certificationRepository.deleteAll();
     }
 
     @Test
     @DisplayName("사전등록 요청이 유효하면 201 응답과 생성 결과를 반환한다")
     void createPreRegistration() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
-        NameplateContent nameplateContent = nameplateContentRepository.save(new NameplateContent("홍길동 매니저"));
+        Certification certification = certificationRepository.save(new Certification("홍길동 매니저"));
 
         String requestBody = """
                 {
@@ -71,7 +71,7 @@ class PreRegistrationControllerTest {
                   "role": "STAFF",
                   "seatNumber": 12,
                   "expectedJoinDate": "2026-07-01",
-                  "nameplateContent": "홍길동 매니저",
+                  "certification": "홍길동 매니저",
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"
@@ -88,7 +88,7 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.role").value("STAFF"))
                 .andExpect(jsonPath("$.seatNumber").value(12))
                 .andExpect(jsonPath("$.expectedJoinDate").value("2026-07-01"))
-                .andExpect(jsonPath("$.nameplateContentId").value(nameplateContent.getId()))
+                .andExpect(jsonPath("$.certificationId").value(certification.getId()))
                 .andExpect(jsonPath("$.drinkSetting").value("아이스 아메리카노"))
                 .andExpect(jsonPath("$.drinkNote").value("연하게"))
                 .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
@@ -98,8 +98,8 @@ class PreRegistrationControllerTest {
     }
 
     @Test
-    @DisplayName("직접 입력한 명패내용으로 사전등록하면 명패내용을 저장하고 201 응답을 반환한다")
-    void createPreRegistrationWithCustomNameplateContent() throws Exception {
+    @DisplayName("직접 입력한 자격증으로 사전등록하면 자격증을 저장하고 201 응답을 반환한다")
+    void createPreRegistrationWithCustomCertification() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
 
         String requestBody = """
@@ -109,7 +109,7 @@ class PreRegistrationControllerTest {
                   "role": "STAFF",
                   "seatNumber": 12,
                   "expectedJoinDate": "2026-07-01",
-                  "nameplateContent": "회계사",
+                  "certification": "회계사",
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"
@@ -121,15 +121,15 @@ class PreRegistrationControllerTest {
                         .content(requestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.nameplateContentId").exists());
+                .andExpect(jsonPath("$.certificationId").exists());
 
-        assertThat(nameplateContentRepository.existsByContent("회계사")).isTrue();
+        assertThat(certificationRepository.existsByContent("회계사")).isTrue();
         assertThat(memberRepository.count()).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("명패내용 없이 사전등록하면 201 응답과 생성 결과를 반환한다")
-    void createPreRegistrationWithoutNameplateContent() throws Exception {
+    @DisplayName("자격증 없이 사전등록하면 201 응답과 생성 결과를 반환한다")
+    void createPreRegistrationWithoutCertification() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
 
         String requestBody = """
@@ -139,7 +139,7 @@ class PreRegistrationControllerTest {
                   "role": "STAFF",
                   "seatNumber": 12,
                   "expectedJoinDate": "2026-07-01",
-                  "nameplateContent": null,
+                  "certification": null,
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"
@@ -151,7 +151,7 @@ class PreRegistrationControllerTest {
                         .content(requestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.nameplateContentId").doesNotExist());
+                .andExpect(jsonPath("$.certificationId").doesNotExist());
 
         assertThat(memberRepository.count()).isEqualTo(1);
     }
@@ -168,7 +168,7 @@ class PreRegistrationControllerTest {
                   "role": "STAFF",
                   "seatNumber": null,
                   "expectedJoinDate": "2026-07-01",
-                  "nameplateContent": null,
+                  "certification": null,
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"
@@ -197,7 +197,7 @@ class PreRegistrationControllerTest {
                   "role": "STAFF",
                   "seatNumber": null,
                   "expectedJoinDate": "2026-07-01",
-                  "nameplateContent": null,
+                  "certification": null,
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"
@@ -228,7 +228,7 @@ class PreRegistrationControllerTest {
                   "role": "STAFF",
                   "seatNumber": null,
                   "expectedJoinDate": "2026-07-01",
-                  "nameplateContent": null,
+                  "certification": null,
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"
@@ -249,7 +249,7 @@ class PreRegistrationControllerTest {
                   "role": "ADMIN",
                   "seatNumber": 15,
                   "expectedJoinDate": "2026-07-02",
-                  "nameplateContent": "관리자",
+                  "certification": "관리자",
                   "drinkSetting": "라떼",
                   "drinkNote": "뜨겁게",
                   "memberNote": "수정됨"
@@ -282,7 +282,7 @@ class PreRegistrationControllerTest {
                   "role": "STAFF",
                   "seatNumber": null,
                   "expectedJoinDate": "2026-07-01",
-                  "nameplateContent": null,
+                  "certification": null,
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게",
                   "memberNote": "오전 교육 예정"

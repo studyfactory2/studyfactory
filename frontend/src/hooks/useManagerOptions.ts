@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { apiRequest } from '../api/client';
-import type { Branch, NameplateContent } from '../types/domain';
+import type { Branch, Certification } from '../types/domain';
 
 export function useManagerOptions(enabled: boolean) {
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [nameplates, setNameplates] = useState<NameplateContent[]>([]);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
 
   useEffect(() => {
     if (!enabled) {
@@ -16,17 +16,17 @@ export function useManagerOptions(enabled: boolean) {
 
   const loadOptions = async () => {
     try {
-      const [branchResponses, nameplateResponses] = await Promise.all([
+      const [branchResponses, certificationResponses] = await Promise.all([
         apiRequest<Branch[]>('/api/branches'),
-        apiRequest<NameplateContent[]>('/api/nameplate-contents'),
+        apiRequest<Certification[]>('/api/certifications'),
       ]);
       setBranches(branchResponses);
-      setNameplates(nameplateResponses);
+      setCertifications(certificationResponses);
     } catch {
       setBranches([]);
-      setNameplates([]);
+      setCertifications([]);
     }
   };
 
-  return { branches, nameplates };
+  return { branches, certifications };
 }

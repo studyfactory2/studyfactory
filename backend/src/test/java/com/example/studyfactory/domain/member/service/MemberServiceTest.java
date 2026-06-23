@@ -12,6 +12,7 @@ import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRep
 import com.example.studyfactory.domain.member.dto.DrinkRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
+import com.example.studyfactory.domain.member.dto.MemberUpdateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyResponse;
 import com.example.studyfactory.domain.member.entity.Member;
@@ -57,7 +58,7 @@ class MemberServiceTest {
         assertThat(response.memberId()).isEqualTo(1L);
         assertThat(response.branchId()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("hong");
-        assertThat(response.nameplateContentId()).isEqualTo(3L);
+        assertThat(response.certificationId()).isEqualTo(3L);
         assertThat(response.drinkSetting()).isEqualTo("아이스 아메리카노");
         assertThat(response.drinkNote()).isEqualTo("연하게");
     }
@@ -74,7 +75,7 @@ class MemberServiceTest {
         assertThat(response.branchId()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("hong");
         assertThat(response.joinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
-        assertThat(response.nameplateContentId()).isEqualTo(3L);
+        assertThat(response.certificationId()).isEqualTo(3L);
         assertThat(member.getPassword()).isEqualTo("password123");
     }
 
@@ -112,6 +113,75 @@ class MemberServiceTest {
 
         assertThat(response.drinks()).isEqualTo("따뜻한 라떼");
         assertThat(response.notes()).isEqualTo("시럽 추가");
+    }
+
+    @Test
+    @DisplayName("관리자가 사원 정보를 수정한다")
+    void updateMemberByAdmin() {
+        Member admin = createRegisteredMember(MemberRole.ADMIN);
+        Member member = createRegisteredMember();
+        ReflectionTestUtils.setField(admin, "id", 2L);
+        given(memberRepository.findById(2L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        MemberUpdateRequest request = new MemberUpdateRequest(
+                3L,
+                " kim ",
+                MemberRole.STAFF,
+                20,
+                LocalDate.of(2026, 8, 1),
+                4L,
+                "오후 상담",
+                "회계사\n세무사"
+        );
+
+        assertThat(memberService.update(2L, 1L, request).name()).isEqualTo("kim");
+        assertThat(member.getBranchId()).isEqualTo(3L);
+        assertThat(member.getRole()).isEqualTo(MemberRole.STAFF);
+        assertThat(member.getSeatNumber()).isEqualTo(20);
+        assertThat(member.getJoinDate()).isEqualTo(LocalDate.of(2026, 8, 1));
+        assertThat(member.getCertificationId()).isEqualTo(4L);
+        assertThat(member.getMemberNote()).isEqualTo("오후 상담");
+        assertThat(member.getPreparingCertifications()).isEqualTo("회계사\n세무사");
+    }
+
+    @Test
+    @DisplayName("일반 사원이 사원 정보를 수정하면 예외가 발생한다")
+    void throwExceptionWhenUpdateMemberWithoutPermission() {
+        Member member = createRegisteredMember();
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        MemberUpdateRequest request = new MemberUpdateRequest(
+                1L,
+                "kim",
+                MemberRole.MEMBER,
+                20,
+                LocalDate.of(2026, 8, 1),
+                null,
+                "",
+                ""
+        );
+
+        assertThatThrownBy(() -> memberService.update(1L, 2L, request))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("스태프가 사원 정보와 음료 설정을 삭제한다")
+    void deleteMemberByStaff() {
+        Member staff = createRegisteredMember(MemberRole.STAFF);
+        Member member = createRegisteredMember();
+        ReflectionTestUtils.setField(staff, "id", 2L);
+        BeveragePreference beveragePreference = new BeveragePreference(1L, 1L, "콜라", "차갑게");
+        given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(beveragePreferenceRepository.findByMemberId(1L)).willReturn(List.of(beveragePreference));
+
+        memberService.delete(2L, 1L);
+
+        then(beveragePreferenceRepository).should().deleteAll(List.of(beveragePreference));
+        then(memberRepository).should().delete(member);
     }
 
     @Test

@@ -44,21 +44,25 @@ public class Member extends BaseEntity {
     @Column(columnDefinition = "text")
     private String memberNote;
 
-    public Member(Long branchId, String name, String password, Integer seatNumber, LocalDate joinDate, Long nameplateContentId,
+    @Column(columnDefinition = "text")
+    private String preparingCertifications;
+
+    public Member(Long branchId, String name, String password, Integer seatNumber, LocalDate joinDate, Long certificationId,
                   String memberNote) {
-        this(branchId, name, password, MemberRole.MEMBER, seatNumber, joinDate, nameplateContentId, memberNote);
+        this(branchId, name, password, MemberRole.MEMBER, seatNumber, joinDate, certificationId, memberNote);
     }
 
     public Member(Long branchId, String name, String password, MemberRole role, Integer seatNumber, LocalDate joinDate,
-                  Long nameplateContentId, String memberNote) {
+                  Long certificationId, String memberNote) {
         this(
                 null,
-                new ReferenceInformation(branchId, nameplateContentId),
+                new ReferenceInformation(branchId, certificationId),
                 name,
                 password,
                 role,
                 new WorkInformation(seatNumber, joinDate),
-                memberNote
+                memberNote,
+                null
         );
     }
 
@@ -69,7 +73,8 @@ public class Member extends BaseEntity {
             String password,
             MemberRole role,
             WorkInformation workInformation,
-            String memberNote
+            String memberNote,
+            String preparingCertifications
     ) {
         this.id = id;
         this.referenceInformation = referenceInformation;
@@ -78,14 +83,15 @@ public class Member extends BaseEntity {
         this.role = role;
         this.workInformation = workInformation;
         this.memberNote = memberNote;
+        this.preparingCertifications = preparingCertifications;
     }
 
     public Long getBranchId() {
         return referenceInformation.getBranchId();
     }
 
-    public Long getNameplateContentId() {
-        return referenceInformation.getNameplateContentId();
+    public Long getCertificationId() {
+        return referenceInformation.getCertificationId();
     }
 
     public Integer getSeatNumber() {
@@ -106,14 +112,32 @@ public class Member extends BaseEntity {
             MemberRole role,
             Integer seatNumber,
             LocalDate joinDate,
-            Long nameplateContentId,
+            Long certificationId,
             String memberNote
     ) {
-        referenceInformation.update(branchId, nameplateContentId);
+        referenceInformation.update(branchId, certificationId);
         this.name = name;
         this.role = role;
         workInformation.update(seatNumber, joinDate);
         this.memberNote = memberNote;
+    }
+
+    public void update(
+            Long branchId,
+            String name,
+            MemberRole role,
+            Integer seatNumber,
+            LocalDate joinDate,
+            Long certificationId,
+            String memberNote,
+            String preparingCertifications
+    ) {
+        referenceInformation.update(branchId, certificationId);
+        this.name = name;
+        this.role = role;
+        workInformation.update(seatNumber, joinDate);
+        this.memberNote = memberNote;
+        this.preparingCertifications = preparingCertifications;
     }
 
     public boolean hasAllPermissions() {

@@ -13,8 +13,8 @@ import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
-import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
-import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
+import com.example.studyfactory.domain.certification.entity.Certification;
+import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
@@ -45,16 +45,16 @@ class PreRegistrationServiceTest {
     private BranchRepository branchRepository;
 
     @Mock
-    private NameplateContentRepository nameplateContentRepository;
+    private CertificationRepository certificationRepository;
 
     @Test
     @DisplayName("사전등록 요청으로 사원과 음료 정보를 저장하고 응답을 반환한다")
     void createPreRegistration() {
         PreRegistrationCreateRequest request = createRequest();
         given(branchRepository.existsById(1L)).willReturn(true);
-        NameplateContent nameplateContent = new NameplateContent("홍길동 매니저");
-        ReflectionTestUtils.setField(nameplateContent, "id", 3L);
-        given(nameplateContentRepository.findByContent("홍길동 매니저")).willReturn(Optional.of(nameplateContent));
+        Certification certification = new Certification("홍길동 매니저");
+        ReflectionTestUtils.setField(certification, "id", 3L);
+        given(certificationRepository.findByContent("홍길동 매니저")).willReturn(Optional.of(certification));
         given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
             Member member = invocation.getArgument(0);
             ReflectionTestUtils.setField(member, "id", 1L);
@@ -71,7 +71,7 @@ class PreRegistrationServiceTest {
         assertThat(response.role()).isEqualTo(MemberRole.STAFF);
         assertThat(response.seatNumber()).isEqualTo(12);
         assertThat(response.expectedJoinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
-        assertThat(response.nameplateContentId()).isEqualTo(3L);
+        assertThat(response.certificationId()).isEqualTo(3L);
         assertThat(response.drinkSetting()).isEqualTo("아이스 아메리카노");
         assertThat(response.drinkNote()).isEqualTo("연하게");
         assertThat(response.memberNote()).isEqualTo("오전 교육 예정");
@@ -80,8 +80,8 @@ class PreRegistrationServiceTest {
     }
 
     @Test
-    @DisplayName("직접 입력한 명패내용이 기존에 없으면 새로 저장한 뒤 사원에 연결한다")
-    void createPreRegistrationWithCustomNameplateContent() {
+    @DisplayName("직접 입력한 자격증이 기존에 없으면 새로 저장한 뒤 사원에 연결한다")
+    void createPreRegistrationWithCustomCertification() {
         PreRegistrationCreateRequest request = new PreRegistrationCreateRequest(
                 1L,
                 " hong ",
@@ -94,11 +94,11 @@ class PreRegistrationServiceTest {
                 "오전 교육 예정"
         );
         given(branchRepository.existsById(1L)).willReturn(true);
-        given(nameplateContentRepository.findByContent("회계사")).willReturn(Optional.empty());
-        given(nameplateContentRepository.save(any(NameplateContent.class))).willAnswer(invocation -> {
-            NameplateContent nameplateContent = invocation.getArgument(0);
-            ReflectionTestUtils.setField(nameplateContent, "id", 7L);
-            return nameplateContent;
+        given(certificationRepository.findByContent("회계사")).willReturn(Optional.empty());
+        given(certificationRepository.save(any(Certification.class))).willAnswer(invocation -> {
+            Certification certification = invocation.getArgument(0);
+            ReflectionTestUtils.setField(certification, "id", 7L);
+            return certification;
         });
         given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
             Member member = invocation.getArgument(0);
@@ -110,14 +110,14 @@ class PreRegistrationServiceTest {
 
         PreRegistrationResponse response = preRegistrationService.create(request);
 
-        assertThat(response.nameplateContentId()).isEqualTo(7L);
-        then(nameplateContentRepository).should(never()).existsById(any());
-        then(nameplateContentRepository).should().save(any(NameplateContent.class));
+        assertThat(response.certificationId()).isEqualTo(7L);
+        then(certificationRepository).should(never()).existsById(any());
+        then(certificationRepository).should().save(any(Certification.class));
     }
 
     @Test
-    @DisplayName("명패내용이 비어있으면 null로 사원을 저장한다")
-    void createPreRegistrationWithoutNameplateContent() {
+    @DisplayName("자격증이 비어있으면 null로 사원을 저장한다")
+    void createPreRegistrationWithoutCertification() {
         PreRegistrationCreateRequest request = new PreRegistrationCreateRequest(
                 1L,
                 " hong ",
@@ -140,8 +140,8 @@ class PreRegistrationServiceTest {
 
         PreRegistrationResponse response = preRegistrationService.create(request);
 
-        assertThat(response.nameplateContentId()).isNull();
-        then(nameplateContentRepository).should(never()).findByContent(any());
+        assertThat(response.certificationId()).isNull();
+        then(certificationRepository).should(never()).findByContent(any());
     }
 
     @Test

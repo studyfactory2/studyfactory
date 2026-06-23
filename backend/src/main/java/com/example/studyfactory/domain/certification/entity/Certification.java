@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.nameplate.entity;
+package com.example.studyfactory.domain.certification.entity;
 
 import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -13,9 +13,9 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "nameplate_contents")
+@Table(name = "certifications")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class NameplateContent extends BaseEntity {
+public class Certification extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,7 +24,7 @@ public class NameplateContent extends BaseEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String content;
 
-    public NameplateContent(String content) {
+    public Certification(String content) {
         this.content = content;
     }
 }

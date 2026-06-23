@@ -14,16 +14,16 @@ public class ReferenceInformation {
     @Column(name = "branch_id", nullable = false)
     private Long branchId;
 
-    @Column(name = "nameplate_content_id")
-    private Long nameplateContentId;
+    @Column(name = "certification_id")
+    private Long certificationId;
 
-    public ReferenceInformation(Long branchId, Long nameplateContentId) {
+    public ReferenceInformation(Long branchId, Long certificationId) {
         this.branchId = branchId;
-        this.nameplateContentId = nameplateContentId;
+        this.certificationId = certificationId;
     }
 
-    public void update(Long branchId, Long nameplateContentId) {
+    public void update(Long branchId, Long certificationId) {
         this.branchId = branchId;
-        this.nameplateContentId = nameplateContentId;
+        this.certificationId = certificationId;
     }
 }

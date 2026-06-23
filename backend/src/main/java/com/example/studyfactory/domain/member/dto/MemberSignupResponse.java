@@ -12,7 +12,7 @@ public record MemberSignupResponse(
         MemberRole role,
         Integer seatNumber,
         LocalDate joinDate,
-        Long nameplateContentId,
+        Long certificationId,
         String memberNote,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -26,7 +26,7 @@ public record MemberSignupResponse(
                 member.getRole(),
                 member.getSeatNumber(),
                 member.getJoinDate(),
-                member.getNameplateContentId(),
+                member.getCertificationId(),
                 member.getMemberNote(),
                 member.getCreatedAt(),
                 member.getUpdatedAt()

@@ -7,6 +7,7 @@ import com.example.studyfactory.domain.member.dto.DrinkRequest;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
+import com.example.studyfactory.domain.member.dto.MemberUpdateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyResponse;
 import com.example.studyfactory.domain.member.entity.Member;
@@ -29,7 +30,7 @@ public class MemberService {
     public List<MemberResponse> findAll(String name, Long branchId) {
         String searchName = toSearchName(name);
 
-        return memberRepository.search(searchName, branchId, Sort.by(Sort.Direction.ASC, "id"))
+        return findMembers(searchName, branchId)
                 .stream()
                 .map(MemberResponse::from)
                 .toList();
@@ -41,6 +42,34 @@ public class MemberService {
                 .stream()
                 .map(MemberResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public MemberResponse update(Long currentMemberId, Long memberId, MemberUpdateRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member member = findMember(memberId);
+        member.update(
+                request.branchId(),
+                request.name().trim(),
+                request.role(),
+                request.seatNumber(),
+                request.joinDate(),
+                request.certificationId(),
+                request.memberNote(),
+                request.preparingCertifications()
+        );
+
+        return MemberResponse.from(member);
+    }
+
+    @Transactional
+    public void delete(Long currentMemberId, Long memberId) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member member = findMember(memberId);
+        beveragePreferenceRepository.deleteAll(beveragePreferenceRepository.findByMemberId(member.getId()));
+        memberRepository.delete(member);
     }
 
     @Transactional(readOnly = true)
@@ -167,6 +196,22 @@ public class MemberService {
         }
 
         return name.trim();
+    }
+
+    private List<Member> findMembers(String name, Long branchId) {
+        if (name != null && branchId != null) {
+            return memberRepository.findByNameContainingAndReferenceInformationBranchIdOrderByIdAsc(name, branchId);
+        }
+
+        if (name != null) {
+            return memberRepository.findByNameContainingOrderByIdAsc(name);
+        }
+
+        if (branchId != null) {
+            return memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(branchId);
+        }
+
+        return memberRepository.findAllByOrderByIdAsc();
     }
 
     private void validateNotSignedUp(Member member) {

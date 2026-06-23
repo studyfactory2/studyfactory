@@ -6,6 +6,7 @@ import com.example.studyfactory.domain.member.dto.DrinkRequest;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
+import com.example.studyfactory.domain.member.dto.MemberUpdateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyResponse;
 import com.example.studyfactory.domain.member.service.MemberService;
@@ -42,6 +43,24 @@ public class MemberController {
     @GetMapping("/pre-registrations/pending")
     public List<MemberResponse> findPendingPreRegistrations() {
         return memberService.findPendingPreRegistrations();
+    }
+
+    @PatchMapping("/{memberId}")
+    public MemberResponse update(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId,
+            @Valid @RequestBody MemberUpdateRequest request
+    ) {
+        return memberService.update(currentMemberId, memberId, request);
+    }
+
+    @DeleteMapping("/{memberId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId
+    ) {
+        memberService.delete(currentMemberId, memberId);
     }
 
     @PostMapping("/pre-registration/verify")

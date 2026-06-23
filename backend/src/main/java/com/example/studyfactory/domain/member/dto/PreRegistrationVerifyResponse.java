@@ -10,7 +10,7 @@ public record PreRegistrationVerifyResponse(
         String name,
         Integer seatNumber,
         LocalDate expectedJoinDate,
-        Long nameplateContentId,
+        Long certificationId,
         String drinkSetting,
         String drinkNote,
         String memberNote
@@ -23,7 +23,7 @@ public record PreRegistrationVerifyResponse(
                 member.getName(),
                 member.getSeatNumber(),
                 member.getJoinDate(),
-                member.getNameplateContentId(),
+                member.getCertificationId(),
                 beveragePreference.getDrinks(),
                 beveragePreference.getNotes(),
                 member.getMemberNote()

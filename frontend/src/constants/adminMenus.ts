@@ -1,4 +1,4 @@
-export type AdminMenuId = 'grid' | 'register' | 'attendance' | 'staff-work' | 'staff-page';
+export type AdminMenuId = 'grid' | 'register' | 'status' | 'attendance' | 'staff-work' | 'staff-page';
 
 export type AdminMenu = {
   id: AdminMenuId;
@@ -13,7 +13,7 @@ export const ADMIN_MENUS: AdminMenu[] = [
 ];
 
 export function resolveAdminMenuId(value: string | null): AdminMenuId {
-  if (value === 'register') {
+  if (value === 'register' || value === 'status') {
     return value;
   }
 
@@ -23,6 +23,10 @@ export function resolveAdminMenuId(value: string | null): AdminMenuId {
 export function getAdminMenuLabel(menuId: AdminMenuId): string {
   if (menuId === 'register') {
     return '사원 등록';
+  }
+
+  if (menuId === 'status') {
+    return '사원 현황';
   }
 
   return ADMIN_MENUS.find((menu) => menu.id === menuId)?.label || '관리자 페이지';

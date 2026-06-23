@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { apiRequest } from '../../api/client';
 import { Dropdown, type DropdownOption } from '../common/Dropdown';
-import type { Branch, MemberRole, NameplateContent, PreRegistrationResponse } from '../../types/domain';
+import type { Branch, MemberRole, Certification, PreRegistrationResponse } from '../../types/domain';
 
 type PreRegistrationPanelProps = {
   branches: Branch[];
-  nameplates: NameplateContent[];
+  certifications: Certification[];
 };
 
 type PreRegistrationFormState = {
@@ -15,7 +15,7 @@ type PreRegistrationFormState = {
   name: string;
   seatNumber: string;
   expectedJoinDate: string;
-  nameplateContent: string;
+  certification: string;
   drinkSetting: string;
   drinkNote: string;
   memberNote: string;
@@ -28,14 +28,14 @@ const ROLE_OPTIONS: Array<{ value: MemberRole; label: string }> = [
   { value: 'ADMIN', label: '관리자' },
 ];
 
-export function PreRegistrationPanel({ branches, nameplates }: PreRegistrationPanelProps) {
+export function PreRegistrationPanel({ branches, certifications }: PreRegistrationPanelProps) {
   const branchOptions = branches.length > 0 ? branches : [FALLBACK_BRANCH];
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [selectedRole, setSelectedRole] = useState<MemberRole>('MEMBER');
   const [name, setName] = useState('');
   const [seatNumber, setSeatNumber] = useState('');
   const [expectedJoinDate, setExpectedJoinDate] = useState('');
-  const [nameplateContent, setNameplateContent] = useState('');
+  const [certification, setCertification] = useState('');
   const [drinkSetting, setDrinkSetting] = useState('');
   const [drinkNote, setDrinkNote] = useState('');
   const [memberNote, setMemberNote] = useState('');
@@ -99,7 +99,7 @@ export function PreRegistrationPanel({ branches, nameplates }: PreRegistrationPa
           name,
           seatNumber,
           expectedJoinDate,
-          nameplateContent,
+          certification,
           drinkSetting,
           drinkNote,
           memberNote,
@@ -123,7 +123,7 @@ export function PreRegistrationPanel({ branches, nameplates }: PreRegistrationPa
       name: member.name,
       seatNumber: member.seatNumber ? String(member.seatNumber) : '',
       expectedJoinDate: member.expectedJoinDate || '',
-      nameplateContent: findNameplateContent(nameplates, member.nameplateContentId),
+      certification: findCertification(certifications, member.certificationId),
       drinkSetting: member.drinkSetting || '',
       drinkNote: member.drinkNote || '',
       memberNote: member.memberNote || '',
@@ -187,7 +187,7 @@ export function PreRegistrationPanel({ branches, nameplates }: PreRegistrationPa
     role: formState.role,
     seatNumber: formState.seatNumber ? Number(formState.seatNumber) : null,
     expectedJoinDate: formState.expectedJoinDate,
-    nameplateContent: formState.nameplateContent.trim() || null,
+    certification: formState.certification.trim() || null,
     drinkSetting: formState.drinkSetting.trim(),
     drinkNote: formState.drinkNote.trim(),
     memberNote: formState.memberNote.trim(),
@@ -197,7 +197,7 @@ export function PreRegistrationPanel({ branches, nameplates }: PreRegistrationPa
     setName('');
     setSeatNumber('');
     setExpectedJoinDate('');
-    setNameplateContent('');
+    setCertification('');
     setDrinkSetting('');
     setDrinkNote('');
     setMemberNote('');
@@ -284,17 +284,17 @@ export function PreRegistrationPanel({ branches, nameplates }: PreRegistrationPa
           <input type="date" value={expectedJoinDate} onChange={(event) => setExpectedJoinDate(event.target.value)} />
         </label>
         <label>
-          <span>명패 내용</span>
+          <span>자격증</span>
           <input
-            list="nameplate-options"
+            list="certification-options"
             type="text"
-            placeholder="명패 문구 입력 또는 선택"
-            value={nameplateContent}
-            onChange={(event) => setNameplateContent(event.target.value)}
+            placeholder="자격증 입력 또는 선택"
+            value={certification}
+            onChange={(event) => setCertification(event.target.value)}
           />
-          <datalist id="nameplate-options">
-            {nameplates.map((nameplate) => (
-              <option key={nameplate.id} value={nameplate.content} />
+          <datalist id="certification-options">
+            {certifications.map((certification) => (
+              <option key={certification.id} value={certification.content} />
             ))}
           </datalist>
         </label>
@@ -388,11 +388,11 @@ export function PreRegistrationPanel({ branches, nameplates }: PreRegistrationPa
                       <input type="date" value={editDraft.expectedJoinDate} onChange={(event) => changeEditDraft('expectedJoinDate', event.target.value)} />
                     </label>
                     <label>
-                      <span>명패 내용</span>
+                      <span>자격증</span>
                       <input
-                        list="nameplate-options"
-                        value={editDraft.nameplateContent}
-                        onChange={(event) => changeEditDraft('nameplateContent', event.target.value)}
+                        list="certification-options"
+                        value={editDraft.certification}
+                        onChange={(event) => changeEditDraft('certification', event.target.value)}
                       />
                     </label>
                     <label className="full-field">
@@ -468,8 +468,8 @@ function findBranchName(branches: Branch[], branchId: number) {
   return branches.find((branch) => branch.id === branchId)?.name || `지점 ${branchId}`;
 }
 
-function findNameplateContent(nameplates: NameplateContent[], nameplateContentId?: number | null) {
-  return nameplates.find((nameplate) => nameplate.id === nameplateContentId)?.content || '';
+function findCertification(certifications: Certification[], certificationId?: number | null) {
+  return certifications.find((certification) => certification.id === certificationId)?.content || '';
 }
 
 function toRoleLabel(role: MemberRole) {

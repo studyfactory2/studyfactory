@@ -14,7 +14,7 @@ const ADMIN_GRID_SECTIONS: AdminGridSection[] = [
     title: '사원 관리',
     items: [
       { icon: 'member-add', label: '사원 등록', href: '/managerdashboard?view=register' },
-      { icon: 'member', label: '사원 현황' },
+      { icon: 'member', label: '사원 현황', href: '/managerdashboard?view=status' },
     ],
   },
   {

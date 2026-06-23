@@ -17,7 +17,7 @@ public record PreRegistrationCreateRequest(
         Integer seatNumber,
         @NotNull(message = "입사예정일은 필수입니다.")
         LocalDate expectedJoinDate,
-        String nameplateContent,
+        String certification,
         String drinkSetting,
         String drinkNote,
         String memberNote

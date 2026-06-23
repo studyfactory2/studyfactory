@@ -9,8 +9,8 @@ import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
-import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
-import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
+import com.example.studyfactory.domain.certification.entity.Certification;
+import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -24,12 +24,12 @@ public class PreRegistrationService {
     private final MemberRepository memberRepository;
     private final BeveragePreferenceRepository beveragePreferenceRepository;
     private final BranchRepository branchRepository;
-    private final NameplateContentRepository nameplateContentRepository;
+    private final CertificationRepository certificationRepository;
 
     @Transactional
     public PreRegistrationResponse create(PreRegistrationCreateRequest request) {
         validateRequest(request);
-        Long nameplateContentId = getNameplateContentId(request);
+        Long certificationId = getCertificationId(request);
         Member member = new Member(
                 request.branchId(),
                 request.name().trim(),
@@ -37,7 +37,7 @@ public class PreRegistrationService {
                 request.role(),
                 request.seatNumber(),
                 request.expectedJoinDate(),
-                nameplateContentId,
+                certificationId,
                 request.memberNote()
         );
         Member savedMember = memberRepository.save(member);
@@ -63,14 +63,14 @@ public class PreRegistrationService {
     public PreRegistrationResponse update(Long memberId, PreRegistrationCreateRequest request) {
         validateRequest(request);
         Member member = findPendingMember(memberId);
-        Long nameplateContentId = getNameplateContentId(request);
+        Long certificationId = getCertificationId(request);
         member.updatePreRegistration(
                 request.branchId(),
                 request.name().trim(),
                 request.role(),
                 request.seatNumber(),
                 request.expectedJoinDate(),
-                nameplateContentId,
+                certificationId,
                 request.memberNote()
         );
         BeveragePreference beveragePreference = findOrCreateBeveragePreference(member);
@@ -92,18 +92,18 @@ public class PreRegistrationService {
         }
     }
 
-    private Long getNameplateContentId(PreRegistrationCreateRequest request) {
-        if (request.nameplateContent() == null || request.nameplateContent().isBlank()) {
+    private Long getCertificationId(PreRegistrationCreateRequest request) {
+        if (request.certification() == null || request.certification().isBlank()) {
             return null;
         }
 
-        return saveOrGetNameplateContentId(request.nameplateContent().trim());
+        return saveOrGetCertificationId(request.certification().trim());
     }
 
-    private Long saveOrGetNameplateContentId(String content) {
-        return nameplateContentRepository.findByContent(content)
-                .map(NameplateContent::getId)
-                .orElseGet(() -> nameplateContentRepository.save(new NameplateContent(content)).getId());
+    private Long saveOrGetCertificationId(String content) {
+        return certificationRepository.findByContent(content)
+                .map(Certification::getId)
+                .orElseGet(() -> certificationRepository.save(new Certification(content)).getId());
     }
 
     private Member findPendingMember(Long memberId) {
