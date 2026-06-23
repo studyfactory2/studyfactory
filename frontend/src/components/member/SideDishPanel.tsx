@@ -19,6 +19,7 @@ type SideDishItem = {
   menuName: string;
   price: string;
 };
+type MealType = '점심' | '저녁';
 
 function getDateClassName(day: number, selectedDate: number) {
   const classNames = ['calendar-day'];
@@ -50,8 +51,10 @@ function formatSelectedDate(day: number) {
 
 export function SideDishPanel() {
   const [selectedDate, setSelectedDate] = useState(TODAY);
+  const [selectedMeal, setSelectedMeal] = useState<MealType>('점심');
   const [items, setItems] = useState<SideDishItem[]>([]);
   const selectedDateLabel = formatSelectedDate(selectedDate);
+  const deadlineText = selectedMeal === '점심' ? '당일 10:45AM 마감' : '당일 16:30PM 마감';
   const totalPrice = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
 
   const addItem = () => {
@@ -104,14 +107,18 @@ export function SideDishPanel() {
         </div>
       </section>
       <div className="meal-toggle">
-        <button className="active" type="button">점심</button>
-        <button type="button">저녁</button>
+        <button className={selectedMeal === '점심' ? 'active' : ''} type="button" onClick={() => setSelectedMeal('점심')}>
+          점심
+        </button>
+        <button className={selectedMeal === '저녁' ? 'active' : ''} type="button" onClick={() => setSelectedMeal('저녁')}>
+          저녁
+        </button>
       </div>
       <section className="member-list-box">
         <div className="section-heading">
           <div>
-            <strong>{selectedDateLabel} 점심 반찬 신청</strong>
-            <p>당일 10:45AM 마감</p>
+            <strong>{selectedDateLabel} {selectedMeal} 반찬 신청</strong>
+            <p>{deadlineText}</p>
           </div>
           <span>합계: {totalPrice.toLocaleString()}원</span>
         </div>
@@ -149,7 +156,7 @@ export function SideDishPanel() {
       </section>
       <button className="member-primary-action" type="button">반찬신청</button>
       <section className="member-list-box">
-        <strong>{selectedDateLabel} 점심 신청목록</strong>
+        <strong>{selectedDateLabel} {selectedMeal} 신청목록</strong>
         <p>아직 신청한 반찬이 없습니다.</p>
       </section>
     </div>
