@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { apiRequest } from '../../api/client';
+import type { MealType as ApiMealType, SideDishResponse } from '../../types/domain';
 
 const TODAY = 22;
 const DAYS = Array.from({ length: 30 }, (_, index) => index + 1);
@@ -20,6 +23,10 @@ type SideDishItem = {
   price: string;
 };
 type MealType = '점심' | '저녁';
+type Message = {
+  type: 'success' | 'error';
+  text: string;
+};
 
 function getDateClassName(day: number, selectedDate: number) {
   const classNames = ['calendar-day'];
@@ -49,13 +56,55 @@ function formatSelectedDate(day: number) {
   return `6/${day}(${weekday})`;
 }
 
+function formatSelectedDateValue(day: number) {
+  return `2026-06-${String(day).padStart(2, '0')}`;
+}
+
+function toApiMealType(mealType: MealType): ApiMealType {
+  return mealType === '점심' ? 'LUNCH' : 'DINNER';
+}
+
+function parseSideDishItem(items: string) {
+  const [menuName, price] = items.split(':').map((value) => value.trim());
+
+  return {
+    menuName: menuName || items,
+    price: Number(price || 0),
+  };
+}
+
 export function SideDishPanel() {
   const [selectedDate, setSelectedDate] = useState(TODAY);
   const [selectedMeal, setSelectedMeal] = useState<MealType>('점심');
   const [items, setItems] = useState<SideDishItem[]>([]);
+  const [sideDishes, setSideDishes] = useState<SideDishResponse[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [transferChecked, setTransferChecked] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [message, setMessage] = useState<Message | null>(null);
   const selectedDateLabel = formatSelectedDate(selectedDate);
+  const selectedDateValue = formatSelectedDateValue(selectedDate);
+  const selectedMealType = toApiMealType(selectedMeal);
   const deadlineText = selectedMeal === '점심' ? '당일 10:45AM 마감' : '당일 16:30PM 마감';
   const totalPrice = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const selectedMealSideDishes = sideDishes.filter((sideDish) => sideDish.mealType === selectedMealType);
+
+  useEffect(() => {
+    void loadSideDishes();
+  }, [selectedDateValue]);
+
+  const loadSideDishes = async () => {
+    setLoading(true);
+    try {
+      const responses = await apiRequest<SideDishResponse[]>(`/api/side-dishes/me?date=${selectedDateValue}`);
+      setSideDishes(responses);
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청목록을 불러오지 못했습니다.' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addItem = () => {
     setItems((current) => [...current, { id: Date.now(), menuName: '', price: '' }]);
@@ -67,6 +116,77 @@ export function SideDishPanel() {
 
   const removeItem = (id: number) => {
     setItems((current) => current.filter((item) => item.id !== id));
+  };
+
+  const getValidItems = () => {
+    return items
+      .map((item) => ({ menuName: item.menuName.trim(), price: Number(item.price) }))
+      .filter((item) => item.menuName && item.price > 0);
+  };
+
+  const openConfirm = () => {
+    const validItems = items
+      .map((item) => ({ menuName: item.menuName.trim(), price: Number(item.price) }))
+      .filter((item) => item.menuName && item.price > 0);
+
+    if (validItems.length !== items.length || validItems.length === 0) {
+      setMessage({ type: 'error', text: '반찬명과 금액을 모두 입력해주세요.' });
+      return;
+    }
+
+    setTransferChecked(false);
+    setMessage(null);
+    setConfirmOpen(true);
+  };
+
+  const submitSideDishes = async () => {
+    const validItems = getValidItems();
+
+    if (!transferChecked) {
+      setMessage({ type: 'error', text: '송금완료를 체크해주세요.' });
+      return;
+    }
+
+    setSubmitLoading(true);
+    setMessage(null);
+    try {
+      await Promise.all(
+        validItems.map((item) =>
+          apiRequest<SideDishResponse>('/api/side-dishes', {
+            method: 'POST',
+            body: JSON.stringify({
+              mealDate: selectedDateValue,
+              mealType: selectedMealType,
+              menuName: item.menuName,
+              itemPrice: item.price,
+              totalPrice: item.price,
+            }),
+          })
+        )
+      );
+      setItems([]);
+      setConfirmOpen(false);
+      setTransferChecked(false);
+      setMessage({ type: 'success', text: '반찬 신청이 완료되었습니다.' });
+      await loadSideDishes();
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청에 실패했습니다.' });
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const deleteSideDish = async (sideDishId: number) => {
+    setMessage(null);
+    try {
+      await apiRequest<void>(`/api/side-dishes/${sideDishId}`, {
+        method: 'DELETE',
+      });
+      setMessage({ type: 'success', text: '반찬 신청이 삭제되었습니다.' });
+      await loadSideDishes();
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청 삭제에 실패했습니다.' });
+    }
   };
 
   return (
@@ -154,10 +274,113 @@ export function SideDishPanel() {
         )}
         <button className="member-secondary-action side-dish-add-button" type="button" onClick={addItem}>+ 추가</button>
       </section>
-      <button className="member-primary-action" type="button">반찬신청</button>
+      <button className="member-primary-action" type="button" disabled={submitLoading} onClick={openConfirm}>
+        {submitLoading ? '신청 중' : '반찬신청'}
+      </button>
+      {message && <p className={`side-dish-message ${message.type}`}>{message.text}</p>}
       <section className="member-list-box">
         <strong>{selectedDateLabel} {selectedMeal} 신청목록</strong>
-        <p>아직 신청한 반찬이 없습니다.</p>
+        {loading ? (
+          <p>신청목록을 불러오는 중입니다.</p>
+        ) : selectedMealSideDishes.length === 0 ? (
+          <p>아직 신청한 반찬이 없습니다.</p>
+        ) : (
+          <div className="side-dish-history-list">
+            {selectedMealSideDishes.map((sideDish) => {
+              const sideDishItem = parseSideDishItem(sideDish.items);
+
+              return (
+                <article className="side-dish-history-item" key={sideDish.id}>
+                  <div>
+                    <strong>{sideDishItem.menuName}</strong>
+                    <span>{sideDish.totalPrice.toLocaleString()}원</span>
+                  </div>
+                  <button type="button" onClick={() => deleteSideDish(sideDish.id)}>
+                    삭제
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+      {confirmOpen &&
+        createPortal(
+          <SideDishConfirmModal
+            dateLabel={selectedDateLabel}
+            meal={selectedMeal}
+            items={getValidItems()}
+            transferChecked={transferChecked}
+            submitLoading={submitLoading}
+            onTransferChange={setTransferChecked}
+            onClose={() => setConfirmOpen(false)}
+            onSubmit={submitSideDishes}
+          />,
+          document.body
+        )}
+    </div>
+  );
+}
+
+type SideDishConfirmModalProps = {
+  dateLabel: string;
+  meal: MealType;
+  items: Array<{ menuName: string; price: number }>;
+  transferChecked: boolean;
+  submitLoading: boolean;
+  onTransferChange: (checked: boolean) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+};
+
+function SideDishConfirmModal({
+  dateLabel,
+  meal,
+  items,
+  transferChecked,
+  submitLoading,
+  onTransferChange,
+  onClose,
+  onSubmit,
+}: SideDishConfirmModalProps) {
+  const totalPrice = items.reduce((sum, item) => sum + item.price, 0);
+
+  return (
+    <div className="side-dish-modal-backdrop" role="presentation">
+      <section className="side-dish-modal" role="dialog" aria-modal="true" aria-labelledby="side-dish-modal-title">
+        <div className="side-dish-modal-header">
+          <h2 id="side-dish-modal-title">{dateLabel} {meal} 반찬 신청</h2>
+          <button type="button" onClick={onClose}>닫기</button>
+        </div>
+        <section className="side-dish-modal-section">
+          <h3>1. 주문내용 확인</h3>
+          <ol className="side-dish-modal-order-list">
+            {items.map((item, index) => (
+              <li key={`${item.menuName}-${index}`}>
+                <span>{item.menuName}</span>
+                <strong>{item.price.toLocaleString()}원</strong>
+              </li>
+            ))}
+          </ol>
+          <p className="side-dish-modal-total">총 {totalPrice.toLocaleString()}원</p>
+        </section>
+        <section className="side-dish-modal-section">
+          <h3>2. 계좌이체</h3>
+          <p>사장님 카카오페이 또는 신한은행 계좌로 송금해주세요</p>
+          <strong>카카오페이: 사장님 카카오페이</strong>
+          <strong>계좌정보: 신한 110-498-435650 김지원</strong>
+          <label className="side-dish-transfer-check">
+            <input type="checkbox" checked={transferChecked} onChange={(event) => onTransferChange(event.target.checked)} />
+            <span>송금완료</span>
+          </label>
+        </section>
+        <section className="side-dish-modal-section">
+          <h3>3. 신청하기</h3>
+          <p>주문내용 확인 및 송금을 완료하셨으면 아래 신청 버튼을 눌러서 신청을 완료해주세요</p>
+          <button className="side-dish-modal-submit" type="button" disabled={!transferChecked || submitLoading} onClick={onSubmit}>
+            {submitLoading ? '신청 중' : '신청하기'}
+          </button>
+        </section>
       </section>
     </div>
   );

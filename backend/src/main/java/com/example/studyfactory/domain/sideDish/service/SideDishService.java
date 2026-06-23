@@ -34,7 +34,7 @@ public class SideDishService {
         Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
         SideDishRequest sideDishRequest = new SideDishRequest(
                 new SideDishReferenceInformation(member.getId(), member.getBranchId()),
-                new SideDishMealInformation(LocalDate.now(clock), request.mealType()),
+                new SideDishMealInformation(resolveMealDate(request), request.mealType()),
                 new SideDishOrderInformation(toItems(request), request.totalPrice())
         );
 
@@ -64,6 +64,10 @@ public class SideDishService {
     }
 
     private void validateDeadline(SideDishCreateRequest request) {
+        if (!isToday(resolveMealDate(request))) {
+            return;
+        }
+
         LocalTime now = LocalTime.now(clock);
         switch (request.mealType()) {
             case LUNCH -> validateLunchDeadline(now);
@@ -94,5 +98,17 @@ public class SideDishService {
 
     private String toItems(SideDishCreateRequest request) {
         return request.menuName().trim() + ": " + request.itemPrice();
+    }
+
+    private LocalDate resolveMealDate(SideDishCreateRequest request) {
+        if (request.mealDate() == null) {
+            return LocalDate.now(clock);
+        }
+
+        return request.mealDate();
+    }
+
+    private boolean isToday(LocalDate mealDate) {
+        return mealDate.equals(LocalDate.now(clock));
     }
 }

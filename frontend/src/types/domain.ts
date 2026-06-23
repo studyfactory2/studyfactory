@@ -63,3 +63,17 @@ export type BeveragePreferenceResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type MealType = 'LUNCH' | 'DINNER';
+
+export type SideDishResponse = {
+  id: number;
+  memberId: number;
+  branchId: number;
+  mealDate: string;
+  mealType: MealType;
+  items: string;
+  totalPrice: number;
+  createdAt: string;
+  updatedAt: string;
+};
