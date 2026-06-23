@@ -21,4 +21,9 @@ public class ReferenceInformation {
         this.branchId = branchId;
         this.nameplateContentId = nameplateContentId;
     }
+
+    public void update(Long branchId, Long nameplateContentId) {
+        this.branchId = branchId;
+        this.nameplateContentId = nameplateContentId;
+    }
 }

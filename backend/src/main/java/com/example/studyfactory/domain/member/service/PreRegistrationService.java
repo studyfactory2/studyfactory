@@ -6,11 +6,14 @@ import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
+import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.nameplate.entity.NameplateContent;
 import com.example.studyfactory.domain.nameplate.repository.NameplateContentRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +51,41 @@ public class PreRegistrationService {
         return PreRegistrationResponse.from(savedMember, beveragePreference);
     }
 
+    @Transactional(readOnly = true)
+    public List<PreRegistrationResponse> findPending() {
+        return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"))
+                .stream()
+                .map(member -> PreRegistrationResponse.from(member, findLatestBeveragePreference(member)))
+                .toList();
+    }
+
+    @Transactional
+    public PreRegistrationResponse update(Long memberId, PreRegistrationCreateRequest request) {
+        validateRequest(request);
+        Member member = findPendingMember(memberId);
+        Long nameplateContentId = getNameplateContentId(request);
+        member.updatePreRegistration(
+                request.branchId(),
+                request.name().trim(),
+                request.role(),
+                request.seatNumber(),
+                request.expectedJoinDate(),
+                nameplateContentId,
+                request.memberNote()
+        );
+        BeveragePreference beveragePreference = findOrCreateBeveragePreference(member);
+        beveragePreference.update(request.drinkSetting(), request.drinkNote());
+
+        return PreRegistrationResponse.from(member, beveragePreference);
+    }
+
+    @Transactional
+    public void delete(Long memberId) {
+        Member member = findPendingMember(memberId);
+        beveragePreferenceRepository.deleteAll(beveragePreferenceRepository.findByMemberId(member.getId()));
+        memberRepository.delete(member);
+    }
+
     private void validateRequest(PreRegistrationCreateRequest request) {
         if (!branchRepository.existsById(request.branchId())) {
             throw PreRegistrationException.invalidBranch();
@@ -66,5 +104,24 @@ public class PreRegistrationService {
         return nameplateContentRepository.findByContent(content)
                 .map(NameplateContent::getId)
                 .orElseGet(() -> nameplateContentRepository.save(new NameplateContent(content)).getId());
+    }
+
+    private Member findPendingMember(Long memberId) {
+        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::preRegistrationNotFound);
+        if (member.getPassword() != null) {
+            throw MemberException.alreadySignedUp();
+        }
+
+        return member;
+    }
+
+    private BeveragePreference findLatestBeveragePreference(Member member) {
+        return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", null));
+    }
+
+    private BeveragePreference findOrCreateBeveragePreference(Member member) {
+        return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseGet(() -> beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "", null)));
     }
 }

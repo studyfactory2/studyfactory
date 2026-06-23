@@ -39,6 +39,11 @@ public class MemberController {
         return memberService.findAll(name, branchId);
     }
 
+    @GetMapping("/pre-registrations/pending")
+    public List<MemberResponse> findPendingPreRegistrations() {
+        return memberService.findPendingPreRegistrations();
+    }
+
     @PostMapping("/pre-registration/verify")
     public PreRegistrationVerifyResponse verifyPreRegistration(
             @Valid @RequestBody PreRegistrationVerifyRequest request

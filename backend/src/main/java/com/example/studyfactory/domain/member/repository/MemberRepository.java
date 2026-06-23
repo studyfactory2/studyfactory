@@ -56,4 +56,11 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("branchId") Long branchId,
             Sort sort
     );
+
+    @Query("""
+            select m
+            from Member m
+            where m.password is null
+            """)
+    List<Member> findPendingPreRegistrations(Sort sort);
 }

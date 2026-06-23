@@ -32,12 +32,31 @@ export type PreRegistrationVerifyResponse = {
   branchId: number;
   name: string;
   role: MemberRole;
-  seatNumber?: number;
+  seatNumber?: number | null;
   expectedJoinDate?: string;
   nameplateContentId?: number | null;
   drinkSetting?: string | null;
   drinkNote?: string | null;
   memberNote?: string | null;
+};
+
+export type PreRegistrationResponse = PreRegistrationVerifyResponse & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MemberResponse = {
+  id: number;
+  branchId: number;
+  name: string;
+  role: MemberRole;
+  seatNumber?: number | null;
+  joinDate?: string | null;
+  expectedJoinDate?: string | null;
+  nameplateContentId?: number | null;
+  memberNote?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type SuggestionCategory = 'SUPPLIES' | 'STUDY' | 'GENERAL' | 'COUNSELING';

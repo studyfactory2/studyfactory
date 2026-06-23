@@ -36,6 +36,14 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
+    public List<MemberResponse> findPendingPreRegistrations() {
+        return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"))
+                .stream()
+                .map(MemberResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public PreRegistrationVerifyResponse verifyPreRegistration(PreRegistrationVerifyRequest request) {
         Member member = findPreRegisteredMember(request.name().trim(), request.branchId());
         BeveragePreference beveragePreference = findLatestBeveragePreference(member);

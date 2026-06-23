@@ -114,6 +114,21 @@ class MemberFindServiceTest {
         assertThat(responses.get(0).branchId()).isEqualTo(1L);
     }
 
+    @Test
+    @DisplayName("비밀번호가 없는 사전등록 대기 사원 목록을 조회한다")
+    void findPendingPreRegistrations() {
+        Member member = new Member(1L, "kim", null, 10, LocalDate.of(2026, 7, 1), 3L, "오전 교육 예정");
+        ReflectionTestUtils.setField(member, "id", 1L);
+        given(memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id")))
+                .willReturn(List.of(member));
+
+        List<MemberResponse> responses = memberService.findPendingPreRegistrations();
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo(1L);
+        assertThat(responses.get(0).name()).isEqualTo("kim");
+    }
+
     private Member createMember(String name, int seatNumber) {
         return createMember(name, seatNumber, 1L);
     }

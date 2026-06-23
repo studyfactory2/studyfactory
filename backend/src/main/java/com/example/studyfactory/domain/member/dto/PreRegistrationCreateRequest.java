@@ -14,7 +14,7 @@ public record PreRegistrationCreateRequest(
         @NotNull(message = "회원 권한은 필수입니다.")
         MemberRole role,
         @Positive(message = "좌석번호는 1 이상이어야 합니다.")
-        int seatNumber,
+        Integer seatNumber,
         @NotNull(message = "입사예정일은 필수입니다.")
         LocalDate expectedJoinDate,
         String nameplateContent,

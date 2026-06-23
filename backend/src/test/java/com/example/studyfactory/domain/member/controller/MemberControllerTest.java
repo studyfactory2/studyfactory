@@ -124,6 +124,22 @@ class MemberControllerTest {
     }
 
     @Test
+    @DisplayName("인증된 요청이면 비밀번호가 없는 사전등록 대기 사원 목록을 반환한다")
+    void findPendingPreRegistrations() throws Exception {
+        Member signedUpMember = memberRepository.save(createMember("kim", 10));
+        Member pendingMember = memberRepository.save(createPendingMember("lee", null));
+        String accessToken = jwtTokenProvider.createAccessToken(signedUpMember);
+
+        mockMvc.perform(get("/api/members/pre-registrations/pending")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(pendingMember.getId()))
+                .andExpect(jsonPath("$[0].name").value("lee"))
+                .andExpect(jsonPath("$[0].seatNumber").doesNotExist())
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
     @DisplayName("인증된 사원이 본인 음료 설정과 참고사항을 수정한다")
     void updateDrink() throws Exception {
         Member member = memberRepository.save(createMember("kim", 10));
@@ -289,6 +305,19 @@ class MemberControllerTest {
                 name,
                 "password123",
                 role,
+                seatNumber,
+                LocalDate.of(2026, 7, 1),
+                3L,
+                "오전 교육 예정"
+        );
+    }
+
+    private Member createPendingMember(String name, Integer seatNumber) {
+        return new Member(
+                1L,
+                name,
+                null,
+                MemberRole.MEMBER,
                 seatNumber,
                 LocalDate.of(2026, 7, 1),
                 3L,

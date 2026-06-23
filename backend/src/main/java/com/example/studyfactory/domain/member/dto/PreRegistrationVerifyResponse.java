@@ -8,7 +8,7 @@ public record PreRegistrationVerifyResponse(
         Long memberId,
         Long branchId,
         String name,
-        int seatNumber,
+        Integer seatNumber,
         LocalDate expectedJoinDate,
         Long nameplateContentId,
         String drinkSetting,

@@ -11,7 +11,7 @@ public record PreRegistrationResponse(
         Long branchId,
         String name,
         MemberRole role,
-        int seatNumber,
+        Integer seatNumber,
         LocalDate expectedJoinDate,
         Long nameplateContentId,
         String drinkSetting,

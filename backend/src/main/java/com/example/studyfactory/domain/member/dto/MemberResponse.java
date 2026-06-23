@@ -10,7 +10,7 @@ public record MemberResponse(
         Long branchId,
         String name,
         MemberRole role,
-        int seatNumber,
+        Integer seatNumber,
         LocalDate joinDate,
         Long nameplateContentId,
         String memberNote,

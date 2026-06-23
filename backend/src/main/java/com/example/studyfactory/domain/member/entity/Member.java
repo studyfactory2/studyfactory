@@ -44,12 +44,12 @@ public class Member extends BaseEntity {
     @Column(columnDefinition = "text")
     private String memberNote;
 
-    public Member(Long branchId, String name, String password, int seatNumber, LocalDate joinDate, Long nameplateContentId,
+    public Member(Long branchId, String name, String password, Integer seatNumber, LocalDate joinDate, Long nameplateContentId,
                   String memberNote) {
         this(branchId, name, password, MemberRole.MEMBER, seatNumber, joinDate, nameplateContentId, memberNote);
     }
 
-    public Member(Long branchId, String name, String password, MemberRole role, int seatNumber, LocalDate joinDate,
+    public Member(Long branchId, String name, String password, MemberRole role, Integer seatNumber, LocalDate joinDate,
                   Long nameplateContentId, String memberNote) {
         this(
                 null,
@@ -88,7 +88,7 @@ public class Member extends BaseEntity {
         return referenceInformation.getNameplateContentId();
     }
 
-    public int getSeatNumber() {
+    public Integer getSeatNumber() {
         return workInformation.getSeatNumber();
     }
 
@@ -98,6 +98,22 @@ public class Member extends BaseEntity {
 
     public void signup(String password) {
         this.password = password;
+    }
+
+    public void updatePreRegistration(
+            Long branchId,
+            String name,
+            MemberRole role,
+            Integer seatNumber,
+            LocalDate joinDate,
+            Long nameplateContentId,
+            String memberNote
+    ) {
+        referenceInformation.update(branchId, nameplateContentId);
+        this.name = name;
+        this.role = role;
+        workInformation.update(seatNumber, joinDate);
+        this.memberNote = memberNote;
     }
 
     public boolean hasAllPermissions() {
