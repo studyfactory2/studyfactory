@@ -52,6 +52,11 @@ public class MemberController {
         return memberService.signup(request);
     }
 
+    @GetMapping("/me/drink")
+    public BeveragePreferenceResponse findMyDrink(@CurrentMember Long memberId) {
+        return memberService.findMyDrink(memberId);
+    }
+
     @PatchMapping("/me/drink")
     public BeveragePreferenceResponse updateDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
         return memberService.updateDrink(memberId, request);

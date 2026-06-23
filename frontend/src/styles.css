@@ -1353,6 +1353,113 @@ button {
   gap: 14px;
 }
 
+.beverage-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 8px;
+}
+
+.beverage-input-row input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #e1e8ec;
+  border-radius: 10px;
+  background: #fff;
+  color: #25313a;
+  font: inherit;
+  outline: none;
+}
+
+.beverage-input-row input:focus {
+  border-color: #8fc5c8;
+  box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
+}
+
+.beverage-input-row button {
+  min-height: 48px;
+  border-radius: 10px;
+  background: #247d82;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.beverage-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  color: #25313a;
+  font-weight: 900;
+  counter-reset: beverage;
+}
+
+.beverage-list li {
+  min-height: 48px;
+}
+
+.beverage-list li:not(.empty) {
+  counter-increment: beverage;
+  padding: 10px 10px 10px 14px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e3edf1;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.beverage-list li:not(.empty)::before {
+  content: counter(beverage);
+  color: #247d82;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.beverage-list li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.beverage-list li.empty {
+  list-style: none;
+  color: #849198;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.beverage-list button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff1f1;
+  color: #d84b4b;
+  cursor: pointer;
+  justify-self: end;
+}
+
+.trash-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.beverage-message {
+  margin: 0;
+  color: #247d82;
+  font-size: 14px;
+  font-weight: 900;
+}
+
 @media (max-width: 820px) {
   .login-page {
     display: block;
@@ -1501,6 +1608,15 @@ button {
     min-height: 38px;
     border-radius: 8px;
     font-size: 14px;
+  }
+
+  .beverage-input-row {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+
+  .beverage-input-row input,
+  .beverage-input-row button {
+    min-height: 42px;
   }
 }
 

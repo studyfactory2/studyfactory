@@ -53,3 +53,13 @@ export type SuggestionResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type BeveragePreferenceResponse = {
+  id: number;
+  memberId: number;
+  branchId: number;
+  drinks: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+};

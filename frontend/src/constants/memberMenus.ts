@@ -9,7 +9,7 @@ export const MEMBER_MENUS: MemberMenu[] = [
   { id: 'leave-plan', label: '휴무계획' },
   { id: 'side-dish', label: '반찬신청' },
   { id: 'suggestion', label: '건의' },
-  { id: 'beverage', label: '음료' },
+  { id: 'beverage', label: '음료 신청/변경' },
 ];
 
 export function resolveMemberMenuId(value: string | null): MemberMenuId {

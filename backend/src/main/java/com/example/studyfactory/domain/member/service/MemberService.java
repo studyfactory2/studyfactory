@@ -52,6 +52,13 @@ public class MemberService {
         return MemberSignupResponse.from(member);
     }
 
+    @Transactional(readOnly = true)
+    public BeveragePreferenceResponse findMyDrink(Long memberId) {
+        Member member = findMember(memberId);
+
+        return BeveragePreferenceResponse.from(findLatestBeveragePreference(member));
+    }
+
     @Transactional
     public BeveragePreferenceResponse updateDrink(Long memberId, DrinkRequest request) {
         Member member = findMember(memberId);
