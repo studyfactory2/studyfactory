@@ -1,4 +1,4 @@
-export type AdminMenuId = 'grid' | 'register' | 'status' | 'vacation_history' | 'attendance' | 'staff-work' | 'staff-page';
+export type AdminMenuId = 'grid' | 'register' | 'status' | 'vacation_history' | 'other_leave_request' | 'attendance' | 'staff-work' | 'staff-page';
 
 export type AdminMenu = {
   id: AdminMenuId;
@@ -13,7 +13,7 @@ export const ADMIN_MENUS: AdminMenu[] = [
 ];
 
 export function resolveAdminMenuId(value: string | null): AdminMenuId {
-  if (value === 'register' || value === 'status' || value === 'vacation_history') {
+  if (value === 'register' || value === 'status' || value === 'vacation_history' || value === 'other_leave_request') {
     return value;
   }
 
@@ -31,6 +31,10 @@ export function getAdminMenuLabel(menuId: AdminMenuId): string {
 
   if (menuId === 'vacation_history') {
     return '사원별 휴가 현황';
+  }
+
+  if (menuId === 'other_leave_request') {
+    return '사원 기타 휴무 신청';
   }
 
   return ADMIN_MENUS.find((menu) => menu.id === menuId)?.label || '관리자 페이지';

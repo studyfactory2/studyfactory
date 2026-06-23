@@ -20,4 +20,8 @@ public class LeaveException extends BaseException {
     public static LeaveException notOwner() {
         return new LeaveException(HttpStatus.FORBIDDEN, "본인의 휴무 신청만 삭제할 수 있습니다.");
     }
+
+    public static LeaveException invalidSpecialLeaveRequest() {
+        return new LeaveException(HttpStatus.BAD_REQUEST, "기타 휴무 신청 정보를 확인해주세요.");
+    }
 }

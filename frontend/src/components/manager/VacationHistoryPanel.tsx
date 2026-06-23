@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiRequest } from '../../api/client';
-import type { Branch, DailyLeaveStatusResponse, LeaveType, MemberResponse } from '../../types/domain';
+import type { Branch, MemberResponse, MonthlyLeaveCalendarResponse } from '../../types/domain';
 import { Dropdown, type DropdownOption } from '../common/Dropdown';
 
 type VacationHistoryPanelProps = {
@@ -22,7 +22,7 @@ export function VacationHistoryPanel({ branches }: VacationHistoryPanelProps) {
   const [members, setMembers] = useState<MemberResponse[]>([]);
   const [selectedMember, setSelectedMember] = useState<MemberResponse | null>(null);
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-  const [monthlyLeaves, setMonthlyLeaves] = useState<Record<string, LeaveType[]>>({});
+  const [monthlyLeaves, setMonthlyLeaves] = useState<Record<string, MonthlyLeaveCalendarResponse[]>>({});
   const [name, setName] = useState('');
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [branchOpen, setBranchOpen] = useState(false);
@@ -76,18 +76,13 @@ export function VacationHistoryPanel({ branches }: VacationHistoryPanelProps) {
     setCalendarLoading(true);
     setMessage('');
     try {
-      const responses = await Promise.all(getMonthDays(month).map(async (day) => {
-        const date = toDateKey(day);
-        const params = new URLSearchParams({
-          date,
-          name: member.name,
-          branchId: String(member.branchId),
-        });
-        const statuses = await apiRequest<DailyLeaveStatusResponse[]>(`/api/leaves/daily-status?${params.toString()}`);
-
-        return [date, statuses.map((status) => status.leaveType)] as const;
-      }));
-      setMonthlyLeaves(Object.fromEntries(responses));
+      const params = new URLSearchParams({
+        memberId: String(member.id),
+        year: String(month.getFullYear()),
+        month: String(month.getMonth() + 1),
+      });
+      const responses = await apiRequest<MonthlyLeaveCalendarResponse[]>(`/api/leaves/monthly-calendar?${params.toString()}`);
+      setMonthlyLeaves(toMonthlyLeaves(responses));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '휴가 현황을 불러오지 못했습니다.');
     } finally {
@@ -146,9 +141,12 @@ export function VacationHistoryPanel({ branches }: VacationHistoryPanelProps) {
               day ? (
                 <div className="vacation-calendar-day" key={toDateKey(day)}>
                   <strong className={getDayClassName(day)}>{day.getDate()}</strong>
-                  {(monthlyLeaves[toDateKey(day)] || []).map((leaveType) => (
-                    <span className={`vacation-leave-badge ${leaveType.toLowerCase()}`} key={`${toDateKey(day)}-${leaveType}`}>
-                      {toLeaveTypeLabel(leaveType)}
+                  {(monthlyLeaves[toDateKey(day)] || []).slice(0, 2).map((leaveStatus, leaveIndex) => (
+                    <span
+                      className={`vacation-leave-badge ${toLeaveBadgeClassName(leaveStatus)}`}
+                      key={`${toDateKey(day)}-${leaveStatus.source}-${leaveStatus.label}-${leaveIndex}`}
+                    >
+                      {leaveStatus.label}
                     </span>
                   ))}
                 </div>
@@ -274,14 +272,40 @@ function getDayClassName(date: Date) {
   return '';
 }
 
-function toLeaveTypeLabel(leaveType: LeaveType) {
-  if (leaveType === 'FULL') {
-    return '월차';
+function toMonthlyLeaves(responses: MonthlyLeaveCalendarResponse[]) {
+  return responses.reduce<Record<string, MonthlyLeaveCalendarResponse[]>>((accumulator, response) => {
+    const current = accumulator[response.leaveDate] || [];
+    accumulator[response.leaveDate] = [...current, response].sort((first, second) => (
+      toSourceOrder(first.source) - toSourceOrder(second.source)
+    ));
+
+    return accumulator;
+  }, {});
+}
+
+function toSourceOrder(source: MonthlyLeaveCalendarResponse['source']) {
+  if (source === 'LEAVE') {
+    return 1;
   }
-  if (leaveType === 'MORNING') {
-    return '오전';
+  if (source === 'FIXED_LEAVE') {
+    return 2;
   }
-  return '오후';
+
+  return 3;
+}
+
+function toLeaveBadgeClassName(leaveStatus: MonthlyLeaveCalendarResponse) {
+  if (leaveStatus.source === 'FIXED_LEAVE') {
+    return 'fixed';
+  }
+  if (leaveStatus.source === 'SPECIAL_LEAVE') {
+    return 'special';
+  }
+  if (leaveStatus.label === '오후') {
+    return 'afternoon';
+  }
+
+  return 'leave';
 }
 
 function BackIcon() {

@@ -8,6 +8,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -64,5 +66,28 @@ public class SpecialLeave extends BaseEntity {
         this.customReason = customReason;
         this.recurring = recurring;
         this.createdByMemberId = createdByMemberId;
+    }
+
+    public boolean removeSlot(Integer slot) {
+        String slotText = String.valueOf(slot);
+        List<String> remainingSlots = Arrays.stream(slots.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .filter(value -> !value.equals(slotText))
+                .toList();
+
+        if (remainingSlots.size() == countSlots()) {
+            return false;
+        }
+
+        this.slots = String.join(",", remainingSlots);
+        return remainingSlots.isEmpty();
+    }
+
+    private int countSlots() {
+        return (int) Arrays.stream(slots.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .count();
     }
 }

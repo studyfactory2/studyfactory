@@ -24,15 +24,15 @@ export async function apiRequest<TResponse>(path: string, options: RequestInit =
 
 async function resolveErrorMessage(response: Response): Promise<string> {
   const fallbackMessage = '요청을 처리하지 못했습니다.';
-  try {
-    const error = (await response.json()) as { message?: string; reason?: string; error?: string };
-    return error.message || error.reason || error.error || fallbackMessage;
-  } catch {
-    const message = await response.text();
-    if (message) {
-      return message;
-    }
+  const message = await response.text();
+  if (!message) {
+    return fallbackMessage;
   }
 
-  return fallbackMessage;
+  try {
+    const error = JSON.parse(message) as { message?: string; reason?: string; error?: string };
+    return error.message || error.reason || error.error || fallbackMessage;
+  } catch {
+    return message;
+  }
 }

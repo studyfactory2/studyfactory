@@ -1257,12 +1257,675 @@ button {
   color: #2f81d0;
 }
 
+.vacation-leave-badge.fixed {
+  border-color: #d9ccff;
+  background: #f5f0ff;
+  color: #7658c7;
+}
+
+.vacation-leave-badge.special {
+  border-color: #cfe8df;
+  background: #eefaf5;
+  color: #247d82;
+}
+
 .vacation-calendar-message {
   margin: -6px 0 0;
   color: #8b979d;
   font-size: 13px;
   font-weight: 800;
   text-align: center;
+}
+
+@media (min-width: 821px) {
+  .manager-card:has(.vacation-history-panel) {
+    width: min(984px, calc(100vw - 96px));
+  }
+
+  .vacation-history-panel:has(.vacation-calendar-panel) {
+    gap: 28px;
+  }
+
+  .vacation-calendar-panel {
+    gap: 22px;
+  }
+
+  .vacation-calendar-month {
+    min-height: 58px;
+    padding: 0 48px;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+  }
+
+  .vacation-calendar-month button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .vacation-calendar-month strong {
+    font-size: 22px;
+  }
+
+  .vacation-calendar-weekdays,
+  .vacation-calendar-grid {
+    gap: 8px;
+  }
+
+  .vacation-calendar-weekdays span {
+    font-size: 14px;
+  }
+
+  .vacation-calendar-day,
+  .vacation-calendar-blank {
+    min-height: 72px;
+    border-radius: 10px;
+  }
+
+  .vacation-calendar-day {
+    padding: 10px 4px;
+    gap: 6px;
+  }
+
+  .vacation-calendar-day strong {
+    font-size: 15px;
+  }
+
+  .vacation-leave-badge {
+    min-width: 38px;
+    padding: 4px 7px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.1;
+  }
+}
+
+.other-leave-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.other-leave-header {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.other-leave-header > button {
+  width: 26px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: #26323a;
+  cursor: pointer;
+}
+
+.other-leave-header svg,
+.other-leave-search svg,
+.other-leave-card > svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.other-leave-header svg {
+  width: 23px;
+  height: 23px;
+  stroke-width: 2.4;
+}
+
+.other-leave-header h2 {
+  margin: 0;
+  color: #202931;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.other-leave-search {
+  min-height: 44px;
+  padding: 0 13px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #dfe8ec;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.other-leave-search svg {
+  width: 18px;
+  height: 18px;
+  color: #9aadba;
+  stroke-width: 2.1;
+}
+
+.other-leave-search input {
+  min-width: 0;
+  border: 0;
+  color: #25313a;
+  font-size: 15px;
+  font-weight: 800;
+  outline: none;
+}
+
+.other-leave-list {
+  display: grid;
+  gap: 12px;
+}
+
+.other-leave-card {
+  width: 100%;
+  min-height: 82px;
+  padding: 16px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #dfe8ec;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 9px 18px rgba(47, 79, 91, 0.07);
+  text-align: left;
+  cursor: pointer;
+}
+
+.other-leave-card span {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.other-leave-card strong {
+  color: #25313a;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.other-leave-card small {
+  color: #76878f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.other-leave-card > svg {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  color: #9eb0ba;
+  stroke-width: 2.2;
+}
+
+.other-leave-empty {
+  margin: 10px 0 0;
+  color: #8b979d;
+  font-weight: 800;
+  text-align: center;
+}
+
+.other-leave-detail-header {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.other-leave-detail-header > button,
+.other-leave-month button {
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: #26323a;
+  cursor: pointer;
+}
+
+.other-leave-detail-header > button {
+  width: 26px;
+  height: 30px;
+}
+
+.other-leave-detail-header svg,
+.other-leave-month svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.other-leave-detail-header svg {
+  width: 23px;
+  height: 23px;
+  stroke-width: 2.4;
+}
+
+.other-leave-detail-header h2 {
+  margin: 0;
+  color: #202931;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.other-leave-detail {
+  display: grid;
+  gap: 14px;
+}
+
+.other-leave-calendar-box {
+  display: grid;
+  gap: 12px;
+}
+
+.other-leave-calendar-frame {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid #dfe8ec;
+  border-radius: 12px;
+  background: #fbfdfe;
+}
+
+.other-leave-month {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+}
+
+.other-leave-month button {
+  width: 34px;
+  height: 34px;
+}
+
+.other-leave-month svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 2.3;
+}
+
+.other-leave-month strong {
+  color: #313b48;
+  font-size: 18px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.other-leave-weekdays,
+.other-leave-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.other-leave-weekdays span {
+  color: #6c7c8d;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.other-leave-weekdays .sunday,
+.other-leave-calendar .sunday {
+  color: #f04452;
+}
+
+.other-leave-weekdays .saturday,
+.other-leave-calendar .saturday {
+  color: #2f81d0;
+}
+
+.other-leave-calendar button,
+.other-leave-calendar > span {
+  min-height: 34px;
+  border-radius: 8px;
+}
+
+.other-leave-calendar button {
+  border: 1px solid #edf1f4;
+  background: #fff;
+  color: #627184;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.other-leave-calendar button.selected {
+  border-color: #247d82;
+  background: #e8f6f6;
+  color: #247d82;
+}
+
+.other-leave-guide {
+  margin: -4px 0 0;
+  color: #7d8c94;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.other-leave-slots,
+.other-leave-reasons {
+  display: grid;
+  gap: 8px;
+}
+
+.other-leave-slots > span,
+.other-leave-reasons > span {
+  color: #4b5963;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.other-leave-slots div {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.other-leave-reasons div {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.other-leave-slots button,
+.other-leave-reasons button {
+  min-height: 34px;
+  padding: 0 4px;
+  border: 1px solid #dfe8ec;
+  border-radius: 9px;
+  background: #fff;
+  color: #4c5c67;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.other-leave-reasons button {
+  width: 100%;
+}
+
+.other-leave-slots div button {
+  width: 100%;
+  padding: 0;
+}
+
+.other-leave-slots button.selected,
+.other-leave-reasons button.selected {
+  border-color: #247d82;
+  background: #247d82;
+  color: #fff;
+}
+
+.other-leave-custom-reason {
+  grid-column: 1 / -1;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 4fr) !important;
+  gap: 7px;
+}
+
+.other-leave-custom-reason input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #dfe8ec;
+  border-radius: 9px;
+  background: #fff;
+  color: #25313a;
+  font-size: 14px;
+  font-weight: 800;
+  outline: none;
+}
+
+.other-leave-custom-reason input:disabled {
+  background: #f4f7f8;
+  color: #a6b2b8;
+  cursor: not-allowed;
+}
+
+.other-leave-message {
+  margin: 0;
+  color: #c94b62;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.other-leave-submit-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.other-leave-submit-actions button {
+  min-height: 44px;
+  border-radius: 10px;
+  background: #247d82;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.other-leave-submit-actions button:last-child {
+  background: #edf4f5;
+  color: #247d82;
+}
+
+.other-leave-entries {
+  display: grid;
+  gap: 9px;
+}
+
+.other-leave-entries h3 {
+  margin: 0;
+  color: #202931;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.other-leave-entries p {
+  margin: 0;
+  color: #8b979d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.other-leave-entries div {
+  display: grid;
+  gap: 10px;
+}
+
+.other-leave-entry-card {
+  min-height: 86px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #dfe8ec;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 7px 14px rgba(48, 70, 84, 0.04);
+}
+
+.other-leave-entry-card > span {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.other-leave-entry-card strong {
+  color: #25313a;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.other-leave-entry-card small {
+  width: fit-content;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: #e7f4ff;
+  color: #2f5e8c;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.other-leave-entry-card button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: transparent;
+  color: #ef3f49;
+  cursor: pointer;
+}
+
+.other-leave-entry-card button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.other-leave-entry-card svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+@media (min-width: 821px) {
+  .manager-card:has(.other-leave-panel) {
+    width: min(984px, calc(100vw - 96px));
+    min-height: 624px;
+    padding: 30px 20px 40px;
+  }
+
+  .other-leave-panel:has(.other-leave-detail) {
+    gap: 28px;
+  }
+
+  .other-leave-detail-header {
+    padding: 0 8px;
+  }
+
+  .other-leave-detail-header h2 {
+    font-size: 22px;
+  }
+
+  .other-leave-detail {
+    gap: 26px;
+  }
+
+  .other-leave-calendar-box {
+    padding: 20px 56px 18px;
+    gap: 18px;
+    border: 1px solid #dce5e9;
+    border-radius: 14px;
+    background: #fff;
+  }
+
+  .other-leave-calendar-frame {
+    padding: 18px 28px 16px;
+    gap: 16px;
+    border-color: #d8e4e9;
+    background: #fcfeff;
+  }
+
+  .other-leave-month {
+    width: min(260px, 100%);
+    margin: 0 auto;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+  }
+
+  .other-leave-month button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .other-leave-month strong {
+    font-size: 18px;
+  }
+
+  .other-leave-weekdays,
+  .other-leave-calendar {
+    gap: 12px 40px;
+  }
+
+  .other-leave-weekdays span {
+    font-size: 13px;
+  }
+
+  .other-leave-calendar button,
+  .other-leave-calendar > span {
+    min-height: 46px;
+    border-radius: 12px;
+  }
+
+  .other-leave-calendar button {
+    font-size: 14px;
+    border-color: transparent;
+  }
+
+  .other-leave-calendar button.selected {
+    border-color: #247d82;
+    background: #fff;
+  }
+
+  .other-leave-guide {
+    margin-top: 2px;
+    font-size: 13px;
+  }
+
+  .other-leave-slots,
+  .other-leave-reasons {
+    gap: 12px;
+  }
+
+  .other-leave-slots > span,
+  .other-leave-reasons > span {
+    font-size: 15px;
+  }
+
+  .other-leave-slots div {
+    gap: 5px;
+  }
+
+  .other-leave-reasons div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .other-leave-slots button,
+  .other-leave-reasons button {
+    min-height: 44px;
+    border-radius: 7px;
+    font-size: 14px;
+  }
+
+  .other-leave-custom-reason {
+    grid-template-columns: 56px minmax(0, 1fr) !important;
+  }
+
+  .other-leave-custom-reason input {
+    min-height: 40px;
+    border-radius: 7px;
+  }
+
+  .other-leave-submit-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .other-leave-submit-actions button {
+    min-height: 54px;
+    border-radius: 10px;
+    font-size: 16px;
+  }
 }
 
 .pre-register-form {
@@ -2996,6 +3659,83 @@ button {
   }
 
   .vacation-history-card {
+    min-height: 82px;
+    padding: 16px 14px;
+  }
+
+  .vacation-calendar-panel {
+    gap: 14px;
+  }
+
+  .vacation-calendar-month {
+    min-height: 50px;
+    padding: 0 12px;
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    gap: 8px;
+  }
+
+  .vacation-calendar-month button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .vacation-calendar-month strong {
+    font-size: 18px;
+  }
+
+  .vacation-calendar-weekdays,
+  .vacation-calendar-grid {
+    gap: 4px;
+  }
+
+  .vacation-calendar-day,
+  .vacation-calendar-blank {
+    min-height: 50px;
+    border-radius: 7px;
+  }
+
+  .vacation-calendar-day {
+    padding: 6px 1px;
+    gap: 3px;
+  }
+
+  .vacation-leave-badge {
+    min-width: 0;
+    max-width: calc(100% - 2px);
+    padding: 2px 4px;
+    font-size: 9px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .manager-card:has(.other-leave-panel) {
+    padding: 20px 18px 28px;
+  }
+
+  .other-leave-header {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .other-leave-header > button {
+    width: 24px;
+    height: 28px;
+  }
+
+  .other-leave-header svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .other-leave-header h2 {
+    font-size: 21px;
+  }
+
+  .other-leave-search {
+    min-height: 44px;
+  }
+
+  .other-leave-card {
     min-height: 82px;
     padding: 16px 14px;
   }

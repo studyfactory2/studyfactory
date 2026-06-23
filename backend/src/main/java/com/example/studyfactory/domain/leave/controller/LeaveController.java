@@ -4,6 +4,9 @@ import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
+import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
+import com.example.studyfactory.domain.leave.dto.SpecialLeaveCreateRequest;
+import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.service.LeaveService;
 import jakarta.validation.Valid;
@@ -56,5 +59,32 @@ public class LeaveController {
             @RequestParam(required = false) LeaveType leaveType
     ) {
         return leaveService.findDailyStatuses(date, name, branchId, leaveType);
+    }
+
+    @GetMapping("/monthly-calendar")
+    public List<MonthlyLeaveCalendarResponse> findMonthlyCalendar(
+            @CurrentMember Long currentMemberId,
+            @RequestParam Long memberId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
+    ) {
+        return leaveService.findMonthlyCalendar(currentMemberId, memberId, year, month);
+    }
+
+    @PostMapping("/special")
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<SpecialLeaveResponse> createSpecial(@CurrentMember Long memberId, @Valid @RequestBody SpecialLeaveCreateRequest request) {
+        return leaveService.createSpecial(memberId, request);
+    }
+
+    @GetMapping("/special")
+    public List<SpecialLeaveResponse> findSpecialByMember(@CurrentMember Long currentMemberId, @RequestParam Long memberId) {
+        return leaveService.findSpecialByMember(currentMemberId, memberId);
+    }
+
+    @DeleteMapping("/special/{specialLeaveId}/slots/{slot}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteSpecialSlot(@CurrentMember Long currentMemberId, @PathVariable Long specialLeaveId, @PathVariable Integer slot) {
+        leaveService.deleteSpecialSlot(currentMemberId, specialLeaveId, slot);
     }
 }

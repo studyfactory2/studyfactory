@@ -2,6 +2,7 @@ import { AdminGridPanel } from '../components/manager/AdminGridPanel';
 import { ManagerTabs } from '../components/manager/ManagerTabs';
 import { ManagerTopBar } from '../components/manager/ManagerTopBar';
 import { MemberStatusPanel } from '../components/manager/MemberStatusPanel';
+import { OtherLeaveRequestPanel } from '../components/manager/OtherLeaveRequestPanel';
 import { PlaceholderPanel } from '../components/manager/PlaceholderPanel';
 import { PreRegistrationPanel } from '../components/manager/PreRegistrationPanel';
 import { VacationHistoryPanel } from '../components/manager/VacationHistoryPanel';
@@ -41,6 +42,8 @@ export function ManagerDashboardScreen() {
           <MemberStatusPanel branches={branches} certifications={certifications} />
         ) : currentView === 'vacation_history' ? (
           <VacationHistoryPanel branches={branches} />
+        ) : currentView === 'other_leave_request' ? (
+          <OtherLeaveRequestPanel branches={branches} />
         ) : (
           <PlaceholderPanel currentView={currentView} />
         )}

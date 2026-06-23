@@ -106,3 +106,23 @@ export type DailyLeaveStatusResponse = {
   leaveType: LeaveType;
   createdAt: string;
 };
+
+export type MonthlyLeaveCalendarResponse = {
+  leaveDate: string;
+  label: string;
+  source: 'LEAVE' | 'FIXED_LEAVE' | 'SPECIAL_LEAVE';
+};
+
+export type SpecialLeaveResponse = {
+  id: number;
+  memberId: number;
+  branchId: number;
+  leaveDate: string;
+  slots: string;
+  reason: string;
+  customReason?: string | null;
+  recurring: boolean;
+  createdByMemberId: number;
+  createdAt: string;
+  updatedAt: string;
+};

@@ -5,19 +5,29 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
+import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
+import com.example.studyfactory.domain.leave.dto.SpecialLeaveCreateRequest;
+import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
+import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
+import com.example.studyfactory.domain.leave.entity.SpecialLeave;
 import com.example.studyfactory.domain.leave.exception.LeaveException;
+import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
+import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
+import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.DayOfWeek;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +47,12 @@ class LeaveServiceTest {
 
     @Mock
     private LeaveRequestRepository leaveRequestRepository;
+
+    @Mock
+    private SpecialLeaveRepository specialLeaveRepository;
+
+    @Mock
+    private FixedLeaveRepository fixedLeaveRepository;
 
     @Mock
     private MemberRepository memberRepository;
@@ -178,6 +194,164 @@ class LeaveServiceTest {
         assertThat(responses).isEmpty();
         then(leaveRequestRepository).should()
                 .findDailyStatuses(today, null, null, null);
+    }
+
+    @Test
+    @DisplayName("관리자는 일반 휴무, 고정 휴무, 기타 휴무가 합쳐진 월별 휴가 달력을 조회한다")
+    void findMonthlyCalendar() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        Member target = createMemberWithId(2L, MemberRole.MEMBER);
+        LeaveRequest leaveRequest = new LeaveRequest(2L, 2L, LocalDate.of(2026, 6, 17), LeaveType.MORNING);
+        FixedLeave fixedLeave = new FixedLeave(2L, 2L, DayOfWeek.WEDNESDAY, "1,2", "스터디", true);
+        SpecialLeave specialLeave = new SpecialLeave(
+                2L,
+                2L,
+                LocalDate.of(2026, 6, 17),
+                "7",
+                "알바",
+                null,
+                false,
+                1L
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(leaveRequestRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
+                2L,
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30)
+        )).willReturn(List.of(leaveRequest));
+        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of(fixedLeave));
+        given(specialLeaveRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
+                2L,
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30)
+        )).willReturn(List.of(specialLeave));
+
+        List<MonthlyLeaveCalendarResponse> responses = leaveService.findMonthlyCalendar(1L, 2L, 2026, 6);
+
+        assertThat(responses).extracting(MonthlyLeaveCalendarResponse::label)
+                .contains("오전", "스터디", "알바");
+        assertThat(responses).extracting(MonthlyLeaveCalendarResponse::source)
+                .contains("LEAVE", "FIXED_LEAVE", "SPECIAL_LEAVE");
+    }
+
+    @Test
+    @DisplayName("관리자는 사원의 기타 휴무를 날짜별로 신청한다")
+    void createSpecialLeave() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        Member target = createMemberWithId(2L, MemberRole.MEMBER);
+        SpecialLeaveCreateRequest request = new SpecialLeaveCreateRequest(
+                2L,
+                List.of(LocalDate.of(2026, 6, 25), LocalDate.of(2026, 6, 24)),
+                List.of(7, 1, 3),
+                "알바",
+                null,
+                false
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(specialLeaveRepository.save(any(SpecialLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        List<SpecialLeaveResponse> responses = leaveService.createSpecial(1L, request);
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses.get(0).memberId()).isEqualTo(2L);
+        assertThat(responses.get(0).branchId()).isEqualTo(2L);
+        assertThat(responses.get(0).leaveDate()).isEqualTo(LocalDate.of(2026, 6, 24));
+        assertThat(responses.get(0).slots()).isEqualTo("1,3,7");
+        assertThat(responses.get(0).reason()).isEqualTo("알바");
+        assertThat(responses.get(0).createdByMemberId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("일반 회원이 기타 휴무를 신청하면 예외가 발생한다")
+    void throwExceptionWhenMemberCreateSpecialLeave() {
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
+        SpecialLeaveCreateRequest request = new SpecialLeaveCreateRequest(
+                2L,
+                List.of(LocalDate.of(2026, 6, 25)),
+                List.of(1),
+                "알바",
+                null,
+                false
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> leaveService.createSpecial(1L, request))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("관리자는 사원의 기타 휴무 신청 내역을 조회한다")
+    void findSpecialLeavesByMember() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        Member target = createMemberWithId(2L, MemberRole.MEMBER);
+        SpecialLeave specialLeave = new SpecialLeave(
+                2L,
+                2L,
+                LocalDate.of(2026, 6, 25),
+                "1,2,3",
+                "알바",
+                null,
+                false,
+                1L
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(2L)).willReturn(List.of(specialLeave));
+
+        List<SpecialLeaveResponse> responses = leaveService.findSpecialByMember(1L, 2L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).memberId()).isEqualTo(2L);
+        assertThat(responses.get(0).leaveDate()).isEqualTo(LocalDate.of(2026, 6, 25));
+        assertThat(responses.get(0).slots()).isEqualTo("1,2,3");
+    }
+
+    @Test
+    @DisplayName("관리자는 기타 휴무의 특정 교시만 삭제한다")
+    void deleteSpecialLeaveSlot() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        SpecialLeave specialLeave = new SpecialLeave(
+                2L,
+                2L,
+                LocalDate.of(2026, 6, 25),
+                "1,2,3",
+                "알바",
+                null,
+                false,
+                1L
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(specialLeaveRepository.findById(10L)).willReturn(Optional.of(specialLeave));
+
+        leaveService.deleteSpecialSlot(1L, 10L, 2);
+
+        assertThat(specialLeave.getSlots()).isEqualTo("1,3");
+        then(specialLeaveRepository).should(never()).delete(any(SpecialLeave.class));
+    }
+
+    @Test
+    @DisplayName("기타 휴무의 마지막 교시를 삭제하면 신청 내역을 삭제한다")
+    void deleteSpecialLeaveWhenLastSlotDeleted() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        SpecialLeave specialLeave = new SpecialLeave(
+                2L,
+                2L,
+                LocalDate.of(2026, 6, 25),
+                "7",
+                "알바",
+                null,
+                false,
+                1L
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(specialLeaveRepository.findById(10L)).willReturn(Optional.of(specialLeave));
+
+        leaveService.deleteSpecialSlot(1L, 10L, 7);
+
+        then(specialLeaveRepository).should().delete(specialLeave);
     }
 
     private Member createMember() {
