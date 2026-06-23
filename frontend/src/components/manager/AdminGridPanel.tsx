@@ -20,7 +20,7 @@ const ADMIN_GRID_SECTIONS: AdminGridSection[] = [
   {
     title: '출석 및 휴무 관리',
     items: [
-      { icon: 'calendar', label: '월별 사원\n휴무 현황' },
+      { icon: 'calendar', label: '사원별\n휴가 현황', href: '/managerdashboard?view=vacation_history' },
       { icon: 'person-check', label: '사원 기타\n휴무 신청' },
       { icon: 'pin', label: '고정 기타\n휴무 관리' },
     ],

@@ -97,3 +97,12 @@ export type SideDishResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type LeaveType = 'FULL' | 'MORNING' | 'AFTERNOON';
+
+export type DailyLeaveStatusResponse = {
+  name: string;
+  branch: string;
+  leaveType: LeaveType;
+  createdAt: string;
+};

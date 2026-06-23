@@ -4,6 +4,7 @@ import { ManagerTopBar } from '../components/manager/ManagerTopBar';
 import { MemberStatusPanel } from '../components/manager/MemberStatusPanel';
 import { PlaceholderPanel } from '../components/manager/PlaceholderPanel';
 import { PreRegistrationPanel } from '../components/manager/PreRegistrationPanel';
+import { VacationHistoryPanel } from '../components/manager/VacationHistoryPanel';
 import { resolveAdminMenuId } from '../constants/adminMenus';
 import { useManagerOptions } from '../hooks/useManagerOptions';
 import { ManagerLayout } from '../layouts/ManagerLayout';
@@ -38,6 +39,8 @@ export function ManagerDashboardScreen() {
           <PreRegistrationPanel branches={branches} certifications={certifications} />
         ) : currentView === 'status' ? (
           <MemberStatusPanel branches={branches} certifications={certifications} />
+        ) : currentView === 'vacation_history' ? (
+          <VacationHistoryPanel branches={branches} />
         ) : (
           <PlaceholderPanel currentView={currentView} />
         )}
