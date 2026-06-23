@@ -1,3 +1,4 @@
+import { AdminGridPanel } from '../components/manager/AdminGridPanel';
 import { ManagerTabs } from '../components/manager/ManagerTabs';
 import { ManagerTopBar } from '../components/manager/ManagerTopBar';
 import { PlaceholderPanel } from '../components/manager/PlaceholderPanel';
@@ -30,7 +31,9 @@ export function ManagerDashboardScreen() {
       <ManagerTopBar />
       <ManagerTabs currentView={currentView} />
       <section className="manager-card">
-        {currentView === 'register' ? (
+        {currentView === 'grid' ? (
+          <AdminGridPanel />
+        ) : currentView === 'register' ? (
           <PreRegistrationPanel branches={branches} nameplates={nameplates} />
         ) : (
           <PlaceholderPanel currentView={currentView} />

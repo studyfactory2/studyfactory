@@ -497,29 +497,127 @@ button {
   box-shadow: 0 16px 36px rgba(51, 77, 89, 0.14);
 }
 
+.manager-card:has(.admin-grid-panel) {
+  width: min(984px, 100%);
+  min-height: 520px;
+  padding: 32px 44px 40px;
+}
+
 .panel-title {
   margin-bottom: 34px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .panel-title button {
-  width: 22px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   color: #26323a;
-  font-size: 36px;
-  line-height: 1;
+  font-size: 30px;
+  line-height: 0.8;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  transform: translateY(-1px);
 }
 
 .panel-title h1 {
   margin: 0;
   color: #202931;
   font-size: 22px;
+  line-height: 1;
   font-weight: 900;
   letter-spacing: 0;
+}
+
+.admin-grid-panel {
+  display: grid;
+  gap: 28px;
+}
+
+.admin-grid-section {
+  padding-bottom: 28px;
+  border-bottom: 1px solid #edf1f3;
+}
+
+.admin-grid-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.admin-grid-section h3 {
+  margin: 0 0 22px;
+  color: #247d82;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.admin-grid-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 128px);
+  gap: 18px;
+}
+
+.admin-grid-button {
+  width: 128px;
+  min-height: 116px;
+  padding: 18px 10px 16px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  border: 1px solid #dbe8ec;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef7f9 100%);
+  color: #202931;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 10px 22px rgba(47, 79, 91, 0.14);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.admin-grid-button:hover {
+  transform: translateY(-2px);
+  border-color: #9bc9cf;
+  box-shadow: 0 14px 28px rgba(36, 125, 130, 0.2);
+}
+
+.admin-grid-button:active {
+  transform: translateY(0);
+  box-shadow: 0 7px 16px rgba(47, 79, 91, 0.16);
+}
+
+.admin-grid-button svg {
+  width: 36px;
+  height: 36px;
+  fill: none;
+  stroke: #247d82;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.3;
+}
+
+.admin-grid-button:nth-child(2n) svg {
+  stroke: #667780;
+}
+
+.admin-grid-section:nth-child(2) .admin-grid-button:first-child svg {
+  stroke: #c44949;
+}
+
+.admin-grid-section:nth-child(2) .admin-grid-button:nth-child(3) svg {
+  stroke: #d0972b;
+}
+
+.admin-grid-button span {
+  display: grid;
+  gap: 1px;
+  color: #25313a;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.28;
 }
 
 .pre-register-form {
@@ -2091,8 +2189,46 @@ button {
     border-radius: 18px;
   }
 
+  .manager-card:has(.admin-grid-panel) {
+    width: min(348px, 100%);
+    min-height: 640px;
+    padding: 24px 20px 34px;
+  }
+
   .panel-title {
     margin-bottom: 24px;
+  }
+
+  .panel-title button {
+    width: 26px;
+    height: 26px;
+    font-size: 28px;
+  }
+
+  .admin-grid-panel {
+    gap: 24px;
+  }
+
+  .admin-grid-section {
+    padding-bottom: 24px;
+  }
+
+  .admin-grid-section h3 {
+    margin-bottom: 18px;
+    font-size: 17px;
+  }
+
+  .admin-grid-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .admin-grid-button {
+    width: calc((100% - 12px) / 2);
+    min-width: 0;
+    min-height: 90px;
+    border-radius: 14px;
   }
 
   .pre-register-form {

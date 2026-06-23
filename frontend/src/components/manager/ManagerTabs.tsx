@@ -5,7 +5,8 @@ type ManagerTabsProps = {
 };
 
 export function ManagerTabs({ currentView }: ManagerTabsProps) {
-  const currentIndex = Math.max(ADMIN_MENUS.findIndex((menu) => menu.id === currentView), 0);
+  const visibleView = currentView === 'register' ? 'grid' : currentView;
+  const currentIndex = Math.max(ADMIN_MENUS.findIndex((menu) => menu.id === visibleView), 0);
   const previousMenu = ADMIN_MENUS[currentIndex - 1];
   const currentMenu = ADMIN_MENUS[currentIndex];
   const nextMenu = ADMIN_MENUS[currentIndex + 1];
