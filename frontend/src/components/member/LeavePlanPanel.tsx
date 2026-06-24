@@ -1,10 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 type LeaveType = '월차' | '오전반차' | '오후반차';
 
-const TODAY = 22;
-const DAYS = Array.from({ length: 30 }, (_, index) => index + 1);
-const EMPTY_DAYS = Array.from({ length: new Date(2026, 5, 1).getDay() }, (_, index) => index);
 const WEEKDAYS = [
   { label: '일', className: 'sunday' },
   { label: '월', className: '' },
@@ -15,15 +12,16 @@ const WEEKDAYS = [
   { label: '토', className: 'saturday' },
 ];
 
-function getDateClassName(day: number) {
+function getDateClassName(date: Date, selectedDate: string, today: string) {
   const classNames = ['calendar-day'];
-  const weekday = new Date(2026, 5, day).getDay();
+  const dateKey = toDateKey(date);
+  const weekday = date.getDay();
 
-  if (day < TODAY) {
+  if (dateKey < today) {
     classNames.push('past');
   }
 
-  if (day === TODAY) {
+  if (dateKey === selectedDate) {
     classNames.push('selected');
   }
 
@@ -40,13 +38,22 @@ function getDateClassName(day: number) {
 
 export function LeavePlanPanel() {
   const [selectedLeaveType, setSelectedLeaveType] = useState<LeaveType | null>(null);
+  const today = useMemo(() => toDateKey(new Date()), []);
+  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDate, setSelectedDate] = useState(today);
+  const days = useMemo(() => getMonthDays(visibleMonth), [visibleMonth]);
+  const emptyDays = useMemo(() => Array.from({ length: visibleMonth.getDay() }, (_, index) => index), [visibleMonth]);
+
+  const moveMonth = (amount: number) => {
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
+  };
 
   return (
     <div className="member-panel">
       <div className="member-calendar-header">
-        <button type="button" aria-label="이전 달">‹</button>
-        <strong>2026년 6월</strong>
-        <button type="button" aria-label="다음 달">›</button>
+        <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
+        <strong>{visibleMonth.getFullYear()}년 {visibleMonth.getMonth() + 1}월</strong>
+        <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
       </div>
       <div className="member-calendar-grid" aria-label="휴무 달력">
         {WEEKDAYS.map((day) => (
@@ -54,14 +61,25 @@ export function LeavePlanPanel() {
             {day.label}
           </span>
         ))}
-        {EMPTY_DAYS.map((day) => (
+        {emptyDays.map((day) => (
           <span className="calendar-empty" key={`empty-${day}`} />
         ))}
-        {DAYS.map((day) => (
-          <button className={getDateClassName(day)} disabled={day < TODAY} type="button" key={day}>
-            {day}
-          </button>
-        ))}
+        {days.map((date) => {
+          const dateKey = toDateKey(date);
+          const past = dateKey < today;
+
+          return (
+            <button
+              className={getDateClassName(date, selectedDate, today)}
+              disabled={past}
+              type="button"
+              key={dateKey}
+              onClick={() => setSelectedDate(dateKey)}
+            >
+              {date.getDate()}
+            </button>
+          );
+        })}
       </div>
       <div className="leave-type-actions">
         <button
@@ -95,4 +113,22 @@ export function LeavePlanPanel() {
       </section>
     </div>
   );
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getMonthDays(month: Date) {
+  const lastDate = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+
+  return Array.from({ length: lastDate }, (_, index) => new Date(month.getFullYear(), month.getMonth(), index + 1));
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }

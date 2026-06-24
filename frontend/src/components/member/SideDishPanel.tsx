@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiRequest } from '../../api/client';
 import type { MealType as ApiMealType, SideDishResponse } from '../../types/domain';
 
-const TODAY = 22;
-const DAYS = Array.from({ length: 30 }, (_, index) => index + 1);
-const EMPTY_DAYS = Array.from({ length: new Date(2026, 5, 1).getDay() }, (_, index) => index);
 const WEEKDAYS = [
   { label: '일', className: 'sunday' },
   { label: '월', className: '' },
@@ -33,15 +30,16 @@ type AlertState = {
   description: string;
 };
 
-function getDateClassName(day: number, selectedDate: number) {
+function getDateClassName(date: Date, selectedDate: string, today: string) {
   const classNames = ['calendar-day'];
-  const weekday = new Date(2026, 5, day).getDay();
+  const dateKey = toDateKey(date);
+  const weekday = date.getDay();
 
-  if (day < TODAY) {
+  if (dateKey < today) {
     classNames.push('past');
   }
 
-  if (day === selectedDate) {
+  if (dateKey === selectedDate) {
     classNames.push('selected');
   }
 
@@ -56,13 +54,10 @@ function getDateClassName(day: number, selectedDate: number) {
   return classNames.join(' ');
 }
 
-function formatSelectedDate(day: number) {
-  const weekday = DATE_LABELS[new Date(2026, 5, day).getDay()];
-  return `6/${day}(${weekday})`;
-}
-
-function formatSelectedDateValue(day: number) {
-  return `2026-06-${String(day).padStart(2, '0')}`;
+function formatSelectedDate(dateKey: string) {
+  const date = new Date(`${dateKey}T00:00:00`);
+  const weekday = DATE_LABELS[date.getDay()];
+  return `${date.getMonth() + 1}/${date.getDate()}(${weekday})`;
 }
 
 function toApiMealType(mealType: MealType): ApiMealType {
@@ -104,7 +99,10 @@ function formatCreatedAt(value: string) {
 }
 
 export function SideDishPanel() {
-  const [selectedDate, setSelectedDate] = useState(TODAY);
+  const today = useMemo(() => toDateKey(new Date()), []);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
+  const [selectedDate, setSelectedDate] = useState(today);
   const [selectedMeal, setSelectedMeal] = useState<MealType>('점심');
   const [items, setItems] = useState<SideDishItem[]>([]);
   const [sideDishes, setSideDishes] = useState<SideDishResponse[]>([]);
@@ -115,10 +113,13 @@ export function SideDishPanel() {
   const [message, setMessage] = useState<Message | null>(null);
   const [alertState, setAlertState] = useState<AlertState | null>(null);
   const [cancelTarget, setCancelTarget] = useState<SideDishResponse | null>(null);
+  const days = useMemo(() => getMonthDays(visibleMonth), [visibleMonth]);
+  const emptyDays = useMemo(() => Array.from({ length: visibleMonth.getDay() }, (_, index) => index), [visibleMonth]);
   const selectedDateLabel = formatSelectedDate(selectedDate);
-  const selectedDateValue = formatSelectedDateValue(selectedDate);
+  const selectedDateValue = selectedDate;
   const selectedMealType = toApiMealType(selectedMeal);
   const deadlineText = selectedMeal === '점심' ? '당일 10:45AM 마감' : '당일 16:30PM 마감';
+  const deadlineExceeded = isDeadlineExceeded(selectedDateValue, selectedMeal, currentTime);
   const totalPrice = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const selectedMealSideDishes = sideDishes.filter((sideDish) => sideDish.mealType === selectedMealType);
   const selectedMealOrderTotal = selectedMealSideDishes.reduce((sum, sideDish) => sum + sideDish.totalPrice, 0);
@@ -127,6 +128,16 @@ export function SideDishPanel() {
   useEffect(() => {
     void loadSideDishes();
   }, [selectedDateValue]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setCurrentTime(new Date()), 30_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const moveMonth = (amount: number) => {
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
+  };
 
   const loadSideDishes = async () => {
     setLoading(true);
@@ -141,6 +152,10 @@ export function SideDishPanel() {
   };
 
   const addItem = () => {
+    if (deadlineExceeded) {
+      setMessage({ type: 'error', text: `${selectedMeal} 반찬 신청 시간이 마감되었습니다.` });
+      return;
+    }
     setItems((current) => [...current, { id: Date.now(), menuName: '', price: '' }]);
   };
 
@@ -159,6 +174,11 @@ export function SideDishPanel() {
   };
 
   const openConfirm = () => {
+    if (deadlineExceeded) {
+      setMessage({ type: 'error', text: `${selectedMeal} 반찬 신청 시간이 마감되었습니다.` });
+      return;
+    }
+
     const validItems = items
       .map((item) => ({ menuName: item.menuName.trim(), price: Number(item.price) }))
       .filter((item) => item.menuName && item.price > 0);
@@ -175,6 +195,12 @@ export function SideDishPanel() {
 
   const submitSideDishes = async () => {
     const validItems = getValidItems();
+
+    if (deadlineExceeded) {
+      setMessage({ type: 'error', text: `${selectedMeal} 반찬 신청 시간이 마감되었습니다.` });
+      setConfirmOpen(false);
+      return;
+    }
 
     if (!transferChecked) {
       setMessage({ type: 'error', text: '송금완료를 체크해주세요.' });
@@ -242,9 +268,9 @@ export function SideDishPanel() {
       </section>
       <section className="side-dish-calendar">
         <div className="member-calendar-header">
-          <button type="button" aria-label="이전 달">‹</button>
-          <strong>2026년 6월</strong>
-          <button type="button" aria-label="다음 달">›</button>
+          <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
+          <strong>{visibleMonth.getFullYear()}년 {visibleMonth.getMonth() + 1}월</strong>
+          <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
         </div>
         <div className="member-calendar-grid" aria-label="반찬 신청 날짜 선택">
           {WEEKDAYS.map((day) => (
@@ -252,20 +278,25 @@ export function SideDishPanel() {
               {day.label}
             </span>
           ))}
-          {EMPTY_DAYS.map((day) => (
+          {emptyDays.map((day) => (
             <span className="calendar-empty" key={`side-dish-empty-${day}`} />
           ))}
-          {DAYS.map((day) => (
-            <button
-              className={getDateClassName(day, selectedDate)}
-              disabled={day < TODAY}
-              type="button"
-              key={day}
-              onClick={() => setSelectedDate(day)}
-            >
-              {day}
-            </button>
-          ))}
+          {days.map((date) => {
+            const dateKey = toDateKey(date);
+            const past = dateKey < today;
+
+            return (
+              <button
+                className={getDateClassName(date, selectedDate, today)}
+                disabled={past}
+                type="button"
+                key={dateKey}
+                onClick={() => setSelectedDate(dateKey)}
+              >
+                {date.getDate()}
+              </button>
+            );
+          })}
         </div>
       </section>
       <div className="meal-toggle">
@@ -281,6 +312,7 @@ export function SideDishPanel() {
           <div>
             <strong>{selectedDateLabel} {selectedMeal} 반찬 신청</strong>
             <p>{deadlineText}</p>
+            {deadlineExceeded && <p className="side-dish-deadline-message">{selectedMeal} 반찬 신청 시간이 마감되었습니다.</p>}
             <p className="side-dish-live-total">실시간 공장반찬 주문합계 금액: {selectedMealOrderTotal.toLocaleString()}원</p>
           </div>
           <span>합계: {totalPrice.toLocaleString()}원</span>
@@ -315,9 +347,9 @@ export function SideDishPanel() {
             ))}
           </div>
         )}
-        <button className="member-secondary-action side-dish-add-button" type="button" onClick={addItem}>+ 추가</button>
+        <button className="member-secondary-action side-dish-add-button" type="button" disabled={deadlineExceeded} onClick={addItem}>+ 추가</button>
       </section>
-      <button className="member-primary-action" type="button" disabled={submitLoading} onClick={openConfirm}>
+      <button className="member-primary-action" type="button" disabled={submitLoading || deadlineExceeded} onClick={openConfirm}>
         {submitLoading ? '신청 중' : '반찬신청'}
       </button>
       {message && <p className={`side-dish-message ${message.type}`}>{message.text}</p>}
@@ -326,9 +358,7 @@ export function SideDishPanel() {
           <strong>{selectedDateLabel} {selectedMeal} 신청목록</strong>
           {latestOrderCreatedAt && (
             <span>
-              {latestOrderCreatedAt.date}
-              <br />
-              {latestOrderCreatedAt.time}
+              {latestOrderCreatedAt.date} {latestOrderCreatedAt.time}
             </span>
           )}
         </div>
@@ -355,8 +385,7 @@ export function SideDishPanel() {
                     <ol>
                       {orderItems.map((item, index) => (
                         <li key={`${item.menuName}-${index}`}>
-                          <span>{item.menuName}</span>
-                          <strong>{item.price.toLocaleString()}원</strong>
+                          <span>{item.menuName} {item.price.toLocaleString()}원</span>
                         </li>
                       ))}
                     </ol>
@@ -377,6 +406,7 @@ export function SideDishPanel() {
             items={getValidItems()}
             transferChecked={transferChecked}
             submitLoading={submitLoading}
+            deadlineExceeded={deadlineExceeded}
             onTransferChange={setTransferChecked}
             onClose={() => setConfirmOpen(false)}
             onSubmit={submitSideDishes}
@@ -410,6 +440,7 @@ type SideDishConfirmModalProps = {
   items: Array<{ menuName: string; price: number }>;
   transferChecked: boolean;
   submitLoading: boolean;
+  deadlineExceeded: boolean;
   onTransferChange: (checked: boolean) => void;
   onClose: () => void;
   onSubmit: () => void;
@@ -421,6 +452,7 @@ function SideDishConfirmModal({
   items,
   transferChecked,
   submitLoading,
+  deadlineExceeded,
   onTransferChange,
   onClose,
   onSubmit,
@@ -459,13 +491,44 @@ function SideDishConfirmModal({
         <section className="side-dish-modal-section">
           <h3>3. 신청하기</h3>
           <p>주문내용 확인 및 송금을 완료하셨으면 아래 신청 버튼을 눌러서 신청을 완료해주세요</p>
-          <button className="side-dish-modal-submit" type="button" disabled={!transferChecked || submitLoading} onClick={onSubmit}>
+          {deadlineExceeded && <p className="side-dish-deadline-message">{meal} 반찬 신청 시간이 마감되었습니다.</p>}
+          <button className="side-dish-modal-submit" type="button" disabled={!transferChecked || submitLoading || deadlineExceeded} onClick={onSubmit}>
             {submitLoading ? '신청 중' : '신청하기'}
           </button>
         </section>
       </section>
     </div>
   );
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getMonthDays(month: Date) {
+  const lastDate = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+
+  return Array.from({ length: lastDate }, (_, index) => new Date(month.getFullYear(), month.getMonth(), index + 1));
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function isDeadlineExceeded(dateKey: string, mealType: MealType, now: Date) {
+  if (dateKey !== toDateKey(now)) {
+    return false;
+  }
+
+  const deadline = mealType === '점심'
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 45)
+    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 16, 30);
+
+  return now > deadline;
 }
 
 type SideDishCancelModalProps = {

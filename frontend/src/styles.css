@@ -3346,6 +3346,14 @@ button {
   box-shadow: 0 10px 22px rgba(36, 125, 130, 0.22);
 }
 
+.member-primary-action:disabled,
+.member-secondary-action:disabled {
+  background: #e8eef2;
+  color: #9aa8b4;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 .check-icon {
   width: 20px;
   height: 20px;
@@ -3399,6 +3407,13 @@ button {
   font-weight: 900;
 }
 
+.side-dish-deadline-message {
+  margin-top: 4px;
+  color: #d84b4b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .side-dish-add-button {
   border-style: dashed;
   border-color: #b9cbd1;
@@ -3439,7 +3454,7 @@ button {
 
 .side-dish-history-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin-top: 12px;
 }
 
@@ -3448,6 +3463,8 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #dce6ee;
 }
 
 .side-dish-list-header span {
@@ -3460,10 +3477,14 @@ button {
 }
 
 .side-dish-history-item {
+  min-height: 124px;
   padding: 12px;
-  display: block;
-  border: 1px solid #e3edf1;
-  border-radius: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: start;
+  border: 1px solid #dce6ee;
+  border-radius: 8px;
   background: #fff;
 }
 
@@ -3473,10 +3494,7 @@ button {
 }
 
 .side-dish-order-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  display: contents;
 }
 
 .side-dish-order-card-header strong {
@@ -3487,6 +3505,8 @@ button {
 }
 
 .side-dish-order-card-header button {
+  grid-row: 1 / span 2;
+  grid-column: 2;
   min-height: 28px;
   padding: 0 10px;
   border-radius: 8px;
@@ -3499,50 +3519,44 @@ button {
 }
 
 .side-dish-order-created-at {
+  grid-column: 1;
   margin-top: 6px;
   color: #64748b;
   font-size: 12px;
   font-weight: 900;
 }
 
+.side-dish-order-content {
+  display: contents;
+}
+
 .side-dish-history-item ol {
+  grid-column: 1 / -1;
   margin: 8px 0 0;
-  padding-left: 0;
+  padding-left: 18px;
   display: grid;
   gap: 5px;
-  counter-reset: order;
 }
 
 .side-dish-history-item li {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto;
-  gap: 4px;
-  align-items: center;
   color: #25313a;
   font-size: 13px;
   font-weight: 800;
-  counter-increment: order;
-}
-
-.side-dish-history-item li::before {
-  content: counter(order) ".";
-  color: #247d82;
-  font-weight: 900;
 }
 
 .side-dish-history-item li span {
   min-width: 0;
   overflow-wrap: anywhere;
+  font-weight: 900;
 }
 
-.side-dish-history-item li strong {
+.side-dish-history-item li::marker {
   color: #25313a;
-  font-size: 13px;
   font-weight: 900;
-  white-space: nowrap;
 }
 
 .side-dish-order-content > span {
+  grid-column: 1 / -1;
   margin-top: 4px;
   color: #25313a;
   font-size: 13px;
