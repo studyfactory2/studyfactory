@@ -32,7 +32,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
             join Member m on m.id = l.memberId
             join Branch b on b.id = l.branchId
             where l.leaveDate = :date
-              and (:name is null or m.name like concat('%', :name, '%'))
+              and (:name is null or m.name like concat('%', cast(:name as string), '%'))
               and (:branchId is null or l.branchId = :branchId)
               and (:leaveType is null or l.leaveType = :leaveType)
             order by l.createdAt asc, m.name asc

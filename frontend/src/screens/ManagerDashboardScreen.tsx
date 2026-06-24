@@ -1,4 +1,5 @@
 import { AdminGridPanel } from '../components/manager/AdminGridPanel';
+import { DailyLeaveStatusPanel } from '../components/manager/DailyLeaveStatusPanel';
 import { ManagerTabs } from '../components/manager/ManagerTabs';
 import { ManagerTopBar } from '../components/manager/ManagerTopBar';
 import { MemberStatusPanel } from '../components/manager/MemberStatusPanel';
@@ -6,6 +7,7 @@ import { OtherLeaveRequestPanel } from '../components/manager/OtherLeaveRequestP
 import { PlaceholderPanel } from '../components/manager/PlaceholderPanel';
 import { PreRegistrationPanel } from '../components/manager/PreRegistrationPanel';
 import { StaffAttendancePanel } from '../components/manager/StaffAttendancePanel';
+import { StaffPagePanel } from '../components/manager/StaffPagePanel';
 import { StaffWorkPanel } from '../components/manager/StaffWorkPanel';
 import { VacationHistoryPanel } from '../components/manager/VacationHistoryPanel';
 import { STAFF_MENUS, resolveAdminMenuId } from '../constants/adminMenus';
@@ -17,7 +19,8 @@ export function ManagerDashboardScreen() {
   const memberName = localStorage.getItem('memberName') || '사용자';
   const searchParams = new URLSearchParams(window.location.search);
   const requestedView = resolveAdminMenuId(searchParams.get('view'));
-  const currentView = role === 'STAFF' && !STAFF_MENUS.some((menu) => menu.id === requestedView) ? 'attendance' : requestedView;
+  const staffExtraViews = ['daily_leave_status'];
+  const currentView = role === 'STAFF' && !STAFF_MENUS.some((menu) => menu.id === requestedView) && !staffExtraViews.includes(requestedView) ? 'attendance' : requestedView;
   const { branches, certifications } = useManagerOptions(role === 'ADMIN' || role === 'STAFF');
 
   if (role === 'STAFF') {
@@ -25,11 +28,15 @@ export function ManagerDashboardScreen() {
       <ManagerLayout>
         <ManagerTopBar />
         <ManagerTabs currentView={currentView} menus={STAFF_MENUS} />
-        <section className="manager-card staff-attendance-card">
+        <section className={`manager-card${currentView === 'attendance' ? ' staff-attendance-card' : ''}`}>
           {currentView === 'attendance' ? (
             <StaffAttendancePanel />
           ) : currentView === 'staff-work' ? (
             <StaffWorkPanel branches={branches} editable={false} />
+          ) : currentView === 'staff-page' ? (
+            <StaffPagePanel />
+          ) : currentView === 'daily_leave_status' ? (
+            <DailyLeaveStatusPanel branches={branches} />
           ) : (
             <PlaceholderPanel currentView={currentView} />
           )}
@@ -71,6 +78,10 @@ export function ManagerDashboardScreen() {
           <StaffAttendancePanel />
         ) : currentView === 'staff-work' ? (
           <StaffWorkPanel branches={branches} editable={true} />
+        ) : currentView === 'staff-page' ? (
+          <StaffPagePanel />
+        ) : currentView === 'daily_leave_status' ? (
+          <DailyLeaveStatusPanel branches={branches} />
         ) : currentView === 'vacation_history' ? (
           <VacationHistoryPanel branches={branches} />
         ) : currentView === 'other_leave_request' ? (

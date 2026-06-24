@@ -1,0 +1,183 @@
+type StaffPageIconType =
+  | 'daily-leave'
+  | 'drink'
+  | 'new-member'
+  | 'seat'
+  | 'cup'
+  | 'clipboard'
+  | 'staff-leave'
+  | 'side-dish';
+
+type StaffPageItem = {
+  icon: StaffPageIconType;
+  label: string;
+  href?: string;
+};
+
+type StaffPageSection = {
+  title: string;
+  items: StaffPageItem[];
+};
+
+const STAFF_PAGE_SECTIONS: StaffPageSection[] = [
+  {
+    title: '업무 관련 메뉴',
+    items: [
+      { icon: 'daily-leave', label: '일별 사원\n휴무 현황', href: '/managerdashboard?view=daily_leave_status' },
+      { icon: 'drink', label: '음료\n제조/서빙' },
+      { icon: 'new-member', label: '신규 출근\n일정' },
+    ],
+  },
+  {
+    title: '사원 정보 관련 메뉴',
+    items: [
+      { icon: 'seat', label: '사원\n좌석 관리' },
+      { icon: 'cup', label: '사원\n음료 관리' },
+      { icon: 'clipboard', label: '새로운 음료\n신청' },
+    ],
+  },
+  {
+    title: '스탭 개인 메뉴',
+    items: [
+      { icon: 'staff-leave', label: '스탭\n휴무 신청' },
+      { icon: 'side-dish', label: '반찬\n신청' },
+    ],
+  },
+];
+
+export function StaffPagePanel() {
+  return (
+    <div className="staff-page-panel">
+      {STAFF_PAGE_SECTIONS.map((section) => (
+        <section className="staff-page-section" key={section.title}>
+          <h3>{section.title}</h3>
+          <div className="staff-page-buttons">
+            {section.items.map((item) => (
+              <StaffPageButton item={item} key={item.label} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function StaffPageButton({ item }: { item: StaffPageItem }) {
+  const content = (
+    <>
+      <StaffPageIcon icon={item.icon} />
+      <span>
+        {item.label.split('\n').map((line) => (
+          <span key={line}>{line}</span>
+        ))}
+      </span>
+    </>
+  );
+
+  if (item.href) {
+    return (
+      <a className="staff-page-button" href={item.href} aria-label={item.label.replace('\n', ' ')}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <button className="staff-page-button" type="button" aria-label={item.label.replace('\n', ' ')}>
+      {content}
+    </button>
+  );
+}
+
+function StaffPageIcon({ icon }: { icon: StaffPageIconType }) {
+  if (icon === 'daily-leave') {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M8 6v5" />
+        <path d="M24 6v5" />
+        <path d="M6 12h20" />
+        <path d="M8 8.5h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-14a2 2 0 0 1 2-2Z" />
+        <path d="M11 17h10" />
+        <path d="M11 22h6" />
+      </svg>
+    );
+  }
+
+  if (icon === 'drink') {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M9 10h14l-1.2 14.3a3 3 0 0 1-3 2.7h-5.6a3 3 0 0 1-3-2.7L9 10Z" />
+        <path d="M12 10 13 5" />
+        <path d="M20 10V5" />
+        <path d="M9.5 15h13" />
+        <path d="M23 13h2.5a3.5 3.5 0 0 1 0 7H23" />
+      </svg>
+    );
+  }
+
+  if (icon === 'new-member') {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M14 15a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z" />
+        <path d="M6 26c.9-4.6 3.8-7 8-7 2 0 3.7.5 5 1.5" />
+        <path d="M22.5 14.5v8" />
+        <path d="M18.5 18.5h8" />
+        <path d="m24.8 7.4 1.8 1.8 3.2-4" />
+      </svg>
+    );
+  }
+
+  if (icon === 'seat') {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 15a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z" />
+        <path d="M8 26c.8-4.5 3.6-7 8-7s7.2 2.5 8 7" />
+        <path d="M16 28s6-5.2 6-10a6 6 0 0 0-12 0c0 4.8 6 10 6 10Z" />
+      </svg>
+    );
+  }
+
+  if (icon === 'cup') {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M8 10h14v10a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6V10Z" />
+        <path d="M22 13h2a3.5 3.5 0 0 1 0 7h-2" />
+        <path d="M11 6v2" />
+        <path d="M16 5v3" />
+        <path d="M21 6v2" />
+      </svg>
+    );
+  }
+
+  if (icon === 'clipboard') {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M12 6h8l1 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V11a2 2 0 0 1 2-2h3l1-3Z" />
+        <path d="M12 9h8" />
+        <path d="M11 16h10" />
+        <path d="M11 21h7" />
+      </svg>
+    );
+  }
+
+  if (icon === 'staff-leave') {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M13 15a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z" />
+        <path d="M5 26c.8-4.6 3.7-7 8-7 1.8 0 3.4.5 4.7 1.4" />
+        <path d="M23 15v10" />
+        <path d="M18 20h10" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M10 8h12l-1.5 18h-9L10 8Z" />
+      <path d="M8 8h16" />
+      <path d="M13 5h6" />
+      <path d="M13 15h6" />
+      <path d="M13 20h5" />
+    </svg>
+  );
+}

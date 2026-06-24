@@ -8,6 +8,8 @@ type ManagerTabsProps = {
 export function ManagerTabs({ currentView, menus = ADMIN_MENUS }: ManagerTabsProps) {
   const visibleView = currentView === 'register' || currentView === 'status' || currentView === 'vacation_history' || currentView === 'other_leave_request'
     ? 'grid'
+    : currentView === 'daily_leave_status'
+      ? 'staff-page'
     : currentView;
   const currentIndex = Math.max(menus.findIndex((menu) => menu.id === visibleView), 0);
   const previousMenu = menus[currentIndex - 1];
