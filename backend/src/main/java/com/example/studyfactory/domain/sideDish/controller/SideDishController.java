@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.sideDish.controller;
 
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
+import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
 import com.example.studyfactory.domain.sideDish.service.SideDishService;
@@ -36,6 +37,15 @@ public class SideDishController {
     @GetMapping("/me")
     public List<SideDishResponse> findMineByDate(@CurrentMember Long memberId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return sideDishService.findMineByDate(memberId, date);
+    }
+
+    @GetMapping("/daily")
+    public List<DailySideDishResponse> findDaily(
+            @CurrentMember Long memberId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Long branchId
+    ) {
+        return sideDishService.findDaily(memberId, date, branchId);
     }
 
     @DeleteMapping("/{sideDishId}")

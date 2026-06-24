@@ -8,7 +8,9 @@ import static org.mockito.BDDMockito.then;
 
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
+import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
 import com.example.studyfactory.domain.sideDish.entity.MealType;
@@ -99,6 +101,45 @@ class SideDishServiceTest {
         assertThat(responses.get(0).items()).isEqualTo("제육볶음: 9000");
         assertThat(responses.get(0).totalPrice()).isEqualTo(9000);
         then(sideDishRequestRepository).should().findMineByDate(1L, mealDate);
+    }
+
+    @Test
+    @DisplayName("관리자는 날짜와 지점으로 반찬 신청 목록을 조회한다")
+    void findDaily() {
+        LocalDate mealDate = LocalDate.of(2026, 6, 19);
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        DailySideDishResponse response = new DailySideDishResponse(
+                10L,
+                2L,
+                2L,
+                "한지민",
+                52,
+                mealDate,
+                MealType.LUNCH,
+                "손질고등어구이: 4500",
+                4500
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(sideDishRequestRepository.findDailyByBranchAndDate(2L, mealDate)).willReturn(List.of(response));
+
+        List<DailySideDishResponse> responses = sideDishService.findDaily(1L, mealDate, null);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).memberName()).isEqualTo("한지민");
+        assertThat(responses.get(0).seatNumber()).isEqualTo(52);
+        assertThat(responses.get(0).mealType()).isEqualTo(MealType.LUNCH);
+        then(sideDishRequestRepository).should().findDailyByBranchAndDate(2L, mealDate);
+    }
+
+    @Test
+    @DisplayName("일반 회원이 반찬 신청 목록을 조회하면 예외가 발생한다")
+    void throwExceptionWhenMemberFindDaily() {
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> sideDishService.findDaily(1L, LocalDate.of(2026, 6, 19), null))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
     }
 
     @Test

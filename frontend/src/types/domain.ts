@@ -98,6 +98,18 @@ export type SideDishResponse = {
   updatedAt: string;
 };
 
+export type DailySideDishResponse = {
+  id: number;
+  memberId: number;
+  branchId: number;
+  memberName: string;
+  seatNumber?: number | null;
+  mealDate: string;
+  mealType: MealType;
+  items: string;
+  totalPrice: number;
+};
+
 export type LeaveType = 'FULL' | 'MORNING' | 'AFTERNOON';
 
 export type DailyLeaveStatusResponse = {

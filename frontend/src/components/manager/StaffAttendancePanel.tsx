@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { apiRequest } from '../../api/client';
-import type { DailyAttendanceBoardResponse } from '../../types/domain';
+import type { DailyAttendanceBoardResponse, DailySideDishResponse, MealType } from '../../types/domain';
 
 const SLOT_LABELS = [1, 2, 3, 4, 5, 6, 7];
 const OTHER_REASON_OPTIONS = ['지각', '조회', '외출', '이동', '시험', '컨디션'];
@@ -22,6 +22,8 @@ export function StaffAttendancePanel() {
   const [otherSlot, setOtherSlot] = useState<number | null>(null);
   const [selectedOtherReason, setSelectedOtherReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
+  const [sideDishes, setSideDishes] = useState<DailySideDishResponse[]>([]);
+  const [sideDishModalOpen, setSideDishModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
@@ -38,9 +40,12 @@ export function StaffAttendancePanel() {
   const todoCount = useMemo(() => filteredRows.filter((row) => row.slots.some((slot) => slot !== 'X')).length, [filteredRows]);
   const noteCount = useMemo(() => filteredRows.filter((row) => row.slots.some((slot) => slot !== 'X' && slot !== '월차')).length, [filteredRows]);
   const otherCalendar = useMemo(() => createMonthCalendar(otherDate), [otherDate]);
+  const lunchSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'LUNCH'), [sideDishes]);
+  const dinnerSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'DINNER'), [sideDishes]);
 
   useEffect(() => {
     void loadBoard(selectedDate);
+    void loadSideDishes(selectedDate);
   }, [selectedDate]);
 
   const loadBoard = async (date: string) => {
@@ -58,6 +63,19 @@ export function StaffAttendancePanel() {
       setMessage(error instanceof Error ? error.message : '출석부를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSideDishes = async (date: string) => {
+    try {
+      const params = new URLSearchParams({ date });
+      if (branchId) {
+        params.set('branchId', branchId);
+      }
+      const response = await apiRequest<DailySideDishResponse[]>(`/api/side-dishes/daily?${params.toString()}`);
+      setSideDishes(response);
+    } catch {
+      setSideDishes([]);
     }
   };
 
@@ -204,7 +222,7 @@ export function StaffAttendancePanel() {
 
       <div className="staff-attendance-actions">
         <button className="suggestion-tag" type="button" disabled>회원건의</button>
-        <button className="meal-tag" type="button" disabled>반찬신청</button>
+        <button className="meal-tag" type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>반찬신청</button>
         <button className="todo-tag" type="button" disabled={todoCount === 0}>할일목록 <b>{todoCount}</b></button>
         <button className="note-tag" type="button" disabled={noteCount === 0}>출석참고 <b>{noteCount}</b></button>
       </div>
@@ -397,8 +415,72 @@ export function StaffAttendancePanel() {
           </form>
         </div>
       )}
+      {sideDishModalOpen && (
+        <div className="attendance-modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            setSideDishModalOpen(false);
+          }
+        }}>
+          <section className="attendance-side-dish-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-side-dish-title">
+            <header>
+              <h2 id="attendance-side-dish-title">반찬신청</h2>
+              <button type="button" aria-label="닫기" onClick={() => setSideDishModalOpen(false)}>×</button>
+            </header>
+            <div className="attendance-side-dish-content">
+              <SideDishMealSection title="점심 반찬 신청" mealType="LUNCH" sideDishes={lunchSideDishes} />
+              <SideDishMealSection title="저녁 반찬 신청" mealType="DINNER" sideDishes={dinnerSideDishes} />
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
+}
+
+type SideDishMealSectionProps = {
+  title: string;
+  mealType: MealType;
+  sideDishes: DailySideDishResponse[];
+};
+
+function SideDishMealSection({ title, mealType, sideDishes }: SideDishMealSectionProps) {
+  return (
+    <section className="attendance-side-dish-section">
+      <strong>{title}</strong>
+      {sideDishes.length > 0 ? (
+        <ol>
+          {sideDishes.flatMap((sideDish) => formatSideDishItems(sideDish).map((item) => (
+            <li key={`${mealType}-${sideDish.id}-${item}`}>
+              {item} {toMemberSeatText(sideDish)} {sideDish.memberName}
+            </li>
+          )))}
+        </ol>
+      ) : (
+        <p>신청 없음</p>
+      )}
+    </section>
+  );
+}
+
+function formatSideDishItems(sideDish: DailySideDishResponse) {
+  const items = sideDish.items
+          .split(/\n|,/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+
+  if (items.length === 0) {
+    return [`${sideDish.totalPrice.toLocaleString()}원`];
+  }
+
+  return items.map((item) => item.replace(/:\s*(\d+)/g, (_, price: string) => ` ${Number(price).toLocaleString()}원`));
+}
+
+function toMemberSeatText(sideDish: DailySideDishResponse) {
+  if (sideDish.seatNumber == null) {
+    return '미배정';
+  }
+
+  return `${sideDish.seatNumber}번`;
 }
 
 function toDateKey(date: Date) {
