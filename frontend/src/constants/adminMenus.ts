@@ -12,6 +12,12 @@ export const ADMIN_MENUS: AdminMenu[] = [
   { id: 'staff-page', label: '스텝페이지' },
 ];
 
+export const STAFF_MENUS: AdminMenu[] = [
+  { id: 'attendance', label: '출석부' },
+  { id: 'staff-work', label: '스탭 업무 현황' },
+  { id: 'staff-page', label: '스텝페이지' },
+];
+
 export function resolveAdminMenuId(value: string | null): AdminMenuId {
   if (value === 'register' || value === 'status' || value === 'vacation_history' || value === 'other_leave_request') {
     return value;

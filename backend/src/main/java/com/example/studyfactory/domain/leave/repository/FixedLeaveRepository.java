@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface FixedLeaveRepository extends JpaRepository<FixedLeave, Long> {
 
     List<FixedLeave> findByMemberIdAndActiveTrueOrderByCreatedAtAsc(Long memberId);
+
+    List<FixedLeave> findByBranchIdAndActiveTrueOrderByCreatedAtAsc(Long branchId);
 }

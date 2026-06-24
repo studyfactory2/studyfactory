@@ -2340,6 +2340,384 @@ button {
   color: #849198;
 }
 
+.staff-attendance-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.staff-attendance-panel {
+  min-height: 520px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background: #fff;
+}
+
+.staff-attendance-tools {
+  display: grid;
+  grid-template-columns: minmax(86px, 0.72fr) minmax(168px, 1.28fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 4px;
+}
+
+.staff-search-button,
+.staff-attendance-search,
+.staff-attendance-actions button {
+  min-height: 32px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #fff;
+  color: #718096;
+  font-size: clamp(0.65rem, 2.5vw, 0.85rem);
+  font-weight: 900;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.staff-search-slot {
+  min-width: 0;
+}
+
+.staff-search-button {
+  width: 100%;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.staff-search-button svg,
+.staff-attendance-search svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.staff-date-control {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transform: translateX(5px);
+}
+
+.staff-date-control button {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: #4a5568;
+  font-size: 28px;
+  line-height: 0.9;
+  cursor: pointer;
+}
+
+.staff-date-control strong {
+  min-width: 0;
+  color: #2d3748;
+  font-size: clamp(1rem, 4vw, 1.2rem);
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.staff-attendance-search {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.staff-attendance-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  color: #4a5568;
+  font-size: 0.85rem;
+  outline: none;
+  background: transparent;
+}
+
+.staff-attendance-search button {
+  display: none;
+}
+
+.staff-attendance-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  padding: 4px 10px 8px;
+}
+
+.staff-attendance-actions button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 12px;
+  color: #718096;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staff-attendance-actions button:disabled {
+  color: #9aa9b0;
+  background: #f5f8f9;
+  cursor: not-allowed;
+}
+
+.staff-attendance-actions b {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: #267e82;
+  color: #fff;
+  font-size: 12px;
+}
+
+.staff-attendance-message {
+  margin: 18px 0;
+  color: #7c8a91;
+  font-weight: 900;
+  text-align: center;
+}
+
+.staff-attendance-table-wrap {
+  min-height: 0;
+  height: min(58vh, 520px);
+  max-height: 520px;
+  overflow: auto;
+  position: relative;
+  touch-action: pan-x pan-y;
+  display: block;
+  border-top: 1px solid #e2e8f0;
+  background: white;
+}
+
+.staff-attendance-table {
+  width: 100%;
+  min-width: 760px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #293740;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.staff-seat-column {
+  width: 56px;
+}
+
+.staff-name-column {
+  width: 96px;
+}
+
+.staff-slot-column {
+  width: calc((100% - 152px) / 7);
+}
+
+.staff-attendance-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f7fafc;
+  color: #4a5568;
+  font-size: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.staff-attendance-table thead tr:first-child th:nth-child(1),
+.staff-attendance-table tbody td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #f7fafc;
+}
+
+.staff-attendance-table thead tr:first-child th:nth-child(2),
+.staff-attendance-table tbody td:nth-child(2) {
+  position: sticky;
+  left: 56px;
+  z-index: 2;
+  background: #f7fafc;
+  box-shadow: 2px 0 5px -2px rgba(31, 49, 58, 0.18);
+}
+
+.staff-attendance-table thead tr:first-child th:nth-child(1),
+.staff-attendance-table thead tr:first-child th:nth-child(2) {
+  z-index: 4;
+}
+
+.staff-attendance-table tbody td:nth-child(1),
+.staff-attendance-table tbody td:nth-child(2) {
+  background: #fff;
+}
+
+.staff-attendance-table thead tr:nth-child(2) th {
+  top: 26px;
+  color: #718096;
+  font-size: 11px;
+}
+
+.staff-attendance-table th,
+.staff-attendance-table td {
+  min-width: 58px;
+  height: 46px;
+  padding: 0 6px;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.staff-attendance-table th {
+  height: 30px;
+}
+
+.staff-attendance-table thead tr:first-child th {
+  height: 26px;
+}
+
+.staff-attendance-table thead tr:first-child th[rowspan] {
+  height: 52px;
+}
+
+.staff-attendance-table td:nth-child(2) {
+  text-align: left;
+  font-weight: 900;
+  color: #2d3748;
+}
+
+.staff-attendance-table th:last-child,
+.staff-attendance-table td:last-child {
+  border-right: 0;
+}
+
+.staff-attendance-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.staff-attendance-table .unassigned-row td {
+  background: #fff;
+  color: #71818a;
+}
+
+.staff-attendance-table .unassigned-row td:nth-child(1),
+.staff-attendance-table .unassigned-row td:nth-child(2) {
+  background: #f7fafc;
+}
+
+.staff-attendance-table span {
+  display: inline-grid;
+  min-width: 24px;
+  min-height: 20px;
+  place-items: center;
+  white-space: nowrap;
+}
+
+.staff-attendance-table .status-empty-seat {
+  background: #f8fbfd;
+  color: #c7d4dd;
+  font-weight: 900;
+}
+
+.staff-attendance-table .status-absent {
+  background: #ffe6e6;
+  color: #d71920;
+  font-weight: 900;
+}
+
+.staff-attendance-table .status-present {
+  background: #bdf1d5;
+  color: #155b40;
+  font-weight: 900;
+}
+
+.staff-attendance-table .status-leave {
+  background: #bdf1d5;
+  color: #155b40;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.staff-attendance-table .status-special {
+  background: #bdf1d5;
+  color: #155b40;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.staff-attendance-table .status-absent span,
+.staff-attendance-table .status-present span,
+.staff-attendance-table .status-leave span,
+.staff-attendance-table .status-special span {
+  width: 100%;
+  height: 100%;
+}
+
+.staff-attendance-command-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  width: fit-content;
+  margin: 0 14px 0 auto;
+  padding: 8px 14px 12px;
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16px 16px 0 0;
+  pointer-events: none;
+}
+
+.staff-attendance-command-bar button {
+  min-width: 52px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 16px;
+  font-weight: 900;
+  box-shadow: 0 5px 12px rgba(54, 70, 80, 0.12);
+}
+
+.staff-attendance-command-bar .command-present {
+  background: #c8f3dc;
+  color: #155b40;
+}
+
+.staff-attendance-command-bar .command-absent {
+  background: #ffe2e2;
+  color: #d71920;
+}
+
+.staff-attendance-command-bar .command-other,
+.staff-attendance-command-bar .command-undo {
+  border-color: #cbd5e0;
+  background: #fff;
+  color: #344051;
+}
+
 .manager-pagination {
   margin-top: 40px;
   display: flex;
@@ -3495,6 +3873,79 @@ button {
     min-height: 0;
     padding: 22px 16px 26px;
     border-radius: 18px;
+  }
+
+  .staff-attendance-card {
+    padding: 0;
+  }
+
+  .staff-attendance-tools {
+    grid-template-columns: minmax(86px, 0.72fr) minmax(168px, 1.28fr);
+    gap: 8px;
+  }
+
+  .staff-attendance-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .staff-attendance-actions button,
+  .staff-search-button,
+  .staff-attendance-search {
+    min-height: 32px;
+  }
+
+  .staff-attendance-table-wrap {
+    height: min(58vh, 440px);
+    max-height: 440px;
+  }
+
+  .staff-attendance-table {
+    min-width: 0;
+    width: 100%;
+    font-size: 10px;
+  }
+
+  .staff-seat-column {
+    width: 38px;
+  }
+
+  .staff-name-column {
+    width: 58px;
+  }
+
+  .staff-slot-column {
+    width: calc((100% - 96px) / 7);
+  }
+
+  .staff-attendance-table th,
+  .staff-attendance-table td {
+    min-width: 0;
+    height: 32px;
+    padding: 0 2px;
+    font-size: 10px;
+  }
+
+  .staff-attendance-table thead tr:first-child th:nth-child(2),
+  .staff-attendance-table tbody td:nth-child(2) {
+    left: 38px;
+  }
+
+  .staff-attendance-table td:nth-child(2) {
+    font-size: 10px;
+    text-align: center;
+    word-break: keep-all;
+  }
+
+  .staff-attendance-table span {
+    min-width: 0;
+    min-height: 0;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .staff-attendance-table .status-leave,
+  .staff-attendance-table .status-special {
+    font-size: 9px;
   }
 
   .manager-card:has(.admin-grid-panel) {

@@ -113,6 +113,17 @@ export type MonthlyLeaveCalendarResponse = {
   source: 'LEAVE' | 'FIXED_LEAVE' | 'SPECIAL_LEAVE';
 };
 
+export type AttendanceBoardRowResponse = {
+  seatNumber?: number | null;
+  name: string;
+  slots: string[];
+};
+
+export type DailyAttendanceBoardResponse = {
+  date: string;
+  rows: AttendanceBoardRowResponse[];
+};
+
 export type SpecialLeaveResponse = {
   id: number;
   memberId: number;

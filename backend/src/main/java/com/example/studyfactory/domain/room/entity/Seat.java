@@ -34,8 +34,7 @@ public class Seat extends BaseEntity {
     @Column(name = "room_id", nullable = false)
     private Long roomId;
 
-    @Column(nullable = false)
-    private int number;
+    private Integer number;
 
     @Column(name = "member_id", unique = true)
     private Long memberId;
@@ -46,7 +45,7 @@ public class Seat extends BaseEntity {
     @Column(nullable = false)
     private int gridCol;
 
-    public Seat(Long branchId, Long roomId, int number, Long memberId, int gridRow, int gridCol) {
+    public Seat(Long branchId, Long roomId, Integer number, Long memberId, int gridRow, int gridCol) {
         this.branchId = branchId;
         this.roomId = roomId;
         this.number = number;

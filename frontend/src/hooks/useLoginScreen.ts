@@ -120,6 +120,10 @@ export function useLoginScreen() {
         window.location.href = '/managerdashboard?view=grid';
         return;
       }
+      if (payload.role === 'STAFF') {
+        window.location.href = '/managerdashboard?view=attendance';
+        return;
+      }
 
       window.location.href = '/memberdashboard';
     } catch (error) {

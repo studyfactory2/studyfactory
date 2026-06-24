@@ -1,17 +1,18 @@
-import { ADMIN_MENUS, type AdminMenuId } from '../../constants/adminMenus';
+import { ADMIN_MENUS, type AdminMenu, type AdminMenuId } from '../../constants/adminMenus';
 
 type ManagerTabsProps = {
   currentView: AdminMenuId;
+  menus?: AdminMenu[];
 };
 
-export function ManagerTabs({ currentView }: ManagerTabsProps) {
+export function ManagerTabs({ currentView, menus = ADMIN_MENUS }: ManagerTabsProps) {
   const visibleView = currentView === 'register' || currentView === 'status' || currentView === 'vacation_history' || currentView === 'other_leave_request'
     ? 'grid'
     : currentView;
-  const currentIndex = Math.max(ADMIN_MENUS.findIndex((menu) => menu.id === visibleView), 0);
-  const previousMenu = ADMIN_MENUS[currentIndex - 1];
-  const currentMenu = ADMIN_MENUS[currentIndex];
-  const nextMenu = ADMIN_MENUS[currentIndex + 1];
+  const currentIndex = Math.max(menus.findIndex((menu) => menu.id === visibleView), 0);
+  const previousMenu = menus[currentIndex - 1];
+  const currentMenu = menus[currentIndex];
+  const nextMenu = menus[currentIndex + 1];
 
   return (
     <nav className="manager-tabs" aria-label="관리자 메뉴">
