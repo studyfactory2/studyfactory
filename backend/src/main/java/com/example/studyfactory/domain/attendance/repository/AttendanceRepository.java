@@ -20,4 +20,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             @Param("branchId") Long branchId,
             @Param("attendanceDate") LocalDate attendanceDate
     );
+
+    void deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(
+            Long memberId, LocalDate attendanceDate, int slot
+    );
 }

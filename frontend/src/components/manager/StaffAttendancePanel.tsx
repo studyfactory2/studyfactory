@@ -3,13 +3,23 @@ import { apiRequest } from '../../api/client';
 import type { DailyAttendanceBoardResponse } from '../../types/domain';
 
 const SLOT_LABELS = [1, 2, 3, 4, 5, 6, 7];
+type SelectedSlot = {
+  memberId: number;
+  name: string;
+  slot: number;
+};
+type SlotStatusUpdateType = 'PRESENT' | 'ABSENT' | 'OTHER';
 
 export function StaffAttendancePanel() {
   const [board, setBoard] = useState<DailyAttendanceBoardResponse | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [name, setName] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
+  const [otherModalOpen, setOtherModalOpen] = useState(false);
+  const [otherReason, setOtherReason] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const branchId = localStorage.getItem('branchId');
   const filteredRows = useMemo(() => {
@@ -38,6 +48,7 @@ export function StaffAttendancePanel() {
       }
       const response = await apiRequest<DailyAttendanceBoardResponse>(`/api/attendances/daily-board?${params.toString()}`);
       setBoard(response);
+      setSelectedSlot(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '출석부를 불러오지 못했습니다.');
     } finally {
@@ -56,6 +67,40 @@ export function StaffAttendancePanel() {
     if (!name.trim()) {
       setSearchOpen(false);
     }
+  };
+
+  const updateSlotStatus = async (status: SlotStatusUpdateType, reason?: string) => {
+    if (!selectedSlot) {
+      setMessage('변경할 교시를 먼저 선택해주세요.');
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage('');
+    try {
+      await apiRequest<void>('/api/attendances/daily-board/slot', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          memberId: selectedSlot.memberId,
+          date: selectedDate,
+          slot: selectedSlot.slot,
+          status,
+          reason,
+        }),
+      });
+      await loadBoard(selectedDate);
+      setOtherModalOpen(false);
+      setOtherReason('');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '출석 상태 변경에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitOtherReason = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await updateSlotStatus('OTHER', otherReason.trim() || '기타');
   };
 
   return (
@@ -98,10 +143,10 @@ export function StaffAttendancePanel() {
       </div>
 
       <div className="staff-attendance-actions">
-        <button type="button" disabled>회원건의</button>
-        <button type="button" disabled>반찬신청</button>
-        <button type="button">할일목록 <b>{todoCount}</b></button>
-        <button type="button">출석참고 <b>{noteCount}</b></button>
+        <button className="suggestion-tag" type="button" disabled>회원건의</button>
+        <button className="meal-tag" type="button" disabled>반찬신청</button>
+        <button className="todo-tag" type="button" disabled={todoCount === 0}>할일목록 <b>{todoCount}</b></button>
+        <button className="note-tag" type="button" disabled={noteCount === 0}>출석참고 <b>{noteCount}</b></button>
       </div>
 
       {loading ? (
@@ -141,9 +186,19 @@ export function StaffAttendancePanel() {
                     <td>{row.name}</td>
                     {SLOT_LABELS.map((slot, index) => {
                       const status = row.slots[index] || 'X';
+                      const selected = selectedSlot?.memberId === row.memberId && selectedSlot?.slot === slot;
 
                       return (
-                        <td className={toStatusClassName(status, emptySeat)} key={slot}>
+                        <td
+                          className={`${toStatusClassName(status, emptySeat)}${selected ? ' selected-slot' : ''}`}
+                          key={slot}
+                          onClick={() => {
+                            if (emptySeat || !row.memberId) {
+                              return;
+                            }
+                            setSelectedSlot({ memberId: row.memberId, name: row.name, slot });
+                          }}
+                        >
                           <span>{status}</span>
                         </td>
                       );
@@ -153,12 +208,30 @@ export function StaffAttendancePanel() {
               })}
             </tbody>
           </table>
-          <div className="staff-attendance-command-bar" aria-hidden="true">
-            <button className="command-present" type="button">O</button>
-            <button className="command-absent" type="button">X</button>
-            <button className="command-other" type="button">기타</button>
-            <button className="command-undo" type="button">↩</button>
+          <div className="staff-attendance-command-bar">
+            <button className="command-present" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('PRESENT')}>O</button>
+            <button className="command-absent" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('ABSENT')}>X</button>
+            <button className="command-other" type="button" disabled={!selectedSlot || submitting} onClick={() => setOtherModalOpen(true)}>기타</button>
+            <button className="command-undo" type="button" disabled={!selectedSlot || submitting} onClick={() => setSelectedSlot(null)}>↩</button>
           </div>
+        </div>
+      )}
+      {otherModalOpen && (
+        <div className="attendance-modal-backdrop" role="presentation">
+          <form className="attendance-modal" role="dialog" aria-modal="true" onSubmit={submitOtherReason}>
+            <h2>기타 상태 입력</h2>
+            <p>{selectedSlot?.name} {selectedSlot?.slot}교시</p>
+            <input
+              autoFocus
+              placeholder="예: 병원, 알바, 운동"
+              value={otherReason}
+              onChange={(event) => setOtherReason(event.target.value)}
+            />
+            <div>
+              <button type="button" onClick={() => setOtherModalOpen(false)}>닫기</button>
+              <button type="submit" disabled={submitting}>{submitting ? '저장 중' : '저장'}</button>
+            </div>
+          </form>
         </div>
       )}
     </div>

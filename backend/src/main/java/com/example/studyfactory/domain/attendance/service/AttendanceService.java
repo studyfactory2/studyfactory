@@ -1,9 +1,15 @@
 package com.example.studyfactory.domain.attendance.service;
 
 import com.example.studyfactory.domain.attendance.dto.AttendanceBoardRowResponse;
+import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateRequest;
+import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateType;
 import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardResponse;
 import com.example.studyfactory.domain.attendance.entity.Attendance;
+import com.example.studyfactory.domain.attendance.entity.AttendanceReferenceInformation;
+import com.example.studyfactory.domain.attendance.entity.AttendanceSlotInformation;
+import com.example.studyfactory.domain.attendance.entity.AttendanceStatusType;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTypeRepository;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
@@ -33,8 +39,10 @@ public class AttendanceService {
     private static final int SLOT_COUNT = 7;
     private static final String EMPTY_STATUS = "X";
     private static final String PRESENT_STATUS = "O";
+    private static final String PRESENT_STATUS_TYPE_NAME = "출석";
 
     private final AttendanceRepository attendanceRepository;
+    private final AttendanceStatusTypeRepository attendanceStatusTypeRepository;
     private final MemberRepository memberRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final FixedLeaveRepository fixedLeaveRepository;
@@ -58,6 +66,24 @@ public class AttendanceService {
         return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId));
     }
 
+    @Transactional
+    public void updateSlotStatus(Long currentMemberId, AttendanceSlotStatusUpdateRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member member = findMember(request.memberId());
+        if (!currentMember.getBranchId().equals(member.getBranchId()) && !currentMember.hasAllPermissions()) {
+            throw MemberException.forbidden();
+        }
+
+        clearSlotStatus(member.getId(), request.date(), request.slot());
+        if (request.status() == AttendanceSlotStatusUpdateType.PRESENT) {
+            createPresentAttendance(currentMember, member, request);
+        }
+        if (request.status() == AttendanceSlotStatusUpdateType.OTHER) {
+            createSpecialLeave(currentMember, member, request);
+        }
+    }
+
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
     }
@@ -66,6 +92,55 @@ public class AttendanceService {
         if (!member.hasAllPermissions()) {
             throw MemberException.forbidden();
         }
+    }
+
+    private void clearSlotStatus(Long memberId, LocalDate date, Integer slot) {
+        attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
+        deleteLeaveRequestsBySlot(memberId, date, slot);
+        deleteSpecialLeavesBySlot(memberId, date, slot);
+    }
+
+    private void deleteLeaveRequestsBySlot(Long memberId, LocalDate date, Integer slot) {
+        for (LeaveRequest leaveRequest : leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(memberId, date)) {
+            if (toLeaveSlots(leaveRequest.getLeaveType()).contains(slot)) {
+                leaveRequestRepository.delete(leaveRequest);
+            }
+        }
+    }
+
+    private void deleteSpecialLeavesBySlot(Long memberId, LocalDate date, Integer slot) {
+        for (SpecialLeave specialLeave : specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(memberId, date)) {
+            boolean empty = specialLeave.removeSlot(slot);
+            if (empty) {
+                specialLeaveRepository.delete(specialLeave);
+            }
+        }
+    }
+
+    private void createPresentAttendance(Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request) {
+        AttendanceStatusType statusType = attendanceStatusTypeRepository.findByName(PRESENT_STATUS_TYPE_NAME)
+                .orElseGet(() -> attendanceStatusTypeRepository.save(new AttendanceStatusType(PRESENT_STATUS_TYPE_NAME, false)));
+        attendanceRepository.save(new Attendance(
+                new AttendanceReferenceInformation(member.getId(), member.getBranchId(), statusType.getId(), currentMember.getId()),
+                new AttendanceSlotInformation(request.date(), request.slot(), null)
+        ));
+    }
+
+    private void createSpecialLeave(Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request) {
+        String reason = request.reason();
+        if (reason == null || reason.isBlank()) {
+            reason = "기타";
+        }
+        specialLeaveRepository.save(new SpecialLeave(
+                member.getId(),
+                member.getBranchId(),
+                request.date(),
+                String.valueOf(request.slot()),
+                reason.trim(),
+                null,
+                false,
+                currentMember.getId()
+        ));
     }
 
     private LocalDate resolveDate(LocalDate date) {
@@ -218,14 +293,14 @@ public class AttendanceService {
         for (int seatNumber = 1; seatNumber <= lastSeatNumber; seatNumber++) {
             Member member = membersBySeat.get(seatNumber);
             if (member == null) {
-                rows.add(new AttendanceBoardRowResponse(seatNumber, "공석", emptySlots()));
+                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", emptySlots()));
                 continue;
             }
-            rows.add(new AttendanceBoardRowResponse(seatNumber, member.getName(), statusesByMemberId.get(member.getId())));
+            rows.add(new AttendanceBoardRowResponse(member.getId(), seatNumber, member.getName(), statusesByMemberId.get(member.getId())));
         }
         members.stream()
                 .filter(this::isUnassignedSeat)
-                .forEach(member -> rows.add(new AttendanceBoardRowResponse(null, member.getName(), statusesByMemberId.get(member.getId()))));
+                .forEach(member -> rows.add(new AttendanceBoardRowResponse(member.getId(), null, member.getName(), statusesByMemberId.get(member.getId()))));
 
         return rows;
     }

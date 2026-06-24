@@ -2,12 +2,17 @@ package com.example.studyfactory.domain.attendance.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
+import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateRequest;
+import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateType;
 import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardResponse;
 import com.example.studyfactory.domain.attendance.entity.Attendance;
 import com.example.studyfactory.domain.attendance.entity.AttendanceReferenceInformation;
 import com.example.studyfactory.domain.attendance.entity.AttendanceSlotInformation;
+import com.example.studyfactory.domain.attendance.entity.AttendanceStatusType;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTypeRepository;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
@@ -39,6 +44,9 @@ class AttendanceServiceTest {
 
     @Mock
     private AttendanceRepository attendanceRepository;
+
+    @Mock
+    private AttendanceStatusTypeRepository attendanceStatusTypeRepository;
 
     @Mock
     private MemberRepository memberRepository;
@@ -77,10 +85,33 @@ class AttendanceServiceTest {
 
         assertThat(response.date()).isEqualTo(date);
         assertThat(response.rows()).hasSizeGreaterThanOrEqualTo(60);
+        assertThat(response.rows().get(6).memberId()).isEqualTo(2L);
         assertThat(response.rows().get(6).name()).isEqualTo("김태환");
         assertThat(response.rows().get(6).slots()).containsExactly("오전", "오전", "오전", "오전", "O", "스터디", "알바");
         assertThat(response.rows().get(response.rows().size() - 1).seatNumber()).isNull();
         assertThat(response.rows().get(response.rows().size() - 1).name()).isEqualTo("좌석없음");
+    }
+
+    @Test
+    @DisplayName("스태프는 선택한 교시를 출석으로 변경한다")
+    void updateSlotStatusToPresent() {
+        LocalDate date = LocalDate.of(2026, 6, 24);
+        Member staff = createMember(1L, "최민지", MemberRole.STAFF, 1);
+        Member member = createMember(2L, "김태환", MemberRole.MEMBER, 7);
+        AttendanceStatusType statusType = new AttendanceStatusType("출석", false);
+        ReflectionTestUtils.setField(statusType, "id", 1L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(member));
+        given(attendanceStatusTypeRepository.findByName("출석")).willReturn(Optional.of(statusType));
+        given(leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
+        given(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
+
+        attendanceService.updateSlotStatus(1L, new AttendanceSlotStatusUpdateRequest(
+                2L, date, 3, AttendanceSlotStatusUpdateType.PRESENT, null
+        ));
+
+        verify(attendanceRepository).deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(2L, date, 3);
+        verify(attendanceRepository).save(org.mockito.ArgumentMatchers.any(Attendance.class));
     }
 
     private Member createMember(Long id, String name, MemberRole role, Integer seatNumber) {

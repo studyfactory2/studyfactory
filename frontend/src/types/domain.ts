@@ -114,6 +114,7 @@ export type MonthlyLeaveCalendarResponse = {
 };
 
 export type AttendanceBoardRowResponse = {
+  memberId?: number | null;
   seatNumber?: number | null;
   name: string;
   slots: string[];

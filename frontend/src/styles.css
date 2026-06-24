@@ -2468,6 +2468,8 @@ button {
   min-width: 0;
   min-height: 32px;
   padding: 0 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2480,9 +2482,34 @@ button {
   white-space: nowrap;
 }
 
+.staff-attendance-actions .suggestion-tag:not(:disabled) {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.staff-attendance-actions .meal-tag:not(:disabled) {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.staff-attendance-actions .todo-tag:not(:disabled) {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.staff-attendance-actions .note-tag:not(:disabled) {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
 .staff-attendance-actions button:disabled {
   color: #9aa9b0;
   background: #f5f8f9;
+  border-color: #e2e8f0;
   cursor: not-allowed;
 }
 
@@ -2495,6 +2522,19 @@ button {
   background: #267e82;
   color: #fff;
   font-size: 12px;
+}
+
+.staff-attendance-actions .todo-tag:not(:disabled) b {
+  background: #15803d;
+}
+
+.staff-attendance-actions .note-tag:not(:disabled) b {
+  background: #0369a1;
+}
+
+.staff-attendance-actions button:disabled b {
+  background: #cbd5e0;
+  color: #fff;
 }
 
 .staff-attendance-message {
@@ -2657,14 +2697,14 @@ button {
 
 .staff-attendance-table .status-leave {
   background: #bdf1d5;
-  color: #155b40;
+  color: #d71920;
   font-size: 11px;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-special {
   background: #bdf1d5;
-  color: #155b40;
+  color: #d71920;
   font-size: 11px;
   font-weight: 900;
 }
@@ -2675,6 +2715,19 @@ button {
 .staff-attendance-table .status-special span {
   width: 100%;
   height: 100%;
+}
+
+.staff-attendance-table tbody td.status-absent,
+.staff-attendance-table tbody td.status-present,
+.staff-attendance-table tbody td.status-leave {
+  cursor: pointer;
+}
+
+.staff-attendance-table tbody td.selected-slot {
+  position: relative;
+  outline: 2px solid #267e82;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px rgba(38, 126, 130, 0.18);
 }
 
 .staff-attendance-command-bar {
@@ -2688,7 +2741,6 @@ button {
   gap: 8px;
   background: rgba(255, 255, 255, 0.92);
   border-radius: 16px 16px 0 0;
-  pointer-events: none;
 }
 
 .staff-attendance-command-bar button {
@@ -2699,6 +2751,11 @@ button {
   font-size: 16px;
   font-weight: 900;
   box-shadow: 0 5px 12px rgba(54, 70, 80, 0.12);
+}
+
+.staff-attendance-command-bar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .staff-attendance-command-bar .command-present {
@@ -2716,6 +2773,71 @@ button {
   border-color: #cbd5e0;
   background: #fff;
   color: #344051;
+}
+
+.attendance-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.attendance-modal {
+  width: min(320px, 100%);
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+}
+
+.attendance-modal h2 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.attendance-modal p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.attendance-modal input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #d6e1e6;
+  border-radius: 10px;
+  color: #25313a;
+  font-size: 14px;
+  font-weight: 800;
+  outline: none;
+}
+
+.attendance-modal div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.attendance-modal button {
+  min-height: 42px;
+  border-radius: 10px;
+  background: #edf3f7;
+  color: #51636c;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.attendance-modal button[type='submit'] {
+  background: #267e82;
+  color: #fff;
 }
 
 .manager-pagination {
