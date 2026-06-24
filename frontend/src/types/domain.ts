@@ -160,3 +160,25 @@ export type SpecialLeaveResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type StaffScheduleDayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+export type StaffScheduleShift = 'MORNING' | 'AFTERNOON';
+export type StaffScheduleTaskType = 'DISHWASHING' | 'SERVE';
+
+export type StaffScheduleResponse = {
+  id?: number | null;
+  branchId: number;
+  dayOfWeek: StaffScheduleDayOfWeek;
+  shift: StaffScheduleShift;
+  taskType: StaffScheduleTaskType;
+  workerName: string;
+};
+
+export type StaffScheduleUpdateRequest = {
+  schedules: Array<{
+    dayOfWeek: StaffScheduleDayOfWeek;
+    shift: StaffScheduleShift;
+    taskType: StaffScheduleTaskType;
+    workerName: string;
+  }>;
+};

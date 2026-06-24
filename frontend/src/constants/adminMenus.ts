@@ -8,13 +8,13 @@ export type AdminMenu = {
 export const ADMIN_MENUS: AdminMenu[] = [
   { id: 'grid', label: '관리자 페이지' },
   { id: 'attendance', label: '출석부' },
-  { id: 'staff-work', label: '스탭 업무 현황' },
+  { id: 'staff-work', label: '근무표' },
   { id: 'staff-page', label: '스텝페이지' },
 ];
 
 export const STAFF_MENUS: AdminMenu[] = [
   { id: 'attendance', label: '출석부' },
-  { id: 'staff-work', label: '스탭 업무 현황' },
+  { id: 'staff-work', label: '근무표' },
   { id: 'staff-page', label: '스텝페이지' },
 ];
 

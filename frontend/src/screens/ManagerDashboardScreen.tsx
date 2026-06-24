@@ -6,6 +6,7 @@ import { OtherLeaveRequestPanel } from '../components/manager/OtherLeaveRequestP
 import { PlaceholderPanel } from '../components/manager/PlaceholderPanel';
 import { PreRegistrationPanel } from '../components/manager/PreRegistrationPanel';
 import { StaffAttendancePanel } from '../components/manager/StaffAttendancePanel';
+import { StaffWorkPanel } from '../components/manager/StaffWorkPanel';
 import { VacationHistoryPanel } from '../components/manager/VacationHistoryPanel';
 import { STAFF_MENUS, resolveAdminMenuId } from '../constants/adminMenus';
 import { useManagerOptions } from '../hooks/useManagerOptions';
@@ -17,7 +18,7 @@ export function ManagerDashboardScreen() {
   const searchParams = new URLSearchParams(window.location.search);
   const requestedView = resolveAdminMenuId(searchParams.get('view'));
   const currentView = role === 'STAFF' && !STAFF_MENUS.some((menu) => menu.id === requestedView) ? 'attendance' : requestedView;
-  const { branches, certifications } = useManagerOptions(role === 'ADMIN');
+  const { branches, certifications } = useManagerOptions(role === 'ADMIN' || role === 'STAFF');
 
   if (role === 'STAFF') {
     return (
@@ -27,6 +28,8 @@ export function ManagerDashboardScreen() {
         <section className="manager-card staff-attendance-card">
           {currentView === 'attendance' ? (
             <StaffAttendancePanel />
+          ) : currentView === 'staff-work' ? (
+            <StaffWorkPanel branches={branches} editable={false} />
           ) : (
             <PlaceholderPanel currentView={currentView} />
           )}
@@ -66,6 +69,8 @@ export function ManagerDashboardScreen() {
           <MemberStatusPanel branches={branches} certifications={certifications} />
         ) : currentView === 'attendance' ? (
           <StaffAttendancePanel />
+        ) : currentView === 'staff-work' ? (
+          <StaffWorkPanel branches={branches} editable={true} />
         ) : currentView === 'vacation_history' ? (
           <VacationHistoryPanel branches={branches} />
         ) : currentView === 'other_leave_request' ? (

@@ -503,6 +503,165 @@ button {
   padding: 32px 44px 40px;
 }
 
+.manager-card:has(.staff-work-panel) {
+  min-height: 520px;
+}
+
+.staff-work-panel {
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+
+.staff-work-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) auto;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.staff-work-toolbar .custom-select {
+  width: min(220px, 100%);
+  min-width: 0;
+}
+
+.staff-work-toolbar .custom-select-button {
+  min-height: 34px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.staff-work-toolbar .custom-select-option {
+  min-height: 34px;
+  font-size: 13px;
+}
+
+.staff-work-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.staff-work-edit-actions button {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.staff-work-edit-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.staff-work-edit-button,
+.staff-work-save-button {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.staff-work-cancel-button {
+  border: 1px solid #d7e1e8;
+  background: #f3f7fa;
+  color: #64748b;
+}
+
+.staff-work-table-wrap {
+  border: 1px solid #dce6ee;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.staff-work-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  color: #223142;
+  font-size: 13px;
+}
+
+.staff-work-table th,
+.staff-work-table td {
+  height: 36px;
+  padding: 0 12px;
+  border-right: 1px solid #e6edf2;
+  border-bottom: 1px solid #e6edf2;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.staff-work-table th:last-child,
+.staff-work-table td:last-child {
+  border-right: 0;
+}
+
+.staff-work-table tbody tr:last-child th,
+.staff-work-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.staff-work-table thead th {
+  background: #f8fbfd;
+  color: #1f2937;
+  font-weight: 900;
+}
+
+.staff-work-head-label {
+  display: grid;
+  gap: 2px;
+  line-height: 1.15;
+}
+
+.staff-work-head-label span {
+  display: block;
+}
+
+.staff-work-weekday-cell {
+  width: 64px;
+  background: #f3f7fa;
+  color: #1f2937;
+  font-weight: 900;
+}
+
+.staff-work-member {
+  color: #176bb7;
+  font-weight: 900;
+}
+
+.staff-work-member input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid #d8e3ec;
+  border-radius: 7px;
+  background: #fff;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.staff-work-member input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(38, 126, 130, 0.12);
+}
+
+.staff-work-message {
+  margin: 0;
+  color: var(--color-primary-dark);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .panel-title {
   margin-bottom: 34px;
   display: flex;
@@ -4393,6 +4552,59 @@ button {
 
   .staff-attendance-card {
     padding: 0;
+  }
+
+  .manager-card:has(.staff-work-panel) {
+    width: min(304px, 100%);
+    min-height: 514px;
+    padding: 18px;
+  }
+
+  .staff-work-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-work-panel {
+    max-width: none;
+  }
+
+  .staff-work-toolbar .custom-select {
+    width: 100%;
+  }
+
+  .staff-work-edit-actions {
+    justify-content: stretch;
+  }
+
+  .staff-work-edit-actions button {
+    flex: 1;
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .staff-work-table-wrap {
+    width: 100%;
+  }
+
+  .staff-work-table {
+    font-size: 10px;
+  }
+
+  .staff-work-table th,
+  .staff-work-table td {
+    height: 36px;
+    padding: 0 3px;
+  }
+
+  .staff-work-weekday-cell {
+    width: 36px;
+  }
+
+  .staff-work-member input {
+    height: 28px;
+    padding: 0 3px;
+    font-size: 10px;
   }
 
   .staff-attendance-tools {

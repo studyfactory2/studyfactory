@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.DayOfWeek;
-import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,14 +24,8 @@ public class StaffSchedule extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "staff_member_id", nullable = false)
-    private Long staffMemberId;
-
     @Column(name = "branch_id", nullable = false)
     private Long branchId;
-
-    @Column(nullable = false)
-    private LocalDate weekStart;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -45,19 +38,20 @@ public class StaffSchedule extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String taskType;
 
+    @Column(nullable = false, length = 50)
+    private String workerName;
+
     public StaffSchedule(
-            Long staffMemberId,
             Long branchId,
-            LocalDate weekStart,
             DayOfWeek dayOfWeek,
             StaffScheduleShift shift,
-            String taskType
+            String taskType,
+            String workerName
     ) {
-        this.staffMemberId = staffMemberId;
         this.branchId = branchId;
-        this.weekStart = weekStart;
         this.dayOfWeek = dayOfWeek;
         this.shift = shift;
         this.taskType = taskType;
+        this.workerName = workerName;
     }
 }
