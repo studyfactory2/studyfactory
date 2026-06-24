@@ -3,6 +3,7 @@ import { apiRequest } from '../../api/client';
 import type { DailyAttendanceBoardResponse } from '../../types/domain';
 
 const SLOT_LABELS = [1, 2, 3, 4, 5, 6, 7];
+const OTHER_REASON_OPTIONS = ['지각', '조회', '외출', '이동', '시험', '컨디션'];
 type SelectedSlot = {
   memberId: number;
   name: string;
@@ -17,6 +18,9 @@ export function StaffAttendancePanel() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
   const [otherModalOpen, setOtherModalOpen] = useState(false);
+  const [otherDate, setOtherDate] = useState(() => toDateKey(new Date()));
+  const [otherSlot, setOtherSlot] = useState<number | null>(null);
+  const [selectedOtherReason, setSelectedOtherReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -33,6 +37,7 @@ export function StaffAttendancePanel() {
   }, [board, name]);
   const todoCount = useMemo(() => filteredRows.filter((row) => row.slots.some((slot) => slot !== 'X')).length, [filteredRows]);
   const noteCount = useMemo(() => filteredRows.filter((row) => row.slots.some((slot) => slot !== 'X' && slot !== '월차')).length, [filteredRows]);
+  const otherCalendar = useMemo(() => createMonthCalendar(otherDate), [otherDate]);
 
   useEffect(() => {
     void loadBoard(selectedDate);
@@ -69,9 +74,13 @@ export function StaffAttendancePanel() {
     }
   };
 
-  const updateSlotStatus = async (status: SlotStatusUpdateType, reason?: string) => {
+  const updateSlotStatus = async (status: SlotStatusUpdateType, reason?: string, date = selectedDate, slot: number | null | undefined = selectedSlot?.slot) => {
     if (!selectedSlot) {
       setMessage('변경할 교시를 먼저 선택해주세요.');
+      return;
+    }
+    if (!slot) {
+      setMessage('변경할 교시를 선택해주세요.');
       return;
     }
 
@@ -82,8 +91,8 @@ export function StaffAttendancePanel() {
         method: 'PATCH',
         body: JSON.stringify({
           memberId: selectedSlot.memberId,
-          date: selectedDate,
-          slot: selectedSlot.slot,
+          date,
+          slot,
           status,
           reason,
         }),
@@ -91,6 +100,7 @@ export function StaffAttendancePanel() {
       await loadBoard(selectedDate);
       setOtherModalOpen(false);
       setOtherReason('');
+      setSelectedOtherReason('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '출석 상태 변경에 실패했습니다.');
     } finally {
@@ -100,7 +110,57 @@ export function StaffAttendancePanel() {
 
   const submitOtherReason = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await updateSlotStatus('OTHER', otherReason.trim() || '기타');
+    await updateSlotStatus('OTHER', otherReason.trim() || selectedOtherReason || '기타', otherDate, otherSlot);
+  };
+
+  const createFixedLeave = async () => {
+    if (!selectedSlot) {
+      setMessage('고정신청할 사원을 먼저 선택해주세요.');
+      return;
+    }
+    if (!otherSlot) {
+      setMessage('고정신청할 교시를 선택해주세요.');
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage('');
+    try {
+      await apiRequest<void>('/api/leaves/fixed', {
+        method: 'POST',
+        body: JSON.stringify({
+          memberId: selectedSlot.memberId,
+          leaveDate: otherDate,
+          slots: [otherSlot],
+          reason: otherReason.trim() || selectedOtherReason || '기타',
+        }),
+      });
+      await loadBoard(selectedDate);
+      setOtherModalOpen(false);
+      setOtherReason('');
+      setSelectedOtherReason('');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '고정 휴무 신청에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openOtherModal = () => {
+    if (!selectedSlot) {
+      return;
+    }
+    setOtherDate(selectedDate);
+    setOtherSlot(selectedSlot.slot);
+    setSelectedOtherReason('');
+    setOtherReason('');
+    setOtherModalOpen(true);
+  };
+
+  const moveOtherMonth = (amount: number) => {
+    const date = new Date(`${otherDate}T00:00:00`);
+    date.setMonth(date.getMonth() + amount);
+    setOtherDate(toDateKey(date));
   };
 
   return (
@@ -211,26 +271,129 @@ export function StaffAttendancePanel() {
           <div className="staff-attendance-command-bar">
             <button className="command-present" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('PRESENT')}>O</button>
             <button className="command-absent" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('ABSENT')}>X</button>
-            <button className="command-other" type="button" disabled={!selectedSlot || submitting} onClick={() => setOtherModalOpen(true)}>기타</button>
+            <button className="command-other" type="button" disabled={!selectedSlot || submitting} onClick={openOtherModal}>기타</button>
             <button className="command-undo" type="button" disabled={!selectedSlot || submitting} onClick={() => setSelectedSlot(null)}>↩</button>
           </div>
         </div>
       )}
       {otherModalOpen && (
-        <div className="attendance-modal-backdrop" role="presentation">
+        <div className="attendance-modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            setOtherModalOpen(false);
+          }
+        }}>
           <form className="attendance-modal" role="dialog" aria-modal="true" onSubmit={submitOtherReason}>
-            <h2>기타 상태 입력</h2>
-            <p>{selectedSlot?.name} {selectedSlot?.slot}교시</p>
-            <input
-              autoFocus
-              placeholder="예: 병원, 알바, 운동"
-              value={otherReason}
-              onChange={(event) => setOtherReason(event.target.value)}
-            />
-            <div>
-              <button type="button" onClick={() => setOtherModalOpen(false)}>닫기</button>
-              <button type="submit" disabled={submitting}>{submitting ? '저장 중' : '저장'}</button>
+            <h2>{selectedSlot?.name} 출석 상태 선택</h2>
+
+            <section className="attendance-modal-section">
+              <strong className="attendance-modal-label">날짜</strong>
+              <div className="attendance-calendar-card">
+                <div className="attendance-calendar-head">
+                  <button type="button" aria-label="이전 달" onClick={() => moveOtherMonth(-1)}>‹</button>
+                  <strong>{otherCalendar.year}년 {otherCalendar.month}월</strong>
+                  <button type="button" aria-label="다음 달" onClick={() => moveOtherMonth(1)}>›</button>
+                </div>
+                <div className="attendance-calendar-weekdays">
+                  {['일', '월', '화', '수', '목', '금', '토'].map((weekday) => (
+                    <span key={weekday}>{weekday}</span>
+                  ))}
+                </div>
+                <div className="attendance-calendar-grid">
+                  {otherCalendar.days.map((day, index) => {
+                    const dateKey = day ? toDateKey(new Date(otherCalendar.year, otherCalendar.month - 1, day)) : '';
+                    const selected = dateKey === otherDate;
+
+                    return day ? (
+                      <button
+                        className={selected ? 'selected' : ''}
+                        key={`${day}-${index}`}
+                        type="button"
+                        onClick={() => setOtherDate(dateKey)}
+                      >
+                        {day}
+                      </button>
+                    ) : (
+                      <span key={`empty-${index}`} />
+                    );
+                  })}
+                </div>
+              </div>
+              <span className="attendance-selected-count">1일 선택됨</span>
+            </section>
+
+            <section className="attendance-modal-section">
+              <strong className="attendance-modal-label">교시</strong>
+              <div className="attendance-period-grid">
+                {SLOT_LABELS.map((slot) => (
+                  <button
+                    className={otherSlot === slot ? 'selected' : ''}
+                    key={slot}
+                    type="button"
+                    onClick={() => setOtherSlot(slot)}
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+              <button className="attendance-full-select" type="button" disabled>전체 선택</button>
+            </section>
+
+            <section className="attendance-modal-section">
+              <strong className="attendance-modal-label">사유 선택</strong>
+              <div className="attendance-reason-grid">
+                {OTHER_REASON_OPTIONS.map((reason) => (
+                  <button
+                    className={selectedOtherReason === reason ? 'selected' : ''}
+                    key={reason}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOtherReason(reason);
+                      setOtherReason('');
+                    }}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+              <strong className="attendance-modal-label">사유 입력</strong>
+              <input
+                placeholder="3글자 이하 권장"
+                value={otherReason}
+                onChange={(event) => {
+                  setOtherReason(event.target.value);
+                  setSelectedOtherReason('');
+                }}
+              />
+            </section>
+
+            <section className="attendance-modal-section">
+              <div className="attendance-leave-grid">
+                {['월차', '오전반차', '오후반차'].map((reason) => (
+                  <button
+                    className={reason === '오후반차' ? 'leave-afternoon' : 'leave-red'}
+                    key={reason}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOtherReason(reason);
+                      setOtherReason('');
+                    }}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+              <button className="attendance-clear-leave" type="button" disabled={submitting} onClick={() => updateSlotStatus('ABSENT', undefined, otherDate, otherSlot)}>
+                휴가취소
+              </button>
+            </section>
+
+            <div className="attendance-modal-actions">
+              <button className="attendance-submit-button" type="submit" disabled={submitting}>{submitting ? '신청 중' : '신청'}</button>
+              <button className="attendance-fixed-button" type="button" disabled={submitting} onClick={createFixedLeave}>
+                {submitting ? '신청 중' : '고정신청'}
+              </button>
             </div>
+            <button className="attendance-modal-close" type="button" onClick={() => setOtherModalOpen(false)}>닫기</button>
           </form>
         </div>
       )}
@@ -258,6 +421,28 @@ function formatShortDate(date: string) {
   const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
   return `${parsed.getMonth() + 1}.${parsed.getDate()}(${weekdays[parsed.getDay()]})`;
+}
+
+function createMonthCalendar(date: string) {
+  const parsed = new Date(`${date}T00:00:00`);
+  const year = parsed.getFullYear();
+  const monthIndex = parsed.getMonth();
+  const firstDay = new Date(year, monthIndex, 1).getDay();
+  const lastDate = new Date(year, monthIndex + 1, 0).getDate();
+  const days: Array<number | null> = Array.from({ length: firstDay }, () => null);
+
+  for (let day = 1; day <= lastDate; day += 1) {
+    days.push(day);
+  }
+  while (days.length % 7 !== 0) {
+    days.push(null);
+  }
+
+  return {
+    year,
+    month: monthIndex + 1,
+    days,
+  };
 }
 
 function toStatusClassName(status: string, emptySeat: boolean) {

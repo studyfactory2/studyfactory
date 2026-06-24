@@ -2779,33 +2779,46 @@ button {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  padding: 20px;
+  padding: 16px;
   display: grid;
   place-items: center;
-  background: rgba(15, 23, 42, 0.38);
+  background: rgba(15, 23, 42, 0.46);
 }
 
 .attendance-modal {
-  width: min(320px, 100%);
-  padding: 20px;
+  width: min(520px, 100%);
+  max-height: min(92vh, 760px);
+  padding: 22px 20px;
   display: grid;
-  gap: 12px;
-  border-radius: 16px;
+  gap: 14px;
+  overflow-y: auto;
+  border-radius: 18px;
   background: #fff;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
 }
 
 .attendance-modal h2 {
   margin: 0;
+  text-align: center;
   color: #1f2937;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 900;
 }
 
-.attendance-modal p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
+.attendance-modal-section {
+  display: grid;
+  gap: 9px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #dce5ec;
+}
+
+.attendance-modal-section:last-of-type {
+  border-bottom: 0;
+}
+
+.attendance-modal-label {
+  color: #344051;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -2820,24 +2833,203 @@ button {
   outline: none;
 }
 
-.attendance-modal div {
+.attendance-calendar-card {
+  padding: 18px 22px 12px;
+  border: 1px solid #d9e4eb;
+  border-radius: 10px;
+}
+
+.attendance-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.attendance-calendar-head button {
+  width: 34px;
+  height: 30px;
+  min-height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #526172;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.attendance-calendar-head strong {
+  min-width: 108px;
+  text-align: center;
+  color: #2f3a4a;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.attendance-calendar-weekdays,
+.attendance-calendar-grid {
   display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.attendance-calendar-weekdays {
+  margin-bottom: 8px;
+  color: #718096;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.attendance-calendar-weekdays span:first-child {
+  color: #e3343f;
+}
+
+.attendance-calendar-weekdays span:last-child {
+  color: #2c82d8;
+}
+
+.attendance-calendar-grid {
+  row-gap: 4px;
+}
+
+.attendance-calendar-grid button,
+.attendance-calendar-grid span {
+  min-width: 0;
+  height: 36px;
+  min-height: 36px;
+  border: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: transparent;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.attendance-calendar-grid button {
+  cursor: pointer;
+}
+
+.attendance-calendar-grid button.selected {
+  background: #2c8a8f;
+  color: #fff;
+  font-weight: 900;
+}
+
+.attendance-selected-count {
+  color: #7a8798;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.attendance-period-grid,
+.attendance-reason-grid,
+.attendance-leave-grid,
+.attendance-modal-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.attendance-period-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.attendance-reason-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.attendance-leave-grid,
+.attendance-modal-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.attendance-modal-actions {
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
 }
 
 .attendance-modal button {
-  min-height: 42px;
+  min-height: 40px;
+  border: 1px solid #d8e3ec;
   border-radius: 10px;
-  background: #edf3f7;
-  color: #51636c;
+  background: #fff;
+  color: #5a6878;
   font-weight: 900;
   cursor: pointer;
 }
 
-.attendance-modal button[type='submit'] {
-  background: #267e82;
+.attendance-modal button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.attendance-modal .attendance-calendar-head button,
+.attendance-modal .attendance-calendar-grid button {
+  border: 0;
+  background: transparent;
+}
+
+.attendance-modal .attendance-calendar-grid button.selected {
+  background: #2c8a8f;
   color: #fff;
+}
+
+.attendance-period-grid button.selected {
+  border-color: #2d80da;
+  background: #eef7ff;
+  color: #1f5f9b;
+}
+
+.attendance-full-select,
+.attendance-clear-leave,
+.attendance-modal-close {
+  width: 100%;
+  background: #f7fafc;
+  color: #8a99aa;
+}
+
+.attendance-reason-grid button.selected {
+  border-color: #28a364;
+  background: #effaf3;
+  color: #17784a;
+}
+
+.attendance-leave-grid .leave-red {
+  border-color: #ffa4a4;
+  background: #fff8f8;
+  color: #e3343f;
+}
+
+.attendance-leave-grid .leave-afternoon {
+  border-color: #91cff7;
+  background: #f2faff;
+  color: #286ca8;
+}
+
+.attendance-clear-leave {
+  margin-top: 6px;
+  background: #edf3f7;
+  color: #64748b;
+}
+
+.attendance-modal .attendance-submit-button {
+  border-color: #358bd4;
+  background: #3386d6;
+  color: #fff;
+}
+
+.attendance-modal .attendance-fixed-button {
+  border-color: #7e59d7;
+  background: #7e59d7;
+  color: #fff;
+}
+
+.attendance-modal .attendance-modal-close {
+  background: #e6edf4;
+  color: #6b7888;
 }
 
 .manager-pagination {

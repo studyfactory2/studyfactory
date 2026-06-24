@@ -8,6 +8,8 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
@@ -261,6 +263,48 @@ class LeaveServiceTest {
         assertThat(responses.get(0).slots()).isEqualTo("1,3,7");
         assertThat(responses.get(0).reason()).isEqualTo("알바");
         assertThat(responses.get(0).createdByMemberId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("관리자는 사원의 고정 휴무를 기준 날짜의 요일로 신청한다")
+    void createFixedLeave() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        Member target = createMemberWithId(2L, MemberRole.MEMBER);
+        FixedLeaveCreateRequest request = new FixedLeaveCreateRequest(
+                2L,
+                LocalDate.of(2026, 6, 24),
+                List.of(4, 2, 4),
+                "알바"
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(fixedLeaveRepository.save(any(FixedLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        FixedLeaveResponse response = leaveService.createFixed(1L, request);
+
+        assertThat(response.memberId()).isEqualTo(2L);
+        assertThat(response.branchId()).isEqualTo(2L);
+        assertThat(response.dayOfWeek()).isEqualTo(DayOfWeek.WEDNESDAY);
+        assertThat(response.slots()).isEqualTo("2,4");
+        assertThat(response.reason()).isEqualTo("알바");
+        assertThat(response.active()).isTrue();
+    }
+
+    @Test
+    @DisplayName("일반 회원이 고정 휴무를 신청하면 예외가 발생한다")
+    void throwExceptionWhenMemberCreateFixedLeave() {
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
+        FixedLeaveCreateRequest request = new FixedLeaveCreateRequest(
+                2L,
+                LocalDate.of(2026, 6, 24),
+                List.of(4),
+                "알바"
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> leaveService.createFixed(1L, request))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.example.studyfactory.domain.leave.service;
 
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
@@ -130,6 +132,24 @@ public class LeaveService {
                 .toList();
     }
 
+    @Transactional
+    public FixedLeaveResponse createFixed(Long currentMemberId, FixedLeaveCreateRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member targetMember = findMember(request.memberId());
+        validateFixedLeaveRequest(request);
+        FixedLeave fixedLeave = new FixedLeave(
+                targetMember.getId(),
+                targetMember.getBranchId(),
+                request.leaveDate().getDayOfWeek(),
+                toSlots(request.slots()),
+                request.reason().trim(),
+                true
+        );
+
+        return FixedLeaveResponse.from(fixedLeaveRepository.save(fixedLeave));
+    }
+
     @Transactional(readOnly = true)
     public List<SpecialLeaveResponse> findSpecialByMember(Long currentMemberId, Long memberId) {
         Member currentMember = findMember(currentMemberId);
@@ -208,6 +228,15 @@ public class LeaveService {
     }
 
     private void validateSpecialLeaveRequest(SpecialLeaveCreateRequest request) {
+        if (request.reason().isBlank()) {
+            throw LeaveException.invalidSpecialLeaveRequest();
+        }
+        if (request.slots().stream().anyMatch(slot -> slot < 1 || slot > 7)) {
+            throw LeaveException.invalidSpecialLeaveRequest();
+        }
+    }
+
+    private void validateFixedLeaveRequest(FixedLeaveCreateRequest request) {
         if (request.reason().isBlank()) {
             throw LeaveException.invalidSpecialLeaveRequest();
         }

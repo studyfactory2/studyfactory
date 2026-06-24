@@ -2,6 +2,8 @@ package com.example.studyfactory.domain.leave.controller;
 
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
@@ -75,6 +77,12 @@ public class LeaveController {
     @ResponseStatus(HttpStatus.CREATED)
     public List<SpecialLeaveResponse> createSpecial(@CurrentMember Long memberId, @Valid @RequestBody SpecialLeaveCreateRequest request) {
         return leaveService.createSpecial(memberId, request);
+    }
+
+    @PostMapping("/fixed")
+    @ResponseStatus(HttpStatus.CREATED)
+    public FixedLeaveResponse createFixed(@CurrentMember Long memberId, @Valid @RequestBody FixedLeaveCreateRequest request) {
+        return leaveService.createFixed(memberId, request);
     }
 
     @GetMapping("/special")
