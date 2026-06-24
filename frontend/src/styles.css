@@ -3267,6 +3267,13 @@ button {
 
 .member-calendar-grid button {
   aspect-ratio: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   border: 1px solid #e2ebef;
   border-radius: 12px;
   background: #fff;
@@ -3285,9 +3292,48 @@ button {
 
 .member-calendar-grid button.selected {
   border-color: #247d82;
-  background: #247d82;
-  color: #fff;
+  background: #fff;
+  color: #247d82;
   box-shadow: 0 8px 18px rgba(36, 125, 130, 0.22);
+}
+
+.member-calendar-date-number {
+  display: block;
+  color: inherit;
+  line-height: 1;
+}
+
+.member-calendar-leave-badges {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.member-calendar-leave-badge {
+  max-width: 100%;
+  padding: 2px 4px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.member-calendar-leave-badge.full {
+  border: 1px solid #ff9b9b;
+  background: #fff3f3;
+  color: #ef4444;
+}
+
+.member-calendar-leave-badge.morning,
+.member-calendar-leave-badge.afternoon {
+  border: 1px solid #99d3ff;
+  background: #f0f8ff;
+  color: #2477bd;
+}
+
+.member-calendar-grid button.past .member-calendar-leave-badge {
+  opacity: 0.62;
 }
 
 .leave-type-actions,
@@ -3386,6 +3432,67 @@ button {
 .side-dish-calendar {
   display: grid;
   gap: 14px;
+}
+
+.leave-history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.leave-history-card {
+  min-height: 80px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e6edf2;
+  border-left: 4px solid #3d8ed7;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(37, 49, 58, 0.05);
+}
+
+.leave-history-card strong {
+  color: #25313a;
+  font-size: 15px;
+  font-weight: 900;
+  word-break: keep-all;
+}
+
+.leave-history-actions {
+  display: grid;
+  justify-items: end;
+  gap: 9px;
+}
+
+.leave-history-actions span {
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: #e9f5ff;
+  color: #2268a8;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.leave-history-actions button {
+  min-width: 60px;
+  min-height: 30px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ff9b9b;
+  border-radius: 7px;
+  background: #fff8f8;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .side-dish-items {

@@ -119,6 +119,16 @@ export type DailyLeaveStatusResponse = {
   createdAt: string;
 };
 
+export type LeaveResponse = {
+  id: number;
+  memberId: number;
+  branchId: number;
+  leaveDate: string;
+  leaveType: LeaveType;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type MonthlyLeaveCalendarResponse = {
   leaveDate: string;
   label: string;
