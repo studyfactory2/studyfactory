@@ -38,7 +38,7 @@ const STAFF_PAGE_SECTIONS: StaffPageSection[] = [
     title: '스탭 개인 메뉴',
     items: [
       { icon: 'staff-leave', label: '스탭\n휴무 신청', href: '/managerdashboard?view=staff_leave_request' },
-      { icon: 'side-dish', label: '반찬\n신청' },
+      { icon: 'side-dish', label: '반찬\n신청', href: '/managerdashboard?view=staff_side_dish_request' },
     ],
   },
 ];

@@ -445,12 +445,18 @@ button {
 
 .adjacent-tab {
   min-width: 0;
+  width: 100%;
   color: rgba(36, 49, 56, 0.36);
   font-size: 13px;
   font-weight: 800;
   overflow: hidden;
+  cursor: pointer;
   text-shadow: 0 3px 12px rgba(36, 125, 130, 0.16);
   white-space: nowrap;
+}
+
+.adjacent-tab:empty {
+  cursor: default;
 }
 
 .adjacent-tab span {
@@ -2436,6 +2442,78 @@ button {
   font-size: 13px;
   font-weight: 800;
   text-align: center;
+}
+
+.manager-card:has(.staff-side-dish-panel) {
+  width: min(526px, calc(100vw - 32px));
+  min-height: 0;
+  padding: 28px;
+}
+
+.staff-side-dish-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.staff-side-dish-title {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.staff-side-dish-title a {
+  width: 26px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #26323a;
+}
+
+.staff-side-dish-title svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
+.staff-side-dish-title h2 {
+  margin: 0;
+  color: #202931;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.staff-side-dish-panel .member-panel {
+  gap: 12px;
+}
+
+.staff-side-dish-panel .member-notice-box {
+  background: #e9fbf4;
+  border-color: #c8f1df;
+}
+
+.staff-side-dish-panel .member-notice-box strong {
+  color: #207a76;
+  text-align: center;
+}
+
+.staff-side-dish-panel .member-notice-box a {
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #2f8d8b;
+  color: #fff;
+}
+
+.staff-side-dish-panel .side-dish-calendar {
+  background: #fff;
 }
 
 .member-status-panel {
@@ -6392,6 +6470,12 @@ button {
     padding: 22px 14px 30px;
   }
 
+  .manager-card:has(.staff-side-dish-panel) {
+    width: 100%;
+    min-height: 640px;
+    padding: 22px 14px 30px;
+  }
+
   .staff-beverage-list {
     max-height: 570px;
     gap: 9px;
@@ -6800,6 +6884,34 @@ button {
       width: min(560px, 100%);
       min-height: 660px;
       padding: 28px 28px 36px;
+    }
+
+    .manager-card:has(.staff-work-panel) {
+      width: min(560px, calc(100vw - 48px));
+      min-height: 660px;
+      padding: 28px 28px 36px;
+    }
+
+    .staff-work-panel {
+      gap: 18px;
+    }
+
+    .staff-work-toolbar {
+      grid-template-columns: minmax(0, 260px) auto;
+    }
+
+    .staff-work-table {
+      font-size: 12px;
+    }
+
+    .staff-work-table th,
+    .staff-work-table td {
+      height: 44px;
+      padding: 0 8px;
+    }
+
+    .staff-work-weekday-cell {
+      width: 48px;
     }
 
     .manager-card:has(.staff-seat-panel) {
@@ -7312,6 +7424,14 @@ button {
   .side-dish-modal-backdrop {
     padding: 6px;
     display: block;
+  }
+
+  .side-dish-small-modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    width: min(330px, calc(100vw - 28px));
+    transform: translate(-50%, -50%);
   }
 
   .side-dish-modal {

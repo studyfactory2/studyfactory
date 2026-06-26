@@ -11,7 +11,8 @@ export type AdminMenuId =
   | 'seat_management'
   | 'beverage_management'
   | 'new_beverage_request'
-  | 'staff_leave_request';
+  | 'staff_leave_request'
+  | 'staff_side_dish_request';
 
 export type AdminMenu = {
   id: AdminMenuId;
@@ -42,6 +43,7 @@ export function resolveAdminMenuId(value: string | null): AdminMenuId {
     || value === 'beverage_management'
     || value === 'new_beverage_request'
     || value === 'staff_leave_request'
+    || value === 'staff_side_dish_request'
   ) {
     return value;
   }
@@ -84,6 +86,10 @@ export function getAdminMenuLabel(menuId: AdminMenuId): string {
 
   if (menuId === 'staff_leave_request') {
     return '스탭 휴무 신청';
+  }
+
+  if (menuId === 'staff_side_dish_request') {
+    return '반찬 신청';
   }
 
   return ADMIN_MENUS.find((menu) => menu.id === menuId)?.label || '관리자 페이지';

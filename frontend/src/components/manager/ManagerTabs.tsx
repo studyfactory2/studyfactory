@@ -24,7 +24,13 @@ export function ManagerTabs({ currentView, menus = ADMIN_MENUS, onViewChange }: 
 
   return (
     <nav className="manager-tabs" aria-label="관리자 메뉴">
-      <div className="adjacent-tab previous-tab">{previousMenu && <span>{previousMenu.label}</span>}</div>
+      {previousMenu ? (
+        <button className="adjacent-tab previous-tab" type="button" onClick={() => changeView(previousMenu.id)}>
+          <span>{previousMenu.label}</span>
+        </button>
+      ) : (
+        <span className="adjacent-tab previous-tab" />
+      )}
       {previousMenu ? (
         <button className="tab-arrow previous-arrow" type="button" aria-label="이전 페이지" onClick={() => changeView(previousMenu.id)}>
           ‹
@@ -32,9 +38,9 @@ export function ManagerTabs({ currentView, menus = ADMIN_MENUS, onViewChange }: 
       ) : (
         <span className="tab-arrow-placeholder" />
       )}
-      <button className="current-tab" type="button" aria-current="page">
+      <span className="current-tab" aria-current="page">
         {currentMenu.label}
-      </button>
+      </span>
       {nextMenu ? (
         <button className="tab-arrow next-arrow" type="button" aria-label="다음 페이지" onClick={() => changeView(nextMenu.id)}>
           ›
@@ -42,7 +48,13 @@ export function ManagerTabs({ currentView, menus = ADMIN_MENUS, onViewChange }: 
       ) : (
         <span className="tab-arrow-placeholder" />
       )}
-      <div className="adjacent-tab next-tab">{nextMenu && <span>{nextMenu.label}</span>}</div>
+      {nextMenu ? (
+        <button className="adjacent-tab next-tab" type="button" onClick={() => changeView(nextMenu.id)}>
+          <span>{nextMenu.label}</span>
+        </button>
+      ) : (
+        <span className="adjacent-tab next-tab" />
+      )}
     </nav>
   );
 }
