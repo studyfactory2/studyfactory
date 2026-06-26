@@ -316,9 +316,12 @@ button {
 
 .install-guide {
   margin-top: 0;
+  display: grid;
+  gap: 10px;
 }
 
-.install-guide summary {
+.install-button {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -329,29 +332,24 @@ button {
   color: var(--color-primary-dark);
   font-weight: 800;
   cursor: pointer;
-  list-style: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.install-guide summary::-webkit-details-marker {
-  display: none;
+.install-button:hover {
+  border-color: rgba(38, 126, 130, 0.36);
+  box-shadow: 0 10px 20px rgba(38, 126, 130, 0.12);
+  transform: translateY(-1px);
 }
 
-.install-guide div {
-  margin-top: 12px;
-  padding: 14px;
+.install-guide p {
+  margin: 0;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
   background: #f8fbfb;
   color: #4a5568;
-}
-
-.install-guide h3,
-.install-guide p {
-  margin: 0;
-}
-
-.install-guide p {
-  margin-top: 8px;
-  line-height: 1.6;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .manager-page {
