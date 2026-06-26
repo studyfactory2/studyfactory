@@ -4,6 +4,7 @@ import { DailyLeaveStatusPanel } from '../components/manager/DailyLeaveStatusPan
 import { ManagerTabs } from '../components/manager/ManagerTabs';
 import { ManagerTopBar } from '../components/manager/ManagerTopBar';
 import { MemberStatusPanel } from '../components/manager/MemberStatusPanel';
+import { NewBeverageRequestPanel } from '../components/manager/NewBeverageRequestPanel';
 import { OtherLeaveRequestPanel } from '../components/manager/OtherLeaveRequestPanel';
 import { PlaceholderPanel } from '../components/manager/PlaceholderPanel';
 import { PreRegistrationPanel } from '../components/manager/PreRegistrationPanel';
@@ -20,7 +21,7 @@ import { ManagerLayout } from '../layouts/ManagerLayout';
 export function ManagerDashboardScreen() {
   const role = localStorage.getItem('memberRole');
   const memberName = localStorage.getItem('memberName') || '사용자';
-  const staffExtraViews = ['daily_leave_status', 'seat_management', 'beverage_management'];
+  const staffExtraViews = ['daily_leave_status', 'seat_management', 'beverage_management', 'new_beverage_request'];
   const [currentView, setCurrentView] = useState<AdminMenuId>(() => resolveManagerViewFromUrl(role, staffExtraViews));
   const [slideDirection, setSlideDirection] = useState<'next' | 'previous'>('next');
   const { branches, certifications } = useManagerOptions(role === 'ADMIN' || role === 'STAFF');
@@ -172,6 +173,10 @@ function ManagerPanel({ branches, certifications, currentView, editableStaffWork
     return <StaffBeverageManagementPanel branches={branches} />;
   }
 
+  if (currentView === 'new_beverage_request') {
+    return <NewBeverageRequestPanel branches={branches} />;
+  }
+
   if (currentView === 'vacation_history') {
     return <VacationHistoryPanel branches={branches} />;
   }
@@ -202,7 +207,7 @@ function resolveAllowedView(view: AdminMenuId, role: string | null, staffExtraVi
 function toViewOrder(view: AdminMenuId) {
   const visibleView = view === 'register' || view === 'status' || view === 'vacation_history' || view === 'other_leave_request'
     ? 'grid'
-    : view === 'daily_leave_status' || view === 'seat_management' || view === 'beverage_management'
+    : view === 'daily_leave_status' || view === 'seat_management' || view === 'beverage_management' || view === 'new_beverage_request'
       ? 'staff-page'
       : view;
   const tabOrder = ADMIN_MENUS.findIndex((menu) => menu.id === visibleView);

@@ -31,7 +31,7 @@ const STAFF_PAGE_SECTIONS: StaffPageSection[] = [
     items: [
       { icon: 'seat', label: '사원\n좌석 관리', href: '/managerdashboard?view=seat_management' },
       { icon: 'cup', label: '사원\n음료 관리', href: '/managerdashboard?view=beverage_management' },
-      { icon: 'clipboard', label: '새로운 음료\n신청' },
+      { icon: 'clipboard', label: '새로운 음료\n신청', href: '/managerdashboard?view=new_beverage_request' },
     ],
   },
   {

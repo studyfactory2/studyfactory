@@ -1966,6 +1966,143 @@ button {
   text-align: center;
 }
 
+.manager-card:has(.new-beverage-panel) {
+  width: min(720px, 100%);
+  min-height: 720px;
+  padding: 26px 22px 32px;
+}
+
+.new-beverage-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.new-beverage-header {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.new-beverage-header a {
+  width: 28px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #25313a;
+}
+
+.new-beverage-header svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
+.new-beverage-header h2 {
+  margin: 0;
+  color: #202931;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.new-beverage-sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.new-beverage-sort button {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid #dfe9f1;
+  border-radius: 999px;
+  background: #fff;
+  color: #7c91a3;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.new-beverage-sort button.active {
+  border-color: #2f8888;
+  background: #2f8888;
+  color: #fff;
+}
+
+.new-beverage-list {
+  max-height: 620px;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  padding-right: 2px;
+}
+
+.new-beverage-card {
+  min-height: 48px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #dfe8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.new-beverage-card strong {
+  min-width: 0;
+  color: #223347;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.new-beverage-card div {
+  min-width: 0;
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  text-align: right;
+}
+
+.new-beverage-card span {
+  min-width: 0;
+  max-width: 100%;
+  color: #334557;
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-beverage-card small {
+  min-width: 0;
+  max-width: 100%;
+  color: #8aa0b2;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-beverage-empty {
+  margin: 0;
+  padding: 28px 12px;
+  border-radius: 10px;
+  background: #f5fafc;
+  color: #8ba0b3;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .member-status-panel {
   display: grid;
   gap: 20px;
@@ -5898,6 +6035,12 @@ button {
     padding: 22px 14px 30px;
   }
 
+  .manager-card:has(.new-beverage-panel) {
+    width: 100%;
+    min-height: 640px;
+    padding: 22px 14px 30px;
+  }
+
   .staff-beverage-list {
     max-height: 570px;
     gap: 9px;
@@ -5939,6 +6082,30 @@ button {
   .staff-beverage-member small,
   .staff-beverage-member em {
     font-size: 11px;
+  }
+
+  .new-beverage-list {
+    max-height: 570px;
+    gap: 7px;
+  }
+
+  .new-beverage-card {
+    min-height: 42px;
+    padding: 8px 10px;
+    grid-template-columns: minmax(86px, auto) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .new-beverage-card strong {
+    font-size: 12px;
+  }
+
+  .new-beverage-card span {
+    font-size: 11px;
+  }
+
+  .new-beverage-card small {
+    font-size: 9px;
   }
 
   .panel-title {
@@ -6211,6 +6378,12 @@ button {
       padding: 30px 28px 38px;
     }
 
+    .manager-card:has(.new-beverage-panel) {
+      width: min(680px, 100%);
+      min-height: 720px;
+      padding: 30px 28px 38px;
+    }
+
     .staff-beverage-list {
       max-height: 640px;
       gap: 9px;
@@ -6269,6 +6442,38 @@ button {
 
     .staff-beverage-member em {
       font-size: 12px;
+    }
+
+    .new-beverage-header h2 {
+      font-size: 20px;
+    }
+
+    .new-beverage-sort button {
+      min-height: 34px;
+      padding: 0 15px;
+      font-size: 13px;
+    }
+
+    .new-beverage-list {
+      max-height: 640px;
+      gap: 9px;
+    }
+
+    .new-beverage-card {
+      min-height: 54px;
+      padding: 11px 14px;
+    }
+
+    .new-beverage-card strong {
+      font-size: 15px;
+    }
+
+    .new-beverage-card span {
+      font-size: 14px;
+    }
+
+    .new-beverage-card small {
+      font-size: 11px;
     }
 
     .staff-seat-panel {
