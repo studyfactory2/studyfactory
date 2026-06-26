@@ -538,6 +538,9 @@ function toStatusClassName(status: string, emptySeat: boolean) {
   if (status === 'O') {
     return 'status-present';
   }
+  if (status === '오전' || status === '오후') {
+    return 'status-half-leave';
+  }
 
   return 'status-leave';
 }

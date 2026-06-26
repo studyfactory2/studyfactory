@@ -2103,6 +2103,341 @@ button {
   text-align: center;
 }
 
+.manager-card:has(.staff-leave-panel) {
+  width: min(720px, 100%);
+  min-height: 720px;
+  padding: 26px 22px 32px;
+}
+
+.staff-leave-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.staff-leave-title {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.staff-leave-title a {
+  width: 28px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #25313a;
+}
+
+.staff-leave-title svg,
+.staff-leave-submit svg,
+.staff-leave-history-card button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
+.staff-leave-title h2 {
+  margin: 0;
+  color: #202931;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.staff-leave-calendar-card {
+  padding: 14px 6px 6px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.staff-leave-calendar-month {
+  width: min(260px, 100%);
+  margin: 0 auto 16px;
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+}
+
+.staff-leave-calendar-month button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: #344960;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.staff-leave-calendar-month strong {
+  color: #29394a;
+  font-size: 18px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.staff-leave-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.staff-leave-weekday {
+  min-height: 26px;
+  display: grid;
+  place-items: center;
+  color: #708399;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.staff-leave-weekday.sunday,
+.staff-leave-day.sunday {
+  color: #ef4040;
+}
+
+.staff-leave-weekday.saturday,
+.staff-leave-day.saturday {
+  color: #247fce;
+}
+
+.staff-leave-calendar-empty {
+  min-height: 56px;
+}
+
+.staff-leave-day {
+  min-height: 56px;
+  padding: 7px 4px;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #fff;
+  color: #253446;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.staff-leave-day.past {
+  background: #f6fafc;
+  color: #d0dce6;
+  cursor: default;
+}
+
+.staff-leave-day.selected {
+  min-height: 64px;
+  border-color: #2c8b91;
+  background: #fff;
+  color: #253446;
+}
+
+.staff-leave-badges {
+  display: grid;
+  gap: 2px;
+}
+
+.staff-leave-badge {
+  min-height: 18px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  justify-self: center;
+  border: 1px solid #d7e3ef;
+  border-radius: 7px;
+  background: #fff;
+  color: #5e7185;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.staff-leave-badge.leave {
+  border-color: #ff9ca0;
+  color: #ef4040;
+}
+
+.staff-leave-badge.afternoon {
+  border-color: #a7d8ff;
+  color: #247fce;
+}
+
+.staff-leave-badge.fixed {
+  border-color: #d7e3ef;
+  color: #5e7185;
+}
+
+.staff-leave-types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.staff-leave-types button {
+  min-height: 44px;
+  border: 1px solid #dfe8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #3a536a;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.staff-leave-types button.active {
+  border-color: #2f8ddd;
+  background: #eef8ff;
+  color: #1d669d;
+}
+
+.staff-leave-submit {
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9px;
+  background: #2f8888;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  box-shadow: 0 10px 20px rgba(47, 136, 136, 0.2);
+  cursor: pointer;
+}
+
+.staff-leave-submit:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+
+.staff-leave-submit svg {
+  width: 22px;
+  height: 22px;
+}
+
+.staff-leave-message {
+  margin: 0;
+  color: #2f8888;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.staff-leave-message.error {
+  color: #ef4040;
+}
+
+.staff-leave-history {
+  padding-top: 16px;
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid #edf2f6;
+}
+
+.staff-leave-history-card {
+  min-height: 72px;
+  padding: 13px 14px;
+  display: grid;
+  grid-template-columns: minmax(100px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #36bb78;
+  background: #fff;
+  box-shadow: 0 1px 8px rgba(57, 78, 91, 0.04);
+}
+
+.staff-leave-history-card.full {
+  border-left-color: #ff4146;
+}
+
+.staff-leave-history-card > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.staff-leave-history-card strong {
+  color: #243344;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.staff-leave-history-badge {
+  min-height: 24px;
+  padding: 0 7px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 5px;
+  background: #d8f9e4;
+  color: #ef4040;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.staff-leave-history-badge.afternoon {
+  background: #e7f5ff;
+  color: #247fce;
+}
+
+.staff-leave-history-badge.fixed {
+  background: #d8f9e4;
+  color: #ef4040;
+}
+
+.staff-leave-history-card > div:last-child {
+  min-width: 0;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.staff-leave-history-card > div:last-child > span {
+  color: #71869b;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.staff-leave-history-card button {
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #ff9ca0;
+  border-radius: 7px;
+  background: #fff;
+  color: #ef4040;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.staff-leave-history-card button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.staff-leave-empty {
+  margin: 0;
+  padding: 22px 12px;
+  border-radius: 10px;
+  background: #f6fafc;
+  color: #8ba0b3;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .member-status-panel {
   display: grid;
   gap: 20px;
@@ -4178,6 +4513,13 @@ button {
   font-weight: 900;
 }
 
+.staff-attendance-table .status-half-leave {
+  background: #bdf1d5;
+  color: #155b40;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .staff-attendance-table .status-leave {
   background: #bdf1d5;
   color: #d71920;
@@ -4194,6 +4536,7 @@ button {
 
 .staff-attendance-table .status-absent span,
 .staff-attendance-table .status-present span,
+.staff-attendance-table .status-half-leave span,
 .staff-attendance-table .status-leave span,
 .staff-attendance-table .status-special span {
   width: 100%;
@@ -4202,6 +4545,7 @@ button {
 
 .staff-attendance-table tbody td.status-absent,
 .staff-attendance-table tbody td.status-present,
+.staff-attendance-table tbody td.status-half-leave,
 .staff-attendance-table tbody td.status-leave {
   cursor: pointer;
 }
@@ -6001,6 +6345,7 @@ button {
   }
 
   .staff-attendance-table .status-leave,
+  .staff-attendance-table .status-half-leave,
   .staff-attendance-table .status-special {
     font-size: 9px;
   }
@@ -6036,6 +6381,12 @@ button {
   }
 
   .manager-card:has(.new-beverage-panel) {
+    width: 100%;
+    min-height: 640px;
+    padding: 22px 14px 30px;
+  }
+
+  .manager-card:has(.staff-leave-panel) {
     width: 100%;
     min-height: 640px;
     padding: 22px 14px 30px;
@@ -6106,6 +6457,91 @@ button {
 
   .new-beverage-card small {
     font-size: 9px;
+  }
+
+  .staff-leave-panel {
+    gap: 12px;
+  }
+
+  .staff-leave-calendar-card {
+    padding: 10px 0 4px;
+  }
+
+  .staff-leave-calendar-month {
+    margin-bottom: 12px;
+  }
+
+  .staff-leave-calendar-month strong {
+    font-size: 15px;
+  }
+
+  .staff-leave-calendar-grid {
+    gap: 4px;
+  }
+
+  .staff-leave-calendar-empty,
+  .staff-leave-day {
+    min-height: 44px;
+  }
+
+  .staff-leave-day.selected {
+    min-height: 58px;
+  }
+
+  .staff-leave-weekday {
+    min-height: 22px;
+    font-size: 10px;
+  }
+
+  .staff-leave-badge {
+    min-height: 16px;
+    padding: 0 5px;
+    font-size: 9px;
+  }
+
+  .staff-leave-types {
+    gap: 6px;
+  }
+
+  .staff-leave-types button {
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .staff-leave-submit {
+    min-height: 46px;
+    font-size: 13px;
+  }
+
+  .staff-leave-history {
+    padding-top: 14px;
+    gap: 8px;
+  }
+
+  .staff-leave-history-card {
+    min-height: 64px;
+    padding: 11px 10px;
+    grid-template-columns: minmax(96px, auto) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .staff-leave-history-card strong {
+    font-size: 13px;
+  }
+
+  .staff-leave-history-badge {
+    min-height: 22px;
+    font-size: 11px;
+  }
+
+  .staff-leave-history-card > div:last-child > span {
+    font-size: 10px;
+  }
+
+  .staff-leave-history-card button {
+    min-height: 30px;
+    padding: 0 9px;
+    font-size: 11px;
   }
 
   .panel-title {
@@ -6384,6 +6820,12 @@ button {
       padding: 30px 28px 38px;
     }
 
+    .manager-card:has(.staff-leave-panel) {
+      width: min(680px, 100%);
+      min-height: 720px;
+      padding: 30px 28px 38px;
+    }
+
     .staff-beverage-list {
       max-height: 640px;
       gap: 9px;
@@ -6474,6 +6916,54 @@ button {
 
     .new-beverage-card small {
       font-size: 11px;
+    }
+
+    .staff-leave-title h2 {
+      font-size: 20px;
+    }
+
+    .staff-leave-calendar-card {
+      padding: 18px 10px 8px;
+    }
+
+    .staff-leave-calendar-month strong {
+      font-size: 20px;
+    }
+
+    .staff-leave-calendar-grid {
+      gap: 7px;
+    }
+
+    .staff-leave-calendar-empty,
+    .staff-leave-day {
+      min-height: 64px;
+    }
+
+    .staff-leave-day.selected {
+      min-height: 72px;
+    }
+
+    .staff-leave-types button {
+      min-height: 48px;
+      font-size: 14px;
+    }
+
+    .staff-leave-submit {
+      min-height: 56px;
+      font-size: 16px;
+    }
+
+    .staff-leave-history-card {
+      min-height: 78px;
+      padding: 14px 16px;
+    }
+
+    .staff-leave-history-card strong {
+      font-size: 15px;
+    }
+
+    .staff-leave-history-card > div:last-child > span {
+      font-size: 13px;
     }
 
     .staff-seat-panel {
