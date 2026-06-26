@@ -3,8 +3,10 @@ package com.example.studyfactory.domain.beverage.controller;
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
 import com.example.studyfactory.domain.beverage.dto.BeverageRequest;
+import com.example.studyfactory.domain.beverage.dto.MemberBeverageResponse;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,6 +26,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class BeverageController {
 
     private final BeverageService beverageService;
+
+    @GetMapping("/members")
+    public List<MemberBeverageResponse> findMemberBeverages(
+            @CurrentMember Long currentMemberId,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long branchId
+    ) {
+        return beverageService.findMemberBeverages(currentMemberId, name, branchId);
+    }
 
     @GetMapping("/me")
     public BeveragePreferenceResponse findMyDrink(@CurrentMember Long memberId) {

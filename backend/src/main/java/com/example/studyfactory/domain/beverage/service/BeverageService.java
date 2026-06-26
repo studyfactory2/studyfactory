@@ -2,12 +2,14 @@ package com.example.studyfactory.domain.beverage.service;
 
 import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
 import com.example.studyfactory.domain.beverage.dto.BeverageRequest;
+import com.example.studyfactory.domain.beverage.dto.MemberBeverageResponse;
 import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
 import com.example.studyfactory.domain.beverage.exception.BeverageException;
 import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,18 @@ public class BeverageService {
 
     private final MemberRepository memberRepository;
     private final BeveragePreferenceRepository beveragePreferenceRepository;
+
+    @Transactional(readOnly = true)
+    public List<MemberBeverageResponse> findMemberBeverages(Long currentMemberId, String name, Long branchId) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        String searchName = toSearchName(name);
+
+        return findMembers(searchName, branchId)
+                .stream()
+                .map(member -> MemberBeverageResponse.from(member, findLatestPreference(member)))
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     public BeveragePreferenceResponse findMyDrink(Long memberId) {
@@ -136,5 +150,29 @@ public class BeverageService {
         if (!member.hasAllPermissions()) {
             throw MemberException.forbidden();
         }
+    }
+
+    private String toSearchName(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+
+        return name.trim();
+    }
+
+    private List<Member> findMembers(String name, Long branchId) {
+        if (name != null && branchId != null) {
+            return memberRepository.findByNameContainingAndReferenceInformationBranchIdOrderByIdAsc(name, branchId);
+        }
+
+        if (name != null) {
+            return memberRepository.findByNameContainingOrderByIdAsc(name);
+        }
+
+        if (branchId != null) {
+            return memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(branchId);
+        }
+
+        return memberRepository.findAllByOrderByIdAsc();
     }
 }

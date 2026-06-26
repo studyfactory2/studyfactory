@@ -84,6 +84,16 @@ export type BeveragePreferenceResponse = {
   updatedAt: string;
 };
 
+export type MemberBeverageResponse = {
+  memberId: number;
+  branchId: number;
+  memberName: string;
+  role: MemberRole;
+  seatNumber?: number | null;
+  drinks: string;
+  notes?: string | null;
+};
+
 export type MealType = 'LUNCH' | 'DINNER';
 
 export type SideDishResponse = {
