@@ -8350,17 +8350,37 @@ button.beverage-serving-cell:disabled {
       padding: 22px 24px 34px;
     }
 
+    .manager-card {
+      width: min(720px, calc(100vw - 48px));
+      padding: 30px 34px 38px;
+      border-radius: 22px;
+    }
+
+    .manager-card:has(.admin-grid-panel) {
+      width: min(720px, calc(100vw - 48px));
+      min-height: 680px;
+      padding: 30px 34px 38px;
+    }
+
     .manager-card:has(.staff-page-panel),
     .manager-card:has(.daily-leave-panel) {
-      width: min(560px, 100%);
+      width: min(720px, calc(100vw - 48px));
       min-height: 660px;
-      padding: 28px 28px 36px;
+      padding: 30px 34px 38px;
     }
 
     .manager-card:has(.staff-work-panel) {
-      width: min(560px, calc(100vw - 48px));
+      width: min(720px, calc(100vw - 48px));
       min-height: 660px;
-      padding: 28px 28px 36px;
+      padding: 30px 34px 38px;
+    }
+
+    .manager-card:has(.member-status-panel),
+    .manager-card:has(.vacation-history-panel),
+    .manager-card:has(.other-leave-panel),
+    .manager-card:has(.fixed-leave-panel) {
+      width: min(720px, calc(100vw - 48px));
+      padding: 30px 34px 38px;
     }
 
     .staff-work-panel {
@@ -8392,25 +8412,31 @@ button.beverage-serving-cell:disabled {
     }
 
     .manager-card:has(.staff-beverage-panel) {
-      width: min(680px, 100%);
+      width: min(720px, calc(100vw - 48px));
       min-height: 720px;
       padding: 30px 28px 38px;
     }
 
     .manager-card:has(.new-beverage-panel) {
-      width: min(680px, 100%);
+      width: min(720px, calc(100vw - 48px));
       min-height: 720px;
       padding: 30px 28px 38px;
     }
 
     .manager-card:has(.staff-leave-panel) {
-      width: min(680px, 100%);
+      width: min(720px, calc(100vw - 48px));
+      min-height: 720px;
+      padding: 30px 28px 38px;
+    }
+
+    .manager-card:has(.staff-side-dish-panel) {
+      width: min(720px, calc(100vw - 48px));
       min-height: 720px;
       padding: 30px 28px 38px;
     }
 
     .manager-card:has(.beverage-serving-panel) {
-      width: min(680px, 100%);
+      width: min(720px, calc(100vw - 48px));
       min-height: 720px;
       padding: 30px 28px 38px;
     }
@@ -9044,6 +9070,78 @@ button.beverage-serving-cell:disabled {
   .beverage-input-row input,
   .beverage-input-row button {
     min-height: 42px;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 820px) {
+  .manager-page {
+    padding: 24px 28px 36px;
+  }
+
+  .manager-topbar {
+    width: min(720px, 100%);
+    margin-bottom: 24px;
+  }
+
+  .manager-tabs {
+    width: min(680px, 100%);
+    margin-bottom: 24px;
+    grid-template-columns: minmax(100px, 1fr) 30px minmax(170px, auto) 30px minmax(100px, 1fr);
+  }
+
+  .manager-card,
+  .manager-card:has(.admin-grid-panel),
+  .manager-card:has(.staff-page-panel),
+  .manager-card:has(.daily-leave-panel),
+  .manager-card:has(.staff-work-panel),
+  .manager-card:has(.staff-beverage-panel),
+  .manager-card:has(.new-beverage-panel),
+  .manager-card:has(.staff-leave-panel),
+  .manager-card:has(.staff-side-dish-panel),
+  .manager-card:has(.member-status-panel),
+  .manager-card:has(.vacation-history-panel),
+  .manager-card:has(.other-leave-panel),
+  .manager-card:has(.fixed-leave-panel) {
+    width: min(720px, calc(100vw - 56px));
+    min-height: 680px;
+    padding: 30px 34px 38px;
+    border-radius: 22px;
+  }
+
+  .manager-card:has(.staff-seat-panel) {
+    width: min(820px, calc(100vw - 56px));
+    min-height: 700px;
+    padding: 30px 34px 38px;
+  }
+
+  .manager-card:has(.beverage-serving-panel) {
+    width: min(760px, calc(100vw - 56px));
+    min-height: 720px;
+    padding: 30px 28px 38px;
+  }
+
+  .manager-card:has(.fixed-leave-panel) {
+    height: min(720px, calc(100svh - 190px));
+  }
+
+  .admin-grid-button {
+    min-height: 104px;
+  }
+
+  .staff-page-button {
+    min-height: 98px;
+  }
+
+  .staff-work-table th,
+  .staff-work-table td {
+    height: 48px;
+  }
+
+  .daily-leave-card,
+  .member-status-card,
+  .vacation-history-card,
+  .other-leave-card {
+    min-height: 92px;
   }
 }
 
