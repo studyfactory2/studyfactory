@@ -56,6 +56,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findFirstByRoleOrderByIdAsc(MemberRole role);
 
+    List<Member> findByWorkInformationJoinDateAndReferenceInformationBranchIdOrderByIdAsc(java.time.LocalDate joinDate, Long branchId);
+
     @Query("""
             select count(m) > 0
             from Member m

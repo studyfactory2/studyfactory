@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { apiRequest } from '../../api/client';
-import type { DailyAttendanceBoardResponse, DailySideDishResponse, MealType } from '../../types/domain';
+import type { Branch, DailyAttendanceBoardResponse, DailySideDishResponse, MealType, TodoResponse } from '../../types/domain';
 
 const SLOT_LABELS = [1, 2, 3, 4, 5, 6, 7];
 const OTHER_REASON_OPTIONS = ['지각', '조회', '외출', '이동', '시험', '컨디션'];
@@ -24,6 +24,17 @@ export function StaffAttendancePanel() {
   const [otherReason, setOtherReason] = useState('');
   const [sideDishes, setSideDishes] = useState<DailySideDishResponse[]>([]);
   const [sideDishModalOpen, setSideDishModalOpen] = useState(false);
+  const [todoModalOpen, setTodoModalOpen] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [todoBranchId, setTodoBranchId] = useState('');
+  const [todoBranchOpen, setTodoBranchOpen] = useState(false);
+  const [todos, setTodos] = useState<TodoResponse[]>([]);
+  const [todoContent, setTodoContent] = useState('');
+  const [todoUrgent, setTodoUrgent] = useState(false);
+  const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
+  const [editingTodoContent, setEditingTodoContent] = useState('');
+  const [replyTodoId, setReplyTodoId] = useState<number | null>(null);
+  const [replyContent, setReplyContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
@@ -37,16 +48,39 @@ export function StaffAttendancePanel() {
 
     return rows.filter((row) => row.name.includes(keyword) || String(row.seatNumber || '').includes(keyword));
   }, [board, name]);
-  const todoCount = useMemo(() => filteredRows.filter((row) => row.slots.some((slot) => slot !== 'X')).length, [filteredRows]);
-  const noteCount = useMemo(() => filteredRows.filter((row) => row.slots.some((slot) => slot !== 'X' && slot !== '월차')).length, [filteredRows]);
+  const todoItems = useMemo(() => [...todos].sort((first, second) => {
+    if (first.completed !== second.completed) {
+      return Number(first.completed) - Number(second.completed);
+    }
+    if (first.priority !== second.priority) {
+      return first.priority === 'URGENT' ? -1 : 1;
+    }
+
+    return new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
+  }), [todos]);
+  const todoCount = useMemo(() => todoItems.filter((item) => !item.completed).length, [todoItems]);
   const otherCalendar = useMemo(() => createMonthCalendar(otherDate), [otherDate]);
   const lunchSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'LUNCH'), [sideDishes]);
   const dinnerSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'DINNER'), [sideDishes]);
+  const selectedTodoBranch = useMemo(() => {
+    return branches.find((branch) => String(branch.id) === todoBranchId)
+      || branches.find((branch) => branch.name === '망미점')
+      || branches[0]
+      || { id: 1, name: '망미점' };
+  }, [branches, todoBranchId]);
+
+  useEffect(() => {
+    void loadBranches();
+  }, []);
 
   useEffect(() => {
     void loadBoard(selectedDate);
     void loadSideDishes(selectedDate);
   }, [selectedDate]);
+
+  useEffect(() => {
+    void loadTodos(selectedDate);
+  }, [selectedDate, todoBranchId]);
 
   const loadBoard = async (date: string) => {
     setLoading(true);
@@ -76,6 +110,144 @@ export function StaffAttendancePanel() {
       setSideDishes(response);
     } catch {
       setSideDishes([]);
+    }
+  };
+
+  const loadBranches = async () => {
+    try {
+      const response = await apiRequest<Branch[]>('/api/branches');
+      setBranches(response);
+      setTodoBranchId((current) => {
+        if (current) {
+          return current;
+        }
+        const defaultBranch = response.find((branch) => branch.name === '망미점') || response[0];
+
+        return defaultBranch ? String(defaultBranch.id) : '';
+      });
+    } catch {
+      setBranches([]);
+      setTodoBranchId((current) => current || branchId || '1');
+    }
+  };
+
+  const loadTodos = async (date: string) => {
+    const selectedBranchId = todoBranchId || branchId || String(selectedTodoBranch.id);
+    if (!selectedBranchId) {
+      setTodos([]);
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({ branchId: selectedBranchId, date });
+      const response = await apiRequest<TodoResponse[]>(`/api/todos/daily?${params.toString()}`);
+      setTodos(response);
+    } catch {
+      setTodos([]);
+    }
+  };
+
+  const createTodo = async () => {
+    const selectedBranchId = todoBranchId || branchId || String(selectedTodoBranch.id);
+    if (!selectedBranchId || !todoContent.trim()) {
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage('');
+    try {
+      await apiRequest<TodoResponse>('/api/todos', {
+        method: 'POST',
+        body: JSON.stringify({
+          branchId: Number(selectedBranchId),
+          todoDate: selectedDate,
+          content: todoContent.trim(),
+          priority: todoUrgent ? 'URGENT' : 'NORMAL',
+        }),
+      });
+      setTodoContent('');
+      setTodoUrgent(false);
+      await loadTodos(selectedDate);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '할 일을 저장하지 못했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const updateTodoCompletion = async (todo: TodoResponse, completed: boolean) => {
+    setTodos((current) => current.map((item) => item.id === todo.id ? { ...item, completed } : item));
+    try {
+      const updatedTodo = await apiRequest<TodoResponse>(`/api/todos/${todo.id}/completion`, {
+        method: 'PATCH',
+        body: JSON.stringify({ completed }),
+      });
+      setTodos((current) => current.map((item) => item.id === updatedTodo.id ? updatedTodo : item));
+    } catch (error) {
+      setTodos((current) => current.map((item) => item.id === todo.id ? todo : item));
+      setMessage(error instanceof Error ? error.message : '할 일 상태를 저장하지 못했습니다.');
+    }
+  };
+
+  const submitTodoEdit = async (todo: TodoResponse) => {
+    if (!editingTodoContent.trim()) {
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const updatedTodo = await apiRequest<TodoResponse>(`/api/todos/${todo.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ content: editingTodoContent.trim() }),
+      });
+      setTodos((current) => current.map((item) => item.id === updatedTodo.id ? updatedTodo : item));
+      setEditingTodoId(null);
+      setEditingTodoContent('');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '할 일을 수정하지 못했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitTodoReply = async (todo: TodoResponse) => {
+    if (!replyContent.trim()) {
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const updatedTodo = await apiRequest<TodoResponse>(`/api/todos/${todo.id}/reply`, {
+        method: 'PATCH',
+        body: JSON.stringify({ replyContent: replyContent.trim() }),
+      });
+      setTodos((current) => current.map((item) => item.id === updatedTodo.id ? updatedTodo : item));
+      setReplyTodoId(null);
+      setReplyContent('');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '답글을 저장하지 못했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deleteTodo = async (todo: TodoResponse) => {
+    setSubmitting(true);
+    try {
+      await apiRequest<void>(`/api/todos/${todo.id}`, { method: 'DELETE' });
+      setTodos((current) => current.filter((item) => item.id !== todo.id));
+      if (replyTodoId === todo.id) {
+        setReplyTodoId(null);
+        setReplyContent('');
+      }
+      if (editingTodoId === todo.id) {
+        setEditingTodoId(null);
+        setEditingTodoContent('');
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '할 일을 삭제하지 못했습니다.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -249,8 +421,7 @@ export function StaffAttendancePanel() {
       <div className="staff-attendance-actions">
         <button className="suggestion-tag" type="button" disabled>회원건의</button>
         <button className="meal-tag" type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>반찬신청</button>
-        <button className="todo-tag" type="button" disabled={todoCount === 0}>할일목록 <b>{todoCount}</b></button>
-        <button className="note-tag" type="button" disabled={noteCount === 0}>출석참고 <b>{noteCount}</b></button>
+        <button className="todo-tag" type="button" onClick={() => setTodoModalOpen(true)}>할일목록 <b>{todoCount}</b></button>
       </div>
 
       {loading ? (
@@ -466,6 +637,180 @@ export function StaffAttendancePanel() {
           </section>
         </div>
       )}
+      {todoModalOpen && (
+        <div className="attendance-modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            setTodoModalOpen(false);
+          }
+        }}>
+          <section className="attendance-todo-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-todo-title">
+            <header>
+              <h2 id="attendance-todo-title">할일목록</h2>
+              <button type="button" aria-label="닫기" onClick={() => setTodoModalOpen(false)}>×</button>
+            </header>
+            <div className="attendance-todo-controls">
+              <div className="attendance-todo-branch-select">
+                <button type="button" onClick={() => setTodoBranchOpen((current) => !current)}>
+                  {selectedTodoBranch.name}
+                </button>
+                {todoBranchOpen && (
+                  <div className="attendance-todo-branch-menu">
+                    {(branches.length > 0 ? branches : [selectedTodoBranch]).map((branch) => (
+                      <button
+                        className={String(branch.id) === String(selectedTodoBranch.id) ? 'selected' : ''}
+                        key={branch.id}
+                        type="button"
+                        onClick={() => {
+                          setTodoBranchId(String(branch.id));
+                          setTodoBranchOpen(false);
+                        }}
+                      >
+                        {branch.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className={`attendance-todo-input${todoUrgent ? ' urgent' : ''}`}>
+                <input
+                  placeholder="할 일을 입력하세요..."
+                  value={todoContent}
+                  onChange={(event) => setTodoContent(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      void createTodo();
+                    }
+                  }}
+                />
+                <button
+                  className={`attendance-todo-priority${todoUrgent ? ' selected' : ''}`}
+                  type="button"
+                  onClick={() => setTodoUrgent((current) => !current)}
+                >
+                  긴급
+                </button>
+              </div>
+              <button type="button" disabled={submitting || !todoContent.trim()} onClick={createTodo}>+</button>
+            </div>
+            <div className="attendance-todo-list">
+              {todoItems.map((item) => (
+                <div
+                  className={`attendance-todo-card ${item.priority === 'URGENT' ? 'urgent' : 'normal'}${item.completed ? ' completed' : ''}${replyTodoId === item.id || item.replies.length > 0 ? ' has-reply-form' : ''}`}
+                  key={item.id}
+                >
+                  <div
+                    className={`attendance-todo-row${editingTodoId === item.id ? ' editing' : ''}`}
+                  >
+                    <button
+                      className="attendance-todo-check"
+                      type="button"
+                      aria-label={item.completed ? '할일 완료 해제' : '할일 완료'}
+                      onClick={() => void updateTodoCompletion(item, !item.completed)}
+                    >
+                      <span aria-hidden="true" />
+                    </button>
+                    {editingTodoId === item.id ? (
+                      <input
+                        className="attendance-todo-edit-input"
+                        autoFocus
+                        value={editingTodoContent}
+                        onChange={(event) => setEditingTodoContent(event.target.value)}
+                      />
+                    ) : (
+                      <p>{item.content}</p>
+                    )}
+                    {editingTodoId !== item.id && <small>{toTodoSourceLabel(item)}</small>}
+                    {editingTodoId !== item.id && item.priority === 'URGENT' && <em>긴급</em>}
+                    {item.sourceType !== 'JOIN_MEMBER' && (
+                      <div className="attendance-todo-actions">
+                        {editingTodoId === item.id ? (
+                          <>
+                            <button className="save" type="button" disabled={submitting || !editingTodoContent.trim()} onClick={() => void submitTodoEdit(item)}>저장</button>
+                            <button
+                              className="cancel"
+                              type="button"
+                              onClick={() => {
+                                setEditingTodoId(null);
+                                setEditingTodoContent('');
+                              }}
+                            >
+                              취소
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className="reply"
+                              type="button"
+                              onClick={() => {
+                                setReplyTodoId((current) => current === item.id ? null : item.id);
+                                setReplyContent('');
+                                setEditingTodoId(null);
+                              }}
+                            >
+                              답글
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="수정"
+                              onClick={() => {
+                                setEditingTodoId(item.id);
+                                setEditingTodoContent(item.content);
+                                setReplyTodoId(null);
+                              }}
+                            >
+                              <EditIcon />
+                            </button>
+                            <button type="button" aria-label="삭제" disabled={submitting} onClick={() => void deleteTodo(item)}>
+                              <TrashIcon />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {item.replies.map((reply) => (
+                    <div className="attendance-todo-reply" key={reply.id}>
+                      <strong>답글 - {reply.memberName} · {formatTodoReplyDate(reply.createdAt)}</strong>
+                      <p>{reply.content}</p>
+                    </div>
+                  ))}
+                  {replyTodoId === item.id && (
+                    <form
+                      className="attendance-todo-reply-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void submitTodoReply(item);
+                      }}
+                    >
+                      <textarea
+                        autoFocus
+                        placeholder="답변을 입력하세요..."
+                        value={replyContent}
+                        onChange={(event) => setReplyContent(event.target.value)}
+                      />
+                      <div>
+                        <button className="save" type="submit" disabled={submitting || !replyContent.trim()}>저장</button>
+                        <button
+                          className="cancel"
+                          type="button"
+                          onClick={() => {
+                            setReplyTodoId(null);
+                            setReplyContent('');
+                          }}
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -544,6 +889,21 @@ function formatCompactDate(date: string) {
   return `${parsed.getMonth() + 1}/${parsed.getDate()}`;
 }
 
+function formatTodoReplyDate(date?: string | null) {
+  if (!date) {
+    return '';
+  }
+  const parsed = new Date(date);
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  const hours = parsed.getHours();
+  const period = hours < 12 ? '오전' : '오후';
+  const hour = String(hours % 12 || 12).padStart(2, '0');
+  const minute = String(parsed.getMinutes()).padStart(2, '0');
+
+  return `${month}. ${day}. ${period} ${hour}:${minute}`;
+}
+
 function createMonthCalendar(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
   const year = parsed.getFullYear();
@@ -584,11 +944,43 @@ function toStatusClassName(status: string, emptySeat: boolean) {
   return 'status-leave';
 }
 
+function toTodoSourceLabel(todo: TodoResponse) {
+  if (todo.sourceType === 'JOIN_MEMBER') {
+    return '신규입사';
+  }
+  if (todo.sourceType === 'SUGGESTION') {
+    return '건의사항';
+  }
+
+  return `작성: ${todo.createdByMemberName || '-'}`;
+}
+
 function SearchIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="10.5" cy="10.5" r="5.5" />
       <path d="m15 15 4 4" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" />
+      <path d="m14 7 3 3" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h16" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M6 7l1 14h10l1-14" />
+      <path d="M9 7V4h6v3" />
     </svg>
   );
 }

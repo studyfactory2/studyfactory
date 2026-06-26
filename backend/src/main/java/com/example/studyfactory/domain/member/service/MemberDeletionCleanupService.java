@@ -10,6 +10,8 @@ import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.room.repository.SeatRepository;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
+import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
+import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,8 @@ public class MemberDeletionCleanupService {
     private final SideDishRequestRepository sideDishRequestRepository;
     private final SeatRepository seatRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final TodoItemRepository todoItemRepository;
+    private final TodoReplyRepository todoReplyRepository;
 
     public void cleanup(Long memberId) {
         beverageService.deleteAllByMemberId(memberId);
@@ -35,6 +39,9 @@ public class MemberDeletionCleanupService {
         leaveRequestRepository.deleteByMemberId(memberId);
         specialLeaveRepository.deleteByMemberId(memberId);
         fixedLeaveRepository.deleteByMemberId(memberId);
+        todoReplyRepository.deleteByMemberId(memberId);
+        todoItemRepository.deleteByTargetMemberId(memberId);
+        todoItemRepository.deleteByCreatedByMemberId(memberId);
         suggestionRepository.deleteByReferenceInformationMemberId(memberId);
         sideDishRequestRepository.deleteByReferenceInformationMemberId(memberId);
         seatRepository.clearMemberAssignment(memberId);

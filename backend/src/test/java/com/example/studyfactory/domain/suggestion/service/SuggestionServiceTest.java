@@ -13,6 +13,7 @@ import com.example.studyfactory.domain.suggestion.entity.Suggestion;
 import com.example.studyfactory.domain.suggestion.entity.SuggestionCategory;
 import com.example.studyfactory.domain.suggestion.entity.SuggestionReferenceInformation;
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
+import com.example.studyfactory.domain.todo.service.TodoService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,9 @@ class SuggestionServiceTest {
     @Mock
     private MemberRepository memberRepository;
 
+    @Mock
+    private TodoService todoService;
+
     @Test
     @DisplayName("토큰의 사원과 건의사항 정보로 건의사항을 생성한다")
     void createSuggestion() {
@@ -54,6 +58,7 @@ class SuggestionServiceTest {
         assertThat(response.category()).isEqualTo(SuggestionCategory.GENERAL);
         assertThat(response.content()).isEqualTo("책상 조명이 어두워요.");
         assertThat(response.isResolved()).isFalse();
+        then(todoService).should().createSuggestionTodo(any(Suggestion.class));
     }
 
     @Test

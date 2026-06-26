@@ -8,6 +8,7 @@ import com.example.studyfactory.domain.suggestion.dto.SuggestionResponse;
 import com.example.studyfactory.domain.suggestion.entity.Suggestion;
 import com.example.studyfactory.domain.suggestion.entity.SuggestionReferenceInformation;
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
+import com.example.studyfactory.domain.todo.service.TodoService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class SuggestionService {
 
     private final SuggestionRepository suggestionRepository;
     private final MemberRepository memberRepository;
+    private final TodoService todoService;
 
     @Transactional
     public SuggestionResponse create(Long memberId, SuggestionCreateRequest request) {
@@ -30,7 +32,10 @@ public class SuggestionService {
                 false
         );
 
-        return SuggestionResponse.from(suggestionRepository.save(suggestion));
+        Suggestion savedSuggestion = suggestionRepository.save(suggestion);
+        todoService.createSuggestionTodo(savedSuggestion);
+
+        return SuggestionResponse.from(savedSuggestion);
     }
 
     @Transactional(readOnly = true)

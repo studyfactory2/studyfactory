@@ -184,6 +184,38 @@ export type DailyAttendanceBoardResponse = {
   rows: AttendanceBoardRowResponse[];
 };
 
+export type TodoPriority = 'NORMAL' | 'URGENT';
+export type TodoSourceType = 'MANUAL' | 'JOIN_MEMBER' | 'SUGGESTION';
+
+export type TodoReplyResponse = {
+  id: number;
+  todoItemId: number;
+  memberId: number;
+  memberName: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TodoResponse = {
+  id: number;
+  branchId: number;
+  todoDate: string;
+  content: string;
+  priority: TodoPriority;
+  sourceType: TodoSourceType;
+  sourceId?: number | null;
+  targetMemberId?: number | null;
+  createdByMemberId?: number | null;
+  createdByMemberName?: string | null;
+  completed: boolean;
+  completedByMemberId?: number | null;
+  completedAt?: string | null;
+  replies: TodoReplyResponse[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SpecialLeaveResponse = {
   id: number;
   memberId: number;
