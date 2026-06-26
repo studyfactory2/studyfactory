@@ -1,0 +1,140 @@
+package com.example.studyfactory.domain.beverage.service;
+
+import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
+import com.example.studyfactory.domain.beverage.dto.BeverageRequest;
+import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
+import com.example.studyfactory.domain.beverage.exception.BeverageException;
+import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.exception.MemberException;
+import com.example.studyfactory.domain.member.repository.MemberRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class BeverageService {
+
+    private final MemberRepository memberRepository;
+    private final BeveragePreferenceRepository beveragePreferenceRepository;
+
+    @Transactional(readOnly = true)
+    public BeveragePreferenceResponse findMyDrink(Long memberId) {
+        Member member = findMember(memberId);
+
+        return BeveragePreferenceResponse.from(findLatestPreference(member));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse updateDrink(Long memberId, BeverageRequest request) {
+        Member member = findMember(memberId);
+        BeveragePreference beveragePreference = findOrCreatePreference(member);
+        beveragePreference.update(request.drinkSetting(), request.drinkNote());
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreference createPreference(Long memberId, Long branchId, String drinks, String notes) {
+        return beveragePreferenceRepository.save(new BeveragePreference(memberId, branchId, drinks, notes));
+    }
+
+    @Transactional
+    public BeveragePreference updatePreference(Member member, String drinks, String notes) {
+        BeveragePreference beveragePreference = findOrCreatePreference(member);
+        beveragePreference.update(drinks, notes);
+
+        return beveragePreference;
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse addDrink(Long memberId, BeverageRequest request) {
+        Member member = findMember(memberId);
+        BeveragePreference beveragePreference = addDrink(member, request);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse addDrinkForMember(Long currentMemberId, Long targetMemberId, BeverageRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member targetMember = findMember(targetMemberId);
+        BeveragePreference beveragePreference = addDrink(targetMember, request);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public void deleteDrink(Long memberId) {
+        if (!memberRepository.existsById(memberId)) {
+            throw MemberException.memberNotFound();
+        }
+        deleteAllByMemberId(memberId);
+    }
+
+    @Transactional
+    public void deleteAllByMemberId(Long memberId) {
+        beveragePreferenceRepository.deleteAll(beveragePreferenceRepository.findByMemberId(memberId));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse deleteDrinkItem(Long memberId, String drinkSetting) {
+        Member member = findMember(memberId);
+        BeveragePreference beveragePreference = deleteDrinkItem(member, drinkSetting);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse deleteDrinkItemForMember(Long currentMemberId, Long targetMemberId, String drinkSetting) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member targetMember = findMember(targetMemberId);
+        BeveragePreference beveragePreference = deleteDrinkItem(targetMember, drinkSetting);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    private BeveragePreference addDrink(Member member, BeverageRequest request) {
+        BeveragePreference beveragePreference = beveragePreferenceRepository
+                .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", request.drinkNote()));
+        beveragePreference.addDrinks(request.drinkSetting(), request.drinkNote());
+
+        return beveragePreference;
+    }
+
+    private BeveragePreference deleteDrinkItem(Member member, String drinkSetting) {
+        BeveragePreference beveragePreference = beveragePreferenceRepository
+                .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseThrow(BeverageException::preferenceNotFound);
+        if (!beveragePreference.removeDrink(drinkSetting)) {
+            throw BeverageException.drinkNotFound();
+        }
+
+        return beveragePreference;
+    }
+
+    private Member findMember(Long memberId) {
+        return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+    }
+
+    @Transactional(readOnly = true)
+    public BeveragePreference findLatestPreference(Member member) {
+        return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", null));
+    }
+
+    private BeveragePreference findOrCreatePreference(Member member) {
+        return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
+                .orElseGet(() -> beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "", null)));
+    }
+
+    private void validateAllPermissions(Member member) {
+        if (!member.hasAllPermissions()) {
+            throw MemberException.forbidden();
+        }
+    }
+}

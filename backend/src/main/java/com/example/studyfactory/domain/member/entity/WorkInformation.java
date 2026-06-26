@@ -27,4 +27,8 @@ public class WorkInformation {
         this.seatNumber = seatNumber;
         this.joinDate = joinDate;
     }
+
+    public void updateSeat(Integer seatNumber) {
+        this.seatNumber = seatNumber;
+    }
 }

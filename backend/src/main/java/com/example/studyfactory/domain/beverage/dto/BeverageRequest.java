@@ -1,8 +1,8 @@
-package com.example.studyfactory.domain.member.dto;
+package com.example.studyfactory.domain.beverage.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
-public record DrinkRequest(
+public record BeverageRequest(
         @NotBlank(message = "음료 설정은 필수입니다.")
         String drinkSetting,
 

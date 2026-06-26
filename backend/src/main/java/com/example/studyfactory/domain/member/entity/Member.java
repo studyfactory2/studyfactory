@@ -140,6 +140,10 @@ public class Member extends BaseEntity {
         this.preparingCertifications = preparingCertifications;
     }
 
+    public void updateSeat(Integer seatNumber) {
+        workInformation.updateSeat(seatNumber);
+    }
+
     public boolean hasAllPermissions() {
         return role.hasAllPermissions();
     }

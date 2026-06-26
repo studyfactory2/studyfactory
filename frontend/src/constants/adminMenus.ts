@@ -7,7 +7,8 @@ export type AdminMenuId =
   | 'attendance'
   | 'staff-work'
   | 'staff-page'
-  | 'daily_leave_status';
+  | 'daily_leave_status'
+  | 'seat_management';
 
 export type AdminMenu = {
   id: AdminMenuId;
@@ -34,6 +35,7 @@ export function resolveAdminMenuId(value: string | null): AdminMenuId {
     || value === 'vacation_history'
     || value === 'other_leave_request'
     || value === 'daily_leave_status'
+    || value === 'seat_management'
   ) {
     return value;
   }
@@ -60,6 +62,10 @@ export function getAdminMenuLabel(menuId: AdminMenuId): string {
 
   if (menuId === 'daily_leave_status') {
     return '일별 사원 휴무 현황';
+  }
+
+  if (menuId === 'seat_management') {
+    return '사원 좌석 관리';
   }
 
   return ADMIN_MENUS.find((menu) => menu.id === menuId)?.label || '관리자 페이지';

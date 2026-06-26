@@ -1,7 +1,7 @@
 package com.example.studyfactory.domain.member.service;
 
 import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
-import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PreRegistrationService {
 
     private final MemberRepository memberRepository;
-    private final BeveragePreferenceRepository beveragePreferenceRepository;
+    private final BeverageService beverageService;
     private final BranchRepository branchRepository;
     private final CertificationRepository certificationRepository;
 
@@ -41,12 +41,12 @@ public class PreRegistrationService {
                 request.memberNote()
         );
         Member savedMember = memberRepository.save(member);
-        BeveragePreference beveragePreference = beveragePreferenceRepository.save(new BeveragePreference(
+        BeveragePreference beveragePreference = beverageService.createPreference(
                 savedMember.getId(),
                 savedMember.getBranchId(),
                 request.drinkSetting(),
                 request.drinkNote()
-        ));
+        );
 
         return PreRegistrationResponse.from(savedMember, beveragePreference);
     }
@@ -55,7 +55,7 @@ public class PreRegistrationService {
     public List<PreRegistrationResponse> findPending() {
         return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
-                .map(member -> PreRegistrationResponse.from(member, findLatestBeveragePreference(member)))
+                .map(member -> PreRegistrationResponse.from(member, beverageService.findLatestPreference(member)))
                 .toList();
     }
 
@@ -73,8 +73,7 @@ public class PreRegistrationService {
                 certificationId,
                 request.memberNote()
         );
-        BeveragePreference beveragePreference = findOrCreateBeveragePreference(member);
-        beveragePreference.update(request.drinkSetting(), request.drinkNote());
+        BeveragePreference beveragePreference = beverageService.updatePreference(member, request.drinkSetting(), request.drinkNote());
 
         return PreRegistrationResponse.from(member, beveragePreference);
     }
@@ -82,7 +81,7 @@ public class PreRegistrationService {
     @Transactional
     public void delete(Long memberId) {
         Member member = findPendingMember(memberId);
-        beveragePreferenceRepository.deleteAll(beveragePreferenceRepository.findByMemberId(member.getId()));
+        beverageService.deleteAllByMemberId(member.getId());
         memberRepository.delete(member);
     }
 
@@ -115,13 +114,4 @@ public class PreRegistrationService {
         return member;
     }
 
-    private BeveragePreference findLatestBeveragePreference(Member member) {
-        return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
-                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", null));
-    }
-
-    private BeveragePreference findOrCreateBeveragePreference(Member member) {
-        return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
-                .orElseGet(() -> beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "", null)));
-    }
 }

@@ -25,7 +25,7 @@ export function BeveragePanel() {
   const loadDrinks = async () => {
     setInitialLoading(true);
     try {
-      const response = await apiRequest<BeveragePreferenceResponse>('/api/members/me/drink');
+      const response = await apiRequest<BeveragePreferenceResponse>('/api/beverages/me');
       setDrinks(parseDrinks(response.drinks));
       setNote(response.notes || '');
     } catch {
@@ -65,7 +65,7 @@ export function BeveragePanel() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await apiRequest<BeveragePreferenceResponse>('/api/members/me/drink', {
+      const response = await apiRequest<BeveragePreferenceResponse>('/api/beverages/me', {
         method: 'PATCH',
         body: JSON.stringify({
           drinkSetting: drinks.join(','),

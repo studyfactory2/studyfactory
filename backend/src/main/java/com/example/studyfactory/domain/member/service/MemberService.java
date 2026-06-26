@@ -1,9 +1,7 @@
 package com.example.studyfactory.domain.member.service;
 
-import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
 import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
-import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
-import com.example.studyfactory.domain.member.dto.DrinkRequest;
+import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
@@ -24,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberService {
 
     private final MemberRepository memberRepository;
-    private final BeveragePreferenceRepository beveragePreferenceRepository;
+    private final BeverageService beverageService;
 
     @Transactional(readOnly = true)
     public List<MemberResponse> findAll(String name, Long branchId) {
@@ -68,14 +66,14 @@ public class MemberService {
         Member currentMember = findMember(currentMemberId);
         validateAllPermissions(currentMember);
         Member member = findMember(memberId);
-        beveragePreferenceRepository.deleteAll(beveragePreferenceRepository.findByMemberId(member.getId()));
+        beverageService.deleteAllByMemberId(member.getId());
         memberRepository.delete(member);
     }
 
     @Transactional(readOnly = true)
     public PreRegistrationVerifyResponse verifyPreRegistration(PreRegistrationVerifyRequest request) {
         Member member = findPreRegisteredMember(request.name().trim(), request.branchId());
-        BeveragePreference beveragePreference = findLatestBeveragePreference(member);
+        BeveragePreference beveragePreference = beverageService.findLatestPreference(member);
 
         return PreRegistrationVerifyResponse.from(member, beveragePreference);
     }
@@ -87,88 +85,6 @@ public class MemberService {
         member.signup(request.password());
 
         return MemberSignupResponse.from(member);
-    }
-
-    @Transactional(readOnly = true)
-    public BeveragePreferenceResponse findMyDrink(Long memberId) {
-        Member member = findMember(memberId);
-
-        return BeveragePreferenceResponse.from(findLatestBeveragePreference(member));
-    }
-
-    @Transactional
-    public BeveragePreferenceResponse updateDrink(Long memberId, DrinkRequest request) {
-        Member member = findMember(memberId);
-        BeveragePreference beveragePreference = beveragePreferenceRepository
-                .findFirstByMemberIdOrderByCreatedAtDesc(memberId)
-                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), request.drinkSetting(), request.drinkNote()));
-        beveragePreference.update(request.drinkSetting(), request.drinkNote());
-
-        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
-    }
-
-    @Transactional
-    public BeveragePreferenceResponse addDrink(Long memberId, DrinkRequest request) {
-        Member member = findMember(memberId);
-        BeveragePreference beveragePreference = addDrink(member, request);
-
-        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
-    }
-
-    @Transactional
-    public BeveragePreferenceResponse addDrinkForMember(Long currentMemberId, Long targetMemberId, DrinkRequest request) {
-        Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
-        Member targetMember = findMember(targetMemberId);
-        BeveragePreference beveragePreference = addDrink(targetMember, request);
-
-        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
-    }
-
-    private BeveragePreference addDrink(Member member, DrinkRequest request) {
-        BeveragePreference beveragePreference = beveragePreferenceRepository
-                .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
-                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", request.drinkNote()));
-        beveragePreference.addDrinks(request.drinkSetting(), request.drinkNote());
-
-        return beveragePreference;
-    }
-
-    @Transactional
-    public void deleteDrink(Long memberId) {
-        if (!memberRepository.existsById(memberId)) {
-            throw MemberException.memberNotFound();
-        }
-        beveragePreferenceRepository.deleteAll(beveragePreferenceRepository.findByMemberId(memberId));
-    }
-
-    @Transactional
-    public BeveragePreferenceResponse deleteDrinkItem(Long memberId, String drinkSetting) {
-        Member member = findMember(memberId);
-        BeveragePreference beveragePreference = deleteDrinkItem(member, drinkSetting);
-
-        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
-    }
-
-    @Transactional
-    public BeveragePreferenceResponse deleteDrinkItemForMember(Long currentMemberId, Long targetMemberId, String drinkSetting) {
-        Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
-        Member targetMember = findMember(targetMemberId);
-        BeveragePreference beveragePreference = deleteDrinkItem(targetMember, drinkSetting);
-
-        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
-    }
-
-    private BeveragePreference deleteDrinkItem(Member member, String drinkSetting) {
-        BeveragePreference beveragePreference = beveragePreferenceRepository
-                .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
-                .orElseThrow(MemberException::beveragePreferenceNotFound);
-        if (!beveragePreference.removeDrink(drinkSetting)) {
-            throw MemberException.drinkNotFound();
-        }
-
-        return beveragePreference;
     }
 
     private Member findPreRegisteredMember(String name, Long branchId) {
@@ -183,11 +99,6 @@ public class MemberService {
 
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
-    }
-
-    private BeveragePreference findLatestBeveragePreference(Member member) {
-        return beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
-                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", null));
     }
 
     private String toSearchName(String name) {

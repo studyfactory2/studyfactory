@@ -165,7 +165,7 @@ export function VacationHistoryPanel({ branches }: VacationHistoryPanelProps) {
   return (
     <div className="vacation-history-panel">
       <header className="vacation-history-header">
-        <button type="button" aria-label="뒤로가기" onClick={() => { window.location.href = '/managerdashboard?view=grid'; }}>
+        <button type="button" aria-label="뒤로가기" onClick={() => { window.history.pushState(null, '', '/managerdashboard?view=grid'); window.dispatchEvent(new PopStateEvent('popstate')); }}>
           <BackIcon />
         </button>
         <h2>사원별 휴가 현황</h2>

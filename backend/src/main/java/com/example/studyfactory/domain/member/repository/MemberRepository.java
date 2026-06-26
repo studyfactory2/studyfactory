@@ -54,6 +54,19 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     List<Member> findByNameContainingAndReferenceInformationBranchIdOrderByIdAsc(String name, Long branchId);
 
     @Query("""
+            select count(m) > 0
+            from Member m
+            where m.referenceInformation.branchId = :branchId
+              and m.workInformation.seatNumber = :seatNumber
+              and m.id <> :memberId
+            """)
+    boolean existsAssignedSeat(
+            @Param("branchId") Long branchId,
+            @Param("seatNumber") Integer seatNumber,
+            @Param("memberId") Long memberId
+    );
+
+    @Query("""
             select m
             from Member m
             where m.password is null

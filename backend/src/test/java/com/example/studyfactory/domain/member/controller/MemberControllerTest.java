@@ -151,7 +151,7 @@ class MemberControllerTest {
                 }
                 """;
 
-        mockMvc.perform(patch("/api/members/me/drink")
+        mockMvc.perform(patch("/api/beverages/me")
                         .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody)
                 .header("Authorization", "Bearer " + accessToken))
@@ -175,7 +175,7 @@ class MemberControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/members/me/drink")
+        mockMvc.perform(post("/api/beverages/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody)
                         .header("Authorization", "Bearer " + accessToken))
@@ -200,7 +200,7 @@ class MemberControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/members/{memberId}/drink", targetMember.getId())
+        mockMvc.perform(post("/api/beverages/members/{memberId}", targetMember.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody)
                         .header("Authorization", "Bearer " + accessToken))
@@ -224,7 +224,7 @@ class MemberControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/members/{memberId}/drink", targetMember.getId())
+        mockMvc.perform(post("/api/beverages/members/{memberId}", targetMember.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody)
                         .header("Authorization", "Bearer " + accessToken))
@@ -238,7 +238,7 @@ class MemberControllerTest {
         beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "콜라\n사이다\n식혜", "차갑게 주세요"));
         String accessToken = jwtTokenProvider.createAccessToken(member);
 
-        mockMvc.perform(delete("/api/members/me/drink/items")
+        mockMvc.perform(delete("/api/beverages/me/items")
                         .param("drinkSetting", "식혜")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -256,7 +256,7 @@ class MemberControllerTest {
         beveragePreferenceRepository.save(new BeveragePreference(targetMember.getId(), targetMember.getBranchId(), "콜라\n사이다\n식혜", "차갑게 주세요"));
         String accessToken = jwtTokenProvider.createAccessToken(staff);
 
-        mockMvc.perform(delete("/api/members/{memberId}/drink/items", targetMember.getId())
+        mockMvc.perform(delete("/api/beverages/members/{memberId}/items", targetMember.getId())
                         .param("drinkSetting", "식혜")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -274,7 +274,7 @@ class MemberControllerTest {
         beveragePreferenceRepository.save(new BeveragePreference(targetMember.getId(), targetMember.getBranchId(), "콜라\n사이다\n식혜", "차갑게 주세요"));
         String accessToken = jwtTokenProvider.createAccessToken(member);
 
-        mockMvc.perform(delete("/api/members/{memberId}/drink/items", targetMember.getId())
+        mockMvc.perform(delete("/api/beverages/members/{memberId}/items", targetMember.getId())
                         .param("drinkSetting", "식혜")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isForbidden());
@@ -286,7 +286,7 @@ class MemberControllerTest {
         Member member = memberRepository.save(createMember("kim", 10));
         String accessToken = jwtTokenProvider.createAccessToken(member);
 
-        mockMvc.perform(delete("/api/members/me/drink")
+        mockMvc.perform(delete("/api/beverages/me")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNoContent());
     }

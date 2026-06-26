@@ -3,36 +3,42 @@ import { ADMIN_MENUS, type AdminMenu, type AdminMenuId } from '../../constants/a
 type ManagerTabsProps = {
   currentView: AdminMenuId;
   menus?: AdminMenu[];
+  onViewChange?: (view: AdminMenuId) => void;
 };
 
-export function ManagerTabs({ currentView, menus = ADMIN_MENUS }: ManagerTabsProps) {
+export function ManagerTabs({ currentView, menus = ADMIN_MENUS, onViewChange }: ManagerTabsProps) {
   const visibleView = currentView === 'register' || currentView === 'status' || currentView === 'vacation_history' || currentView === 'other_leave_request'
     ? 'grid'
-    : currentView === 'daily_leave_status'
+    : currentView === 'daily_leave_status' || currentView === 'seat_management'
       ? 'staff-page'
     : currentView;
   const currentIndex = Math.max(menus.findIndex((menu) => menu.id === visibleView), 0);
   const previousMenu = menus[currentIndex - 1];
   const currentMenu = menus[currentIndex];
   const nextMenu = menus[currentIndex + 1];
+  const changeView = (view: AdminMenuId) => {
+    if (onViewChange) {
+      onViewChange(view);
+    }
+  };
 
   return (
     <nav className="manager-tabs" aria-label="관리자 메뉴">
       <div className="adjacent-tab previous-tab">{previousMenu && <span>{previousMenu.label}</span>}</div>
       {previousMenu ? (
-        <a className="tab-arrow previous-arrow" href={`/managerdashboard?view=${previousMenu.id}`} aria-label="이전 페이지">
+        <button className="tab-arrow previous-arrow" type="button" aria-label="이전 페이지" onClick={() => changeView(previousMenu.id)}>
           ‹
-        </a>
+        </button>
       ) : (
         <span className="tab-arrow-placeholder" />
       )}
-      <a className="current-tab" href={`/managerdashboard?view=${currentMenu.id}`} aria-current="page">
+      <button className="current-tab" type="button" aria-current="page">
         {currentMenu.label}
-      </a>
+      </button>
       {nextMenu ? (
-        <a className="tab-arrow next-arrow" href={`/managerdashboard?view=${nextMenu.id}`} aria-label="다음 페이지">
+        <button className="tab-arrow next-arrow" type="button" aria-label="다음 페이지" onClick={() => changeView(nextMenu.id)}>
           ›
-        </a>
+        </button>
       ) : (
         <span className="tab-arrow-placeholder" />
       )}

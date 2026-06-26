@@ -1,7 +1,6 @@
 type StaffPageIconType =
   | 'daily-leave'
   | 'drink'
-  | 'new-member'
   | 'seat'
   | 'cup'
   | 'clipboard'
@@ -25,13 +24,12 @@ const STAFF_PAGE_SECTIONS: StaffPageSection[] = [
     items: [
       { icon: 'daily-leave', label: '일별 사원\n휴무 현황', href: '/managerdashboard?view=daily_leave_status' },
       { icon: 'drink', label: '음료\n제조/서빙' },
-      { icon: 'new-member', label: '신규 출근\n일정' },
     ],
   },
   {
     title: '사원 정보 관련 메뉴',
     items: [
-      { icon: 'seat', label: '사원\n좌석 관리' },
+      { icon: 'seat', label: '사원\n좌석 관리', href: '/managerdashboard?view=seat_management' },
       { icon: 'cup', label: '사원\n음료 관리' },
       { icon: 'clipboard', label: '새로운 음료\n신청' },
     ],
@@ -111,18 +109,6 @@ function StaffPageIcon({ icon }: { icon: StaffPageIconType }) {
         <path d="M20 10V5" />
         <path d="M9.5 15h13" />
         <path d="M23 13h2.5a3.5 3.5 0 0 1 0 7H23" />
-      </svg>
-    );
-  }
-
-  if (icon === 'new-member') {
-    return (
-      <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M14 15a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z" />
-        <path d="M6 26c.9-4.6 3.8-7 8-7 2 0 3.7.5 5 1.5" />
-        <path d="M22.5 14.5v8" />
-        <path d="M18.5 18.5h8" />
-        <path d="m24.8 7.4 1.8 1.8 3.2-4" />
       </svg>
     );
   }

@@ -8,7 +8,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
-import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
@@ -39,7 +39,7 @@ class PreRegistrationServiceTest {
     private MemberRepository memberRepository;
 
     @Mock
-    private BeveragePreferenceRepository beveragePreferenceRepository;
+    private BeverageService beverageService;
 
     @Mock
     private BranchRepository branchRepository;
@@ -60,8 +60,8 @@ class PreRegistrationServiceTest {
             ReflectionTestUtils.setField(member, "id", 1L);
             return member;
         });
-        given(beveragePreferenceRepository.save(any(BeveragePreference.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
+        given(beverageService.createPreference(1L, 1L, "아이스 아메리카노", "연하게"))
+                .willReturn(new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게"));
 
         PreRegistrationResponse response = preRegistrationService.create(request);
 
@@ -76,7 +76,7 @@ class PreRegistrationServiceTest {
         assertThat(response.drinkNote()).isEqualTo("연하게");
         assertThat(response.memberNote()).isEqualTo("오전 교육 예정");
         then(memberRepository).should().save(any(Member.class));
-        then(beveragePreferenceRepository).should().save(any(BeveragePreference.class));
+        then(beverageService).should().createPreference(1L, 1L, "아이스 아메리카노", "연하게");
     }
 
     @Test
@@ -105,8 +105,8 @@ class PreRegistrationServiceTest {
             ReflectionTestUtils.setField(member, "id", 1L);
             return member;
         });
-        given(beveragePreferenceRepository.save(any(BeveragePreference.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
+        given(beverageService.createPreference(1L, 1L, "아이스 아메리카노", "연하게"))
+                .willReturn(new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게"));
 
         PreRegistrationResponse response = preRegistrationService.create(request);
 
@@ -135,8 +135,8 @@ class PreRegistrationServiceTest {
             ReflectionTestUtils.setField(member, "id", 1L);
             return member;
         });
-        given(beveragePreferenceRepository.save(any(BeveragePreference.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
+        given(beverageService.createPreference(1L, 1L, "아이스 아메리카노", "연하게"))
+                .willReturn(new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게"));
 
         PreRegistrationResponse response = preRegistrationService.create(request);
 

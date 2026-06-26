@@ -307,7 +307,7 @@ export function OtherLeaveRequestPanel({ branches }: OtherLeaveRequestPanelProps
   return (
     <div className="other-leave-panel">
       <header className="other-leave-header">
-        <button type="button" aria-label="뒤로가기" onClick={() => { window.location.href = '/managerdashboard?view=grid'; }}>
+        <button type="button" aria-label="뒤로가기" onClick={() => { window.history.pushState(null, '', '/managerdashboard?view=grid'); window.dispatchEvent(new PopStateEvent('popstate')); }}>
           <BackIcon />
         </button>
         <h2>사원 선택</h2>

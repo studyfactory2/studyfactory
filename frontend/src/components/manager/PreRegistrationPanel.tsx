@@ -223,7 +223,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
   return (
     <div className="pre-register-panel">
       <header className="panel-title">
-        <button type="button" aria-label="뒤로가기" onClick={() => { window.location.href = '/managerdashboard?view=grid'; }}>
+        <button type="button" aria-label="뒤로가기" onClick={() => { window.history.pushState(null, '', '/managerdashboard?view=grid'); window.dispatchEvent(new PopStateEvent('popstate')); }}>
           ‹
         </button>
         <h1>사원 사전 등록</h1>

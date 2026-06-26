@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
 import { apiRequest } from '../../api/client';
 import { Dropdown } from '../common/Dropdown';
 import type { Branch, DailyLeaveStatusResponse, LeaveType } from '../../types/domain';
@@ -40,7 +39,7 @@ export function DailyLeaveStatusPanel({ branches }: DailyLeaveStatusPanelProps) 
 
   useEffect(() => {
     void loadStatuses();
-  }, [branchId, selectedDate]);
+  }, [branchId, selectedDate, searchName]);
 
   const filteredStatuses = useMemo(() => statuses.filter((status) => selectedLeaveTypes.includes(status.leaveType)), [statuses, selectedLeaveTypes]);
 
@@ -64,11 +63,6 @@ export function DailyLeaveStatusPanel({ branches }: DailyLeaveStatusPanelProps) 
     } finally {
       setLoading(false);
     }
-  };
-
-  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    void loadStatuses();
   };
 
   const selectBranch = (value: string) => {
@@ -106,14 +100,14 @@ export function DailyLeaveStatusPanel({ branches }: DailyLeaveStatusPanelProps) 
       </div>
 
       <div className="daily-leave-controls">
-        <form className="daily-leave-search" onSubmit={submitSearch}>
+        <label className="daily-leave-search">
           <SearchIcon />
           <input
             value={searchName}
             placeholder="이름 검색"
             onChange={(event) => setSearchName(event.target.value)}
           />
-        </form>
+        </label>
         <Dropdown
           classNamePrefix="custom-select"
           label="지점"

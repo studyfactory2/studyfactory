@@ -1,8 +1,6 @@
 package com.example.studyfactory.domain.member.controller;
 
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
-import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
-import com.example.studyfactory.domain.member.dto.DrinkRequest;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
@@ -74,52 +72,5 @@ public class MemberController {
     @ResponseStatus(HttpStatus.CREATED)
     public MemberSignupResponse signup(@Valid @RequestBody MemberSignupRequest request) {
         return memberService.signup(request);
-    }
-
-    @GetMapping("/me/drink")
-    public BeveragePreferenceResponse findMyDrink(@CurrentMember Long memberId) {
-        return memberService.findMyDrink(memberId);
-    }
-
-    @PatchMapping("/me/drink")
-    public BeveragePreferenceResponse updateDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
-        return memberService.updateDrink(memberId, request);
-    }
-
-    @PostMapping("/me/drink")
-    public BeveragePreferenceResponse addDrink(@CurrentMember Long memberId, @Valid @RequestBody DrinkRequest request) {
-        return memberService.addDrink(memberId, request);
-    }
-
-    @PostMapping("/{memberId}/drink")
-    public BeveragePreferenceResponse addDrinkForMember(
-            @CurrentMember Long currentMemberId,
-            @PathVariable Long memberId,
-            @Valid @RequestBody DrinkRequest request
-    ) {
-        return memberService.addDrinkForMember(currentMemberId, memberId, request);
-    }
-
-    @DeleteMapping("/me/drink")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteDrink(@CurrentMember Long memberId) {
-        memberService.deleteDrink(memberId);
-    }
-
-    @DeleteMapping("/me/drink/items")
-    public BeveragePreferenceResponse deleteDrinkItem(
-            @CurrentMember Long memberId,
-            @RequestParam String drinkSetting
-    ) {
-        return memberService.deleteDrinkItem(memberId, drinkSetting);
-    }
-
-    @DeleteMapping("/{memberId}/drink/items")
-    public BeveragePreferenceResponse deleteDrinkItemForMember(
-            @CurrentMember Long currentMemberId,
-            @PathVariable Long memberId,
-            @RequestParam String drinkSetting
-    ) {
-        return memberService.deleteDrinkItemForMember(currentMemberId, memberId, drinkSetting);
     }
 }
