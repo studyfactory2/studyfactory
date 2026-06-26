@@ -21,6 +21,8 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
     List<LeaveRequest> findByMemberIdAndLeaveDateOrderByCreatedAtAsc(Long memberId, LocalDate leaveDate);
 
+    void deleteByMemberId(Long memberId);
+
     @Query("""
             select new com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse(
                 m.id,

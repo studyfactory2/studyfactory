@@ -2,6 +2,8 @@ package com.example.studyfactory.domain.leave.service;
 
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveGenerationResponse;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveManagementResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
@@ -17,13 +19,18 @@ import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.DayOfWeek;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
@@ -91,9 +98,6 @@ public class LeaveService {
                         "LEAVE"
                 )));
 
-        fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(memberId)
-                .forEach(fixedLeave -> addFixedLeaves(responses, fixedLeave, startDate, endDate));
-
         specialLeaveRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(memberId, startDate, endDate)
                 .forEach(specialLeave -> responses.add(new MonthlyLeaveCalendarResponse(
                         specialLeave.getLeaveDate(),
@@ -148,6 +152,74 @@ public class LeaveService {
         );
 
         return FixedLeaveResponse.from(fixedLeaveRepository.save(fixedLeave));
+    }
+
+    @Transactional(readOnly = true)
+    public List<FixedLeaveManagementResponse> findFixedLeaves(Long currentMemberId, String name, Long branchId) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        String searchName = toSearchName(name);
+        List<FixedLeave> fixedLeaves = fixedLeaveRepository.findByActiveTrueOrderByCreatedAtAsc();
+        Map<Long, Member> membersById = memberRepository.findAllById(fixedLeaves.stream().map(FixedLeave::getMemberId).toList())
+                .stream()
+                .collect(Collectors.toMap(Member::getId, member -> member));
+
+        return fixedLeaves.stream()
+                .filter(fixedLeave -> branchId == null || fixedLeave.getBranchId().equals(branchId))
+                .filter(fixedLeave -> matchesFixedLeaveMember(fixedLeave, membersById, searchName))
+                .map(fixedLeave -> FixedLeaveManagementResponse.from(fixedLeave, membersById.get(fixedLeave.getMemberId())))
+                .toList();
+    }
+
+    @Transactional
+    public void deleteFixed(Long currentMemberId, Long fixedLeaveId) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        FixedLeave fixedLeave = fixedLeaveRepository.findById(fixedLeaveId).orElseThrow(LeaveException::leaveNotFound);
+        fixedLeaveRepository.delete(fixedLeave);
+    }
+
+    @Transactional
+    public FixedLeaveGenerationResponse generateFixedLeaves(Long currentMemberId) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        return generateFixedLeaves(currentMember);
+    }
+
+    @Transactional
+    public Optional<FixedLeaveGenerationResponse> generateFixedLeavesBySystem() {
+        return memberRepository.findFirstByRoleOrderByIdAsc(MemberRole.ADMIN)
+                .map(this::generateFixedLeaves);
+    }
+
+    private FixedLeaveGenerationResponse generateFixedLeaves(Member createdByMember) {
+        LocalDate startDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endDate = startDate.plusDays(13);
+        specialLeaveRepository.deleteAll(specialLeaveRepository.findByRecurringTrueAndLeaveDateBetween(startDate, endDate));
+
+        int createdCount = 0;
+        List<FixedLeave> fixedLeaves = fixedLeaveRepository.findByActiveTrueOrderByCreatedAtAsc();
+        for (FixedLeave fixedLeave : fixedLeaves) {
+            LocalDate leaveDate = startDate;
+            while (!leaveDate.isAfter(endDate)) {
+                if (leaveDate.getDayOfWeek() == fixedLeave.getDayOfWeek()) {
+                    specialLeaveRepository.save(new SpecialLeave(
+                            fixedLeave.getMemberId(),
+                            fixedLeave.getBranchId(),
+                            leaveDate,
+                            fixedLeave.getSlots(),
+                            fixedLeave.getReason(),
+                            null,
+                            true,
+                            createdByMember.getId()
+                    ));
+                    createdCount++;
+                }
+                leaveDate = leaveDate.plusDays(1);
+            }
+        }
+
+        return new FixedLeaveGenerationResponse(startDate, endDate, createdCount);
     }
 
     @Transactional(readOnly = true)
@@ -251,6 +323,18 @@ public class LeaveService {
         }
     }
 
+    private boolean matchesFixedLeaveMember(FixedLeave fixedLeave, Map<Long, Member> membersById, String searchName) {
+        Member member = membersById.get(fixedLeave.getMemberId());
+        if (member == null) {
+            return false;
+        }
+        if (searchName == null) {
+            return true;
+        }
+
+        return member.getName().contains(searchName);
+    }
+
     private String toSlots(List<Integer> slots) {
         return slots.stream()
                 .distinct()
@@ -265,21 +349,6 @@ public class LeaveService {
         }
 
         return text.trim();
-    }
-
-    private void addFixedLeaves(
-            List<MonthlyLeaveCalendarResponse> responses,
-            FixedLeave fixedLeave,
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        LocalDate date = startDate;
-        while (!date.isAfter(endDate)) {
-            if (date.getDayOfWeek() == fixedLeave.getDayOfWeek()) {
-                responses.add(new MonthlyLeaveCalendarResponse(date, fixedLeave.getReason(), "FIXED_LEAVE"));
-            }
-            date = date.plusDays(1);
-        }
     }
 
     private String toLeaveTypeLabel(LeaveType leaveType) {

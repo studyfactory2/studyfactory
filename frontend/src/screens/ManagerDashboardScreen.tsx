@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AdminGridPanel } from '../components/manager/AdminGridPanel';
 import { BeverageServingSheetPanel } from '../components/manager/BeverageServingSheetPanel';
 import { DailyLeaveStatusPanel } from '../components/manager/DailyLeaveStatusPanel';
+import { FixedLeaveManagementPanel } from '../components/manager/FixedLeaveManagementPanel';
 import { ManagerTabs } from '../components/manager/ManagerTabs';
 import { ManagerTopBar } from '../components/manager/ManagerTopBar';
 import { MemberStatusPanel } from '../components/manager/MemberStatusPanel';
@@ -200,6 +201,10 @@ function ManagerPanel({ branches, certifications, currentView, editableStaffWork
     return <OtherLeaveRequestPanel branches={branches} />;
   }
 
+  if (currentView === 'fixed_leave_management') {
+    return <FixedLeaveManagementPanel branches={branches} />;
+  }
+
   return <PlaceholderPanel currentView={currentView} />;
 }
 
@@ -220,7 +225,7 @@ function resolveAllowedView(view: AdminMenuId, role: string | null, staffExtraVi
 }
 
 function toViewOrder(view: AdminMenuId) {
-  const visibleView = view === 'register' || view === 'status' || view === 'vacation_history' || view === 'other_leave_request'
+  const visibleView = view === 'register' || view === 'status' || view === 'vacation_history' || view === 'other_leave_request' || view === 'fixed_leave_management'
     ? 'grid'
     : view === 'daily_leave_status' || view === 'beverage_serving_sheet' || view === 'seat_management' || view === 'beverage_management' || view === 'new_beverage_request' || view === 'staff_leave_request' || view === 'staff_side_dish_request'
       ? 'staff-page'

@@ -198,6 +198,24 @@ export type SpecialLeaveResponse = {
   updatedAt: string;
 };
 
+export type FixedLeaveManagementResponse = {
+  id: number;
+  memberId: number;
+  branchId: number;
+  memberName: string;
+  dayOfWeek: StaffScheduleDayOfWeek;
+  slots: string;
+  reason: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FixedLeaveGenerationResponse = {
+  startDate: string;
+  endDate: string;
+  createdCount: number;
+};
+
 export type StaffScheduleDayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 export type StaffScheduleShift = 'MORNING' | 'AFTERNOON';
 export type StaffScheduleTaskType = 'DISHWASHING' | 'SERVE';

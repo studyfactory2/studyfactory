@@ -39,6 +39,9 @@ class MemberServiceTest {
     @Mock
     private BeverageService beverageService;
 
+    @Mock
+    private MemberDeletionCleanupService memberDeletionCleanupService;
+
     @Test
     @DisplayName("이름과 지점에 해당하는 사전등록 사원 정보를 확인한다")
     void verifyPreRegistration() {
@@ -149,7 +152,7 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("스태프가 사원 정보와 음료 설정을 삭제한다")
+    @DisplayName("스태프가 사원 정보와 관련 데이터를 삭제한다")
     void deleteMemberByStaff() {
         Member staff = createRegisteredMember(MemberRole.STAFF);
         Member member = createRegisteredMember();
@@ -159,7 +162,7 @@ class MemberServiceTest {
 
         memberService.delete(2L, 1L);
 
-        then(beverageService).should().deleteAllByMemberId(1L);
+        then(memberDeletionCleanupService).should().cleanup(1L);
         then(memberRepository).should().delete(member);
     }
 

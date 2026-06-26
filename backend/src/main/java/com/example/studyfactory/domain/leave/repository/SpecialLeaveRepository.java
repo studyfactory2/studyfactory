@@ -16,4 +16,8 @@ public interface SpecialLeaveRepository extends JpaRepository<SpecialLeave, Long
     List<SpecialLeave> findByBranchIdAndLeaveDateOrderByCreatedAtAsc(Long branchId, LocalDate leaveDate);
 
     List<SpecialLeave> findByMemberIdAndLeaveDateOrderByCreatedAtAsc(Long memberId, LocalDate leaveDate);
+
+    List<SpecialLeave> findByRecurringTrueAndLeaveDateBetween(LocalDate startDate, LocalDate endDate);
+
+    void deleteByMemberId(Long memberId);
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiRequest } from '../../api/client';
 import type { Branch, Certification, MemberResponse, MemberRole } from '../../types/domain';
 import { Dropdown, type DropdownOption } from '../common/Dropdown';
@@ -391,40 +392,45 @@ export function MemberStatusPanel({ branches, certifications }: MemberStatusPane
           ))}
         </div>
       )}
-      {preparingDeleteTarget && (
-        <div className="pre-register-modal-backdrop" role="presentation">
-          <section className="pre-register-modal" role="dialog" aria-modal="true" aria-labelledby="preparing-certification-delete-title">
-            <h2 id="preparing-certification-delete-title">삭제 확인</h2>
-            <p>삭제하시겠습니까?</p>
-            <div className="pre-register-modal-actions">
-              <button className="pre-register-modal-cancel" type="button" onClick={() => setPreparingDeleteTarget(null)}>닫기</button>
-              <button className="pre-register-modal-danger" type="button" onClick={() => removePreparingCertification(preparingDeleteTarget)}>삭제</button>
+      {createPortal(
+        <>
+          {preparingDeleteTarget && (
+            <div className="pre-register-modal-backdrop" role="presentation">
+              <section className="pre-register-modal" role="dialog" aria-modal="true" aria-labelledby="preparing-certification-delete-title">
+                <h2 id="preparing-certification-delete-title">삭제 확인</h2>
+                <p>삭제하시겠습니까?</p>
+                <div className="pre-register-modal-actions">
+                  <button className="pre-register-modal-cancel" type="button" onClick={() => setPreparingDeleteTarget(null)}>닫기</button>
+                  <button className="pre-register-modal-danger" type="button" onClick={() => removePreparingCertification(preparingDeleteTarget)}>삭제</button>
+                </div>
+              </section>
             </div>
-          </section>
-        </div>
-      )}
-      {deleteTarget && (
-        <div className="pre-register-modal-backdrop" role="presentation">
-          <section className="pre-register-modal" role="dialog" aria-modal="true" aria-labelledby="member-status-delete-title">
-            <h2 id="member-status-delete-title">삭제 확인</h2>
-            <p>{deleteTarget.name}님의 사원 정보를 삭제하시겠습니까?</p>
-            <div className="pre-register-modal-actions">
-              <button className="pre-register-modal-cancel" type="button" disabled={submitting} onClick={() => setDeleteTarget(null)}>닫기</button>
-              <button className="pre-register-modal-danger" type="button" disabled={submitting} onClick={deleteMember}>
-                {submitting ? '삭제 중' : '삭제'}
-              </button>
+          )}
+          {deleteTarget && (
+            <div className="pre-register-modal-backdrop" role="presentation">
+              <section className="pre-register-modal" role="dialog" aria-modal="true" aria-labelledby="member-status-delete-title">
+                <h2 id="member-status-delete-title">삭제 확인</h2>
+                <p>{deleteTarget.name}님의 사원 정보를 삭제하시겠습니까?</p>
+                <div className="pre-register-modal-actions">
+                  <button className="pre-register-modal-cancel" type="button" disabled={submitting} onClick={() => setDeleteTarget(null)}>닫기</button>
+                  <button className="pre-register-modal-danger" type="button" disabled={submitting} onClick={deleteMember}>
+                    {submitting ? '삭제 중' : '삭제'}
+                  </button>
+                </div>
+              </section>
             </div>
-          </section>
-        </div>
-      )}
-      {modalMessage && (
-        <div className="pre-register-modal-backdrop" role="presentation">
-          <section className="pre-register-modal" role="alertdialog" aria-modal="true" aria-labelledby="member-status-success-title">
-            <h2 id="member-status-success-title">완료</h2>
-            <p>{modalMessage}</p>
-            <button type="button" onClick={() => setModalMessage('')}>확인</button>
-          </section>
-        </div>
+          )}
+          {modalMessage && (
+            <div className="pre-register-modal-backdrop" role="presentation">
+              <section className="pre-register-modal" role="alertdialog" aria-modal="true" aria-labelledby="member-status-success-title">
+                <h2 id="member-status-success-title">완료</h2>
+                <p>{modalMessage}</p>
+                <button type="button" onClick={() => setModalMessage('')}>확인</button>
+              </section>
+            </div>
+          )}
+        </>,
+        document.body
       )}
     </div>
   );

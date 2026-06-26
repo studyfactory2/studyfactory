@@ -6,9 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveGenerationResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
@@ -30,12 +32,14 @@ import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.DayOfWeek;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -202,12 +206,11 @@ class LeaveServiceTest {
     }
 
     @Test
-    @DisplayName("관리자는 일반 휴무, 고정 휴무, 기타 휴무가 합쳐진 월별 휴가 달력을 조회한다")
+    @DisplayName("관리자는 일반 휴무와 생성된 기타 휴무가 합쳐진 월별 휴가 달력을 조회한다")
     void findMonthlyCalendar() {
         Member admin = createMemberWithId(1L, MemberRole.ADMIN);
         Member target = createMemberWithId(2L, MemberRole.MEMBER);
         LeaveRequest leaveRequest = new LeaveRequest(2L, 2L, LocalDate.of(2026, 6, 17), LeaveType.MORNING);
-        FixedLeave fixedLeave = new FixedLeave(2L, 2L, DayOfWeek.WEDNESDAY, "1,2", "스터디", true);
         SpecialLeave specialLeave = new SpecialLeave(
                 2L,
                 2L,
@@ -225,7 +228,6 @@ class LeaveServiceTest {
                 LocalDate.of(2026, 6, 1),
                 LocalDate.of(2026, 6, 30)
         )).willReturn(List.of(leaveRequest));
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of(fixedLeave));
         given(specialLeaveRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
                 2L,
                 LocalDate.of(2026, 6, 1),
@@ -235,9 +237,9 @@ class LeaveServiceTest {
         List<MonthlyLeaveCalendarResponse> responses = leaveService.findMonthlyCalendar(1L, 2L, 2026, 6);
 
         assertThat(responses).extracting(MonthlyLeaveCalendarResponse::label)
-                .contains("오전", "스터디", "알바");
+                .contains("오전", "알바");
         assertThat(responses).extracting(MonthlyLeaveCalendarResponse::source)
-                .contains("LEAVE", "FIXED_LEAVE", "SPECIAL_LEAVE");
+                .contains("LEAVE", "SPECIAL_LEAVE");
     }
 
     @Test
@@ -291,6 +293,61 @@ class LeaveServiceTest {
         assertThat(response.slots()).isEqualTo("2,4");
         assertThat(response.reason()).isEqualTo("알바");
         assertThat(response.active()).isTrue();
+    }
+
+    @Test
+    @DisplayName("관리자는 고정 휴무를 이번 주와 다음 주의 기타 휴무로 생성한다")
+    void generateFixedLeaves() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        LocalDate startDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endDate = startDate.plusDays(13);
+        SpecialLeave oldSpecialLeave = new SpecialLeave(2L, 2L, startDate, "1", "모의", null, true, 1L);
+        FixedLeave fixedLeave = new FixedLeave(2L, 2L, DayOfWeek.WEDNESDAY, "1,2", "스터디", true);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(specialLeaveRepository.findByRecurringTrueAndLeaveDateBetween(startDate, endDate)).willReturn(List.of(oldSpecialLeave));
+        given(fixedLeaveRepository.findByActiveTrueOrderByCreatedAtAsc()).willReturn(List.of(fixedLeave));
+        given(specialLeaveRepository.save(any(SpecialLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        FixedLeaveGenerationResponse response = leaveService.generateFixedLeaves(1L);
+
+        ArgumentCaptor<SpecialLeave> captor = ArgumentCaptor.forClass(SpecialLeave.class);
+        then(specialLeaveRepository).should().deleteAll(List.of(oldSpecialLeave));
+        then(specialLeaveRepository).should(times(2)).save(captor.capture());
+        assertThat(response.startDate()).isEqualTo(startDate);
+        assertThat(response.endDate()).isEqualTo(endDate);
+        assertThat(response.createdCount()).isEqualTo(2);
+        assertThat(captor.getAllValues()).extracting(SpecialLeave::getLeaveDate)
+                .containsExactly(startDate.plusDays(2), startDate.plusDays(9));
+    }
+
+    @Test
+    @DisplayName("스케줄러는 첫 번째 관리자 계정으로 고정 휴무를 생성한다")
+    void generateFixedLeavesBySystem() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        LocalDate startDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endDate = startDate.plusDays(13);
+        FixedLeave fixedLeave = new FixedLeave(2L, 2L, startDate.getDayOfWeek(), "1", "모의", true);
+        given(memberRepository.findFirstByRoleOrderByIdAsc(MemberRole.ADMIN)).willReturn(Optional.of(admin));
+        given(specialLeaveRepository.findByRecurringTrueAndLeaveDateBetween(startDate, endDate)).willReturn(List.of());
+        given(fixedLeaveRepository.findByActiveTrueOrderByCreatedAtAsc()).willReturn(List.of(fixedLeave));
+        given(specialLeaveRepository.save(any(SpecialLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        Optional<FixedLeaveGenerationResponse> response = leaveService.generateFixedLeavesBySystem();
+
+        assertThat(response).isPresent();
+        assertThat(response.get().createdCount()).isEqualTo(2);
+        then(memberRepository).should().findFirstByRoleOrderByIdAsc(MemberRole.ADMIN);
+    }
+
+    @Test
+    @DisplayName("관리자 계정이 없으면 스케줄러 고정 휴무 생성은 실행되지 않는다")
+    void skipGenerateFixedLeavesBySystemWhenAdminNotFound() {
+        given(memberRepository.findFirstByRoleOrderByIdAsc(MemberRole.ADMIN)).willReturn(Optional.empty());
+
+        Optional<FixedLeaveGenerationResponse> response = leaveService.generateFixedLeavesBySystem();
+
+        assertThat(response).isEmpty();
+        then(fixedLeaveRepository).should(never()).findByActiveTrueOrderByCreatedAtAsc();
     }
 
     @Test

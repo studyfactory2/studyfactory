@@ -42,6 +42,9 @@ class PreRegistrationServiceTest {
     private BeverageService beverageService;
 
     @Mock
+    private MemberDeletionCleanupService memberDeletionCleanupService;
+
+    @Mock
     private BranchRepository branchRepository;
 
     @Mock

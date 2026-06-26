@@ -22,7 +22,7 @@ const ADMIN_GRID_SECTIONS: AdminGridSection[] = [
     items: [
       { icon: 'calendar', label: '사원별\n휴가 현황', href: '/managerdashboard?view=vacation_history' },
       { icon: 'person-check', label: '사원 기타\n휴무 신청', href: '/managerdashboard?view=other_leave_request' },
-      { icon: 'pin', label: '고정 기타\n휴무 관리' },
+      { icon: 'pin', label: '고정 기타\n휴무 관리', href: '/managerdashboard?view=fixed_leave_management' },
     ],
   },
 ];

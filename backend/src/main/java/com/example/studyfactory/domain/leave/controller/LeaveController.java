@@ -3,6 +3,8 @@ package com.example.studyfactory.domain.leave.controller;
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveGenerationResponse;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveManagementResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
@@ -83,6 +85,26 @@ public class LeaveController {
     @ResponseStatus(HttpStatus.CREATED)
     public FixedLeaveResponse createFixed(@CurrentMember Long memberId, @Valid @RequestBody FixedLeaveCreateRequest request) {
         return leaveService.createFixed(memberId, request);
+    }
+
+    @GetMapping("/fixed")
+    public List<FixedLeaveManagementResponse> findFixedLeaves(
+            @CurrentMember Long currentMemberId,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long branchId
+    ) {
+        return leaveService.findFixedLeaves(currentMemberId, name, branchId);
+    }
+
+    @DeleteMapping("/fixed/{fixedLeaveId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteFixed(@CurrentMember Long currentMemberId, @PathVariable Long fixedLeaveId) {
+        leaveService.deleteFixed(currentMemberId, fixedLeaveId);
+    }
+
+    @PostMapping("/fixed/generate")
+    public FixedLeaveGenerationResponse generateFixedLeaves(@CurrentMember Long currentMemberId) {
+        return leaveService.generateFixedLeaves(currentMemberId);
     }
 
     @GetMapping("/special")

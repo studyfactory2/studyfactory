@@ -23,6 +23,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final BeverageService beverageService;
+    private final MemberDeletionCleanupService memberDeletionCleanupService;
 
     @Transactional(readOnly = true)
     public List<MemberResponse> findAll(String name, Long branchId) {
@@ -66,7 +67,7 @@ public class MemberService {
         Member currentMember = findMember(currentMemberId);
         validateAllPermissions(currentMember);
         Member member = findMember(memberId);
-        beverageService.deleteAllByMemberId(member.getId());
+        memberDeletionCleanupService.cleanup(member.getId());
         memberRepository.delete(member);
     }
 

@@ -38,4 +38,6 @@ public interface SideDishRequestRepository extends JpaRepository<SideDishRequest
             order by s.mealInformation.mealType asc, m.workInformation.seatNumber asc, s.createdAt asc
             """)
     List<DailySideDishResponse> findDailyByBranchAndDate(@Param("branchId") Long branchId, @Param("mealDate") LocalDate mealDate);
+
+    void deleteByReferenceInformationMemberId(Long memberId);
 }

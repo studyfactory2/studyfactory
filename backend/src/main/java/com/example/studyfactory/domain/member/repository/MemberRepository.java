@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.member.repository;
 
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Sort;
@@ -52,6 +53,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     List<Member> findByReferenceInformationBranchIdOrderByIdAsc(Long branchId);
 
     List<Member> findByNameContainingAndReferenceInformationBranchIdOrderByIdAsc(String name, Long branchId);
+
+    Optional<Member> findFirstByRoleOrderByIdAsc(MemberRole role);
 
     @Query("""
             select count(m) > 0

@@ -18,4 +18,8 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from Seat s where s.branchId = :branchId")
     void deleteByBranchId(@Param("branchId") Long branchId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Seat s set s.memberId = null where s.memberId = :memberId")
+    void clearMemberAssignment(@Param("memberId") Long memberId);
 }

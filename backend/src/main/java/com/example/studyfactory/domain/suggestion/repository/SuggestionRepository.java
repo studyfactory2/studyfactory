@@ -16,4 +16,6 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long> {
     List<Suggestion> findMine(Long memberId);
 
     List<Suggestion> findAllByOrderByCreatedAtDesc();
+
+    void deleteByReferenceInformationMemberId(Long memberId);
 }

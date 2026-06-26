@@ -4,6 +4,7 @@ export type AdminMenuId =
   | 'status'
   | 'vacation_history'
   | 'other_leave_request'
+  | 'fixed_leave_management'
   | 'attendance'
   | 'staff-work'
   | 'staff-page'
@@ -39,6 +40,7 @@ export function resolveAdminMenuId(value: string | null): AdminMenuId {
     || value === 'status'
     || value === 'vacation_history'
     || value === 'other_leave_request'
+    || value === 'fixed_leave_management'
     || value === 'daily_leave_status'
     || value === 'beverage_serving_sheet'
     || value === 'seat_management'
@@ -68,6 +70,10 @@ export function getAdminMenuLabel(menuId: AdminMenuId): string {
 
   if (menuId === 'other_leave_request') {
     return '사원 기타 휴무 신청';
+  }
+
+  if (menuId === 'fixed_leave_management') {
+    return '고정 기타 휴무 관리';
   }
 
   if (menuId === 'daily_leave_status') {

@@ -26,4 +26,6 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     );
 
     void deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDate(Long memberId, LocalDate attendanceDate);
+
+    void deleteByReferenceInformationMemberId(Long memberId);
 }

@@ -23,6 +23,7 @@ public class PreRegistrationService {
 
     private final MemberRepository memberRepository;
     private final BeverageService beverageService;
+    private final MemberDeletionCleanupService memberDeletionCleanupService;
     private final BranchRepository branchRepository;
     private final CertificationRepository certificationRepository;
 
@@ -81,7 +82,7 @@ public class PreRegistrationService {
     @Transactional
     public void delete(Long memberId) {
         Member member = findPendingMember(memberId);
-        beverageService.deleteAllByMemberId(member.getId());
+        memberDeletionCleanupService.cleanup(member.getId());
         memberRepository.delete(member);
     }
 
