@@ -23,6 +23,9 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
     @Query("""
             select new com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse(
+                m.id,
+                b.id,
+                m.workInformation.seatNumber,
                 m.name,
                 b.name,
                 l.leaveType,

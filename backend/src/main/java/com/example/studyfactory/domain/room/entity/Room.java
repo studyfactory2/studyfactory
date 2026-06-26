@@ -39,4 +39,9 @@ public class Room extends BaseEntity {
         this.rows = rows;
         this.cols = cols;
     }
+
+    public void updateLayout(int rows, int cols) {
+        this.rows = rows;
+        this.cols = cols;
+    }
 }

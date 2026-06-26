@@ -2,6 +2,7 @@ package com.example.studyfactory.domain.beverage.service;
 
 import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
 import com.example.studyfactory.domain.beverage.dto.BeverageRequest;
+import com.example.studyfactory.domain.beverage.dto.BeverageUpdateRequest;
 import com.example.studyfactory.domain.beverage.dto.MemberBeverageResponse;
 import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
 import com.example.studyfactory.domain.beverage.exception.BeverageException;
@@ -76,6 +77,17 @@ public class BeverageService {
         validateAllPermissions(currentMember);
         Member targetMember = findMember(targetMemberId);
         BeveragePreference beveragePreference = addDrink(targetMember, request);
+
+        return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
+    }
+
+    @Transactional
+    public BeveragePreferenceResponse updateDrinkForMember(Long currentMemberId, Long targetMemberId, BeverageUpdateRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member targetMember = findMember(targetMemberId);
+        BeveragePreference beveragePreference = findOrCreatePreference(targetMember);
+        beveragePreference.update(toText(request.drinkSetting()), toText(request.drinkNote()));
 
         return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
     }
@@ -158,6 +170,14 @@ public class BeverageService {
         }
 
         return name.trim();
+    }
+
+    private String toText(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value.trim();
     }
 
     private List<Member> findMembers(String name, Long branchId) {

@@ -23,7 +23,7 @@ const STAFF_PAGE_SECTIONS: StaffPageSection[] = [
     title: '업무 관련 메뉴',
     items: [
       { icon: 'daily-leave', label: '일별 사원\n휴무 현황', href: '/managerdashboard?view=daily_leave_status' },
-      { icon: 'drink', label: '음료\n제조/서빙' },
+      { icon: 'drink', label: '음료\n제조/서빙', href: '/managerdashboard?view=beverage_serving_sheet' },
     ],
   },
   {

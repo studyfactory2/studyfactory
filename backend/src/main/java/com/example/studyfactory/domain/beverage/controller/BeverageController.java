@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.beverage.controller;
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
 import com.example.studyfactory.domain.beverage.dto.BeverageRequest;
+import com.example.studyfactory.domain.beverage.dto.BeverageUpdateRequest;
 import com.example.studyfactory.domain.beverage.dto.MemberBeverageResponse;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import jakarta.validation.Valid;
@@ -58,6 +59,15 @@ public class BeverageController {
             @Valid @RequestBody BeverageRequest request
     ) {
         return beverageService.addDrinkForMember(currentMemberId, memberId, request);
+    }
+
+    @PatchMapping("/members/{memberId}")
+    public BeveragePreferenceResponse updateDrinkForMember(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId,
+            @RequestBody BeverageUpdateRequest request
+    ) {
+        return beverageService.updateDrinkForMember(currentMemberId, memberId, request);
     }
 
     @DeleteMapping("/me")

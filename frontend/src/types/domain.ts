@@ -92,6 +92,28 @@ export type MemberBeverageResponse = {
   seatNumber?: number | null;
   drinks: string;
   notes?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type RoomLayoutItemType = 'SEAT' | 'DOOR';
+
+export type RoomLayoutItemResponse = {
+  id: number;
+  type: RoomLayoutItemType;
+  number?: number | null;
+  memberId?: number | null;
+  x: number;
+  y: number;
+};
+
+export type RoomLayoutResponse = {
+  id: number;
+  branchId: number;
+  name: string;
+  rows: number;
+  cols: number;
+  items: RoomLayoutItemResponse[];
 };
 
 export type MealType = 'LUNCH' | 'DINNER';
@@ -123,6 +145,9 @@ export type DailySideDishResponse = {
 export type LeaveType = 'FULL' | 'MORNING' | 'AFTERNOON';
 
 export type DailyLeaveStatusResponse = {
+  memberId: number;
+  branchId: number;
+  seatNumber?: number | null;
   name: string;
   branch: string;
   leaveType: LeaveType;

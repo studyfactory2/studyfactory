@@ -35,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AttendanceService {
 
-    private static final int MAX_SEAT_NUMBER = 60;
+    private static final int MAX_SEAT_NUMBER = 102;
     private static final int SLOT_COUNT = 7;
     private static final String EMPTY_STATUS = "X";
     private static final String PRESENT_STATUS = "O";

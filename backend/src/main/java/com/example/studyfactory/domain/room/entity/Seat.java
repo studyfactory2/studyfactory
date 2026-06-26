@@ -3,6 +3,8 @@ package com.example.studyfactory.domain.room.entity;
 import com.example.studyfactory.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -39,6 +41,10 @@ public class Seat extends BaseEntity {
     @Column(name = "member_id", unique = true)
     private Long memberId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'SEAT'")
+    private SeatType type;
+
     @Column(nullable = false)
     private int gridRow;
 
@@ -46,10 +52,15 @@ public class Seat extends BaseEntity {
     private int gridCol;
 
     public Seat(Long branchId, Long roomId, Integer number, Long memberId, int gridRow, int gridCol) {
+        this(branchId, roomId, number, memberId, SeatType.SEAT, gridRow, gridCol);
+    }
+
+    public Seat(Long branchId, Long roomId, Integer number, Long memberId, SeatType type, int gridRow, int gridCol) {
         this.branchId = branchId;
         this.roomId = roomId;
         this.number = number;
         this.memberId = memberId;
+        this.type = type;
         this.gridRow = gridRow;
         this.gridCol = gridCol;
     }

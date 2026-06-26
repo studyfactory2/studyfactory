@@ -9,7 +9,13 @@ type ManagerTabsProps = {
 export function ManagerTabs({ currentView, menus = ADMIN_MENUS, onViewChange }: ManagerTabsProps) {
   const visibleView = currentView === 'register' || currentView === 'status' || currentView === 'vacation_history' || currentView === 'other_leave_request'
     ? 'grid'
-    : currentView === 'daily_leave_status' || currentView === 'seat_management'
+    : currentView === 'daily_leave_status'
+      || currentView === 'beverage_serving_sheet'
+      || currentView === 'seat_management'
+      || currentView === 'beverage_management'
+      || currentView === 'new_beverage_request'
+      || currentView === 'staff_leave_request'
+      || currentView === 'staff_side_dish_request'
       ? 'staff-page'
     : currentView;
   const currentIndex = Math.max(menus.findIndex((menu) => menu.id === visibleView), 0);

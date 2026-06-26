@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.beverage.dto;
 import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
+import java.time.LocalDateTime;
 
 public record MemberBeverageResponse(
         Long memberId,
@@ -11,7 +12,9 @@ public record MemberBeverageResponse(
         MemberRole role,
         Integer seatNumber,
         String drinks,
-        String notes
+        String notes,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 
     public static MemberBeverageResponse from(Member member, BeveragePreference beveragePreference) {
@@ -22,7 +25,9 @@ public record MemberBeverageResponse(
                 member.getRole(),
                 member.getSeatNumber(),
                 beveragePreference.getDrinks(),
-                beveragePreference.getNotes()
+                beveragePreference.getNotes(),
+                beveragePreference.getCreatedAt(),
+                beveragePreference.getUpdatedAt()
         );
     }
 }

@@ -168,6 +168,9 @@ class LeaveServiceTest {
     void findDailyStatuses() {
         LocalDate date = LocalDate.of(2026, 7, 1);
         DailyLeaveStatusResponse response = new DailyLeaveStatusResponse(
+                1L,
+                1L,
+                10,
                 "kim",
                 "강남점",
                 LeaveType.FULL,
