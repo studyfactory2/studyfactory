@@ -421,7 +421,10 @@ export function StaffAttendancePanel() {
       <div className="staff-attendance-actions">
         <button className="suggestion-tag" type="button" disabled>회원건의</button>
         <button className="meal-tag" type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>반찬신청</button>
-        <button className="todo-tag" type="button" onClick={() => setTodoModalOpen(true)}>할일목록 <b>{todoCount}</b></button>
+        <button className="todo-tag" type="button" disabled={todoCount === 0} onClick={() => setTodoModalOpen(true)}>
+          할일목록
+          {todoCount > 0 && <b>{todoCount}</b>}
+        </button>
       </div>
 
       {loading ? (
