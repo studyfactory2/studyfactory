@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.attendance.controller;
 
+import com.example.studyfactory.domain.attendance.dto.AttendanceDailyResetRequest;
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateRequest;
 import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardResponse;
 import com.example.studyfactory.domain.attendance.service.AttendanceService;
@@ -42,5 +43,14 @@ public class AttendanceController {
             @Valid @RequestBody AttendanceSlotStatusUpdateRequest request
     ) {
         attendanceService.updateSlotStatus(currentMemberId, request);
+    }
+
+    @PatchMapping("/daily-board/member/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetDailyStatus(
+            @CurrentMember Long currentMemberId,
+            @Valid @RequestBody AttendanceDailyResetRequest request
+    ) {
+        attendanceService.resetDailyStatus(currentMemberId, request);
     }
 }

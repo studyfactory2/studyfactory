@@ -1,9 +1,10 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import type { LoginFormState } from '../../hooks/useLoginScreen';
-import type { PreRegistrationVerifyResponse } from '../../types/domain';
+import type { Branch, PreRegistrationVerifyResponse } from '../../types/domain';
 import { LoginField } from './LoginField';
 
 type PasswordFormProps = {
+  branches: Branch[];
   form: LoginFormState;
   loading: boolean;
   member: PreRegistrationVerifyResponse | null;
@@ -12,7 +13,9 @@ type PasswordFormProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-export function PasswordForm({ form, loading, member, onBackClick, onChange, onSubmit }: PasswordFormProps) {
+export function PasswordForm({ branches, form, loading, member, onBackClick, onChange, onSubmit }: PasswordFormProps) {
+  const branchName = branches.find((branch) => branch.id === member?.branchId)?.name || member?.branchId;
+
   return (
     <form className="form" onSubmit={onSubmit}>
       <h2>비밀번호 설정</h2>
@@ -20,7 +23,7 @@ export function PasswordForm({ form, loading, member, onBackClick, onChange, onS
         <strong>가입 정보</strong>
         <dl>
           <SummaryItem label="이름" value={member?.name} />
-          <SummaryItem label="지점" value={member?.branchId} />
+          <SummaryItem label="지점" value={branchName} />
           <SummaryItem label="좌석" value={member?.seatNumber} />
           <SummaryItem label="입사예정일" value={member?.expectedJoinDate} />
         </dl>

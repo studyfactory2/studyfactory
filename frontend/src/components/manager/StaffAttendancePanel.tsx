@@ -164,6 +164,32 @@ export function StaffAttendancePanel() {
     }
   };
 
+  const resetJoinDateAttendance = async (memberId: number) => {
+    setSubmitting(true);
+    setMessage('');
+    try {
+      await apiRequest<void>('/api/attendances/daily-board/member/reset', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          memberId,
+          date: selectedDate,
+        }),
+      });
+      setBoard((current) => current ? {
+        ...current,
+        rows: current.rows.map((row) => row.memberId === memberId ? { ...row, joinDate: null, slots: Array.from({ length: 7 }, () => 'X') } : row),
+      } : current);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '신규 회원 출석 초기화에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const isJoinDateRow = (row: DailyAttendanceBoardResponse['rows'][number]) => (
+    Boolean(row.memberId && row.joinDate === selectedDate)
+  );
+
   const openOtherModal = () => {
     if (!selectedSlot) {
       return;
@@ -257,12 +283,19 @@ export function StaffAttendancePanel() {
               {filteredRows.map((row) => {
                 const emptySeat = row.name === '공석';
                 const rowClassName = row.seatNumber == null ? 'unassigned-row' : emptySeat ? 'empty-seat-row' : '';
+                const joinDateRow = isJoinDateRow(row);
 
                 return (
                   <tr className={rowClassName} key={`${row.seatNumber || 'unassigned'}-${row.name}`}>
                     <td>{row.seatNumber ?? '-'}</td>
                     <td>{row.name}</td>
-                    {SLOT_LABELS.map((slot, index) => {
+                    {joinDateRow ? (
+                      <td className="join-date-cell" colSpan={7}>
+                        <button type="button" disabled={submitting} onClick={() => row.memberId && resetJoinDateAttendance(row.memberId)}>
+                          {formatCompactDate(selectedDate)} {row.name}{row.certificationContent ? `(${row.certificationContent})` : ''} -
+                        </button>
+                      </td>
+                    ) : SLOT_LABELS.map((slot, index) => {
                       const status = row.slots[index] || 'X';
                       const selected = selectedSlot?.memberId === row.memberId && selectedSlot?.slot === slot;
 
@@ -503,6 +536,12 @@ function formatShortDate(date: string) {
   const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
   return `${parsed.getMonth() + 1}.${parsed.getDate()}(${weekdays[parsed.getDay()]})`;
+}
+
+function formatCompactDate(date: string) {
+  const parsed = new Date(`${date}T00:00:00`);
+
+  return `${parsed.getMonth() + 1}/${parsed.getDate()}`;
 }
 
 function createMonthCalendar(date: string) {

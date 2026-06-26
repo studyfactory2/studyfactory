@@ -39,6 +39,7 @@ export function LoginScreen() {
       )}
       {screen.mode === 'password' && (
         <PasswordForm
+          branches={screen.branches}
           form={screen.form}
           member={screen.verifiedMember}
           loading={screen.loading}

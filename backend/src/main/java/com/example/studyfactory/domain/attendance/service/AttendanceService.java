@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.attendance.service;
 
 import com.example.studyfactory.domain.attendance.dto.AttendanceBoardRowResponse;
+import com.example.studyfactory.domain.attendance.dto.AttendanceDailyResetRequest;
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateRequest;
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateType;
 import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardResponse;
@@ -10,6 +11,8 @@ import com.example.studyfactory.domain.attendance.entity.AttendanceSlotInformati
 import com.example.studyfactory.domain.attendance.entity.AttendanceStatusType;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTypeRepository;
+import com.example.studyfactory.domain.certification.entity.Certification;
+import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
@@ -47,6 +50,7 @@ public class AttendanceService {
     private final LeaveRequestRepository leaveRequestRepository;
     private final FixedLeaveRepository fixedLeaveRepository;
     private final SpecialLeaveRepository specialLeaveRepository;
+    private final CertificationRepository certificationRepository;
 
     @Transactional(readOnly = true)
     public DailyAttendanceBoardResponse findDailyBoard(Long currentMemberId, LocalDate date, Long branchId) {
@@ -82,6 +86,22 @@ public class AttendanceService {
         if (request.status() == AttendanceSlotStatusUpdateType.OTHER) {
             createSpecialLeave(currentMember, member, request);
         }
+    }
+
+    @Transactional
+    public void resetDailyStatus(Long currentMemberId, AttendanceDailyResetRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        validateAllPermissions(currentMember);
+        Member member = findMember(request.memberId());
+        if (!currentMember.getBranchId().equals(member.getBranchId()) && !currentMember.hasAllPermissions()) {
+            throw MemberException.forbidden();
+        }
+
+        attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDate(member.getId(), request.date());
+        leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), request.date())
+                .forEach(leaveRequestRepository::delete);
+        specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), request.date())
+                .forEach(specialLeaveRepository::delete);
     }
 
     private Member findMember(Long memberId) {
@@ -293,19 +313,43 @@ public class AttendanceService {
         for (int seatNumber = 1; seatNumber <= lastSeatNumber; seatNumber++) {
             Member member = membersBySeat.get(seatNumber);
             if (member == null) {
-                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", emptySlots()));
+                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", null, null, emptySlots()));
                 continue;
             }
-            rows.add(new AttendanceBoardRowResponse(member.getId(), seatNumber, member.getName(), statusesByMemberId.get(member.getId())));
+            rows.add(new AttendanceBoardRowResponse(
+                    member.getId(),
+                    seatNumber,
+                    member.getName(),
+                    member.getJoinDate(),
+                    getCertificationContent(member),
+                    statusesByMemberId.get(member.getId())
+            ));
         }
         members.stream()
                 .filter(this::isUnassignedSeat)
-                .forEach(member -> rows.add(new AttendanceBoardRowResponse(member.getId(), null, member.getName(), statusesByMemberId.get(member.getId()))));
+                .forEach(member -> rows.add(new AttendanceBoardRowResponse(
+                        member.getId(),
+                        null,
+                        member.getName(),
+                        member.getJoinDate(),
+                        getCertificationContent(member),
+                        statusesByMemberId.get(member.getId())
+                )));
 
         return rows;
     }
 
     private boolean isUnassignedSeat(Member member) {
         return member.getSeatNumber() == null || member.getSeatNumber() < 1;
+    }
+
+    private String getCertificationContent(Member member) {
+        if (member.getCertificationId() == null) {
+            return null;
+        }
+
+        return certificationRepository.findById(member.getCertificationId())
+                .map(Certification::getContent)
+                .orElse(null);
     }
 }
