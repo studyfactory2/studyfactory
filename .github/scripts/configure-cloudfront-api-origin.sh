@@ -16,6 +16,12 @@ backend_host="${EC2_HOST#http://}"
 backend_host="${backend_host#https://}"
 backend_host="${backend_host%%/*}"
 backend_host="${backend_host%%:*}"
+aws_region="${AWS_REGION:-ap-northeast-2}"
+
+if [[ "${backend_host}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  backend_host="ec2-${backend_host//./-}.${aws_region}.compute.amazonaws.com"
+fi
+
 origin_id="studyfactory-backend-api"
 
 cache_policy_id="$(aws cloudfront list-cache-policies \
