@@ -15,6 +15,7 @@ export function InstallGuide() {
     return window.matchMedia('(display-mode: standalone)').matches
       || navigatorWithStandalone.standalone === true;
   }, []);
+  const isIos = useMemo(() => /iphone|ipad|ipod/i.test(window.navigator.userAgent), []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -44,6 +45,11 @@ export function InstallGuide() {
     }
 
     if (!installPrompt) {
+      if (isIos) {
+        setMessage('iOS에서는 Safari에서 공유 버튼을 누른 뒤 홈 화면에 추가를 선택해주세요.');
+        return;
+      }
+
       setMessage('브라우저 메뉴에서 공유 또는 설치를 눌러 홈 화면에 추가해주세요.');
       return;
     }
