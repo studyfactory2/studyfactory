@@ -30,9 +30,11 @@ export function LoginScreen() {
           branchLoading={screen.branchLoading}
           branchDropdownOpen={screen.branchDropdownOpen}
           loading={screen.loading}
+          verifiedMembers={screen.verifiedMembers}
           onChange={screen.changeForm}
           onBranchDropdownToggle={() => screen.setBranchDropdownOpen((current) => !current)}
           onBranchSelect={screen.selectBranch}
+          onCandidateSelect={screen.selectVerifiedMember}
           onSubmit={screen.handleVerifySignup}
           onLoginClick={screen.openLogin}
         />

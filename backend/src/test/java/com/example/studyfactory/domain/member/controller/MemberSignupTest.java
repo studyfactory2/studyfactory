@@ -55,25 +55,24 @@ class MemberSignupTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.memberId").value(member.getId()))
-                .andExpect(jsonPath("$.branchId").value(1))
-                .andExpect(jsonPath("$.name").value("hong"))
-                .andExpect(jsonPath("$.certificationId").value(3))
-                .andExpect(jsonPath("$.drinkSetting").value("아이스 아메리카노"))
-                .andExpect(jsonPath("$.drinkNote").value("연하게"));
+                .andExpect(jsonPath("$[0].memberId").value(member.getId()))
+                .andExpect(jsonPath("$[0].branchId").value(1))
+                .andExpect(jsonPath("$[0].name").value("hong"))
+                .andExpect(jsonPath("$[0].certificationId").value(3))
+                .andExpect(jsonPath("$[0].drinkSetting").value("아이스 아메리카노"))
+                .andExpect(jsonPath("$[0].drinkNote").value("연하게"));
     }
 
     @Test
     @DisplayName("사전등록 사원 정보와 비밀번호가 유효하면 회원가입을 완료한다")
     void signup() throws Exception {
-        memberRepository.save(createPreRegisteredMember());
+        Member member = memberRepository.save(createPreRegisteredMember());
         String requestBody = """
                 {
-                  "name": "hong",
-                  "branchId": 1,
+                  "memberId": %d,
                   "password": "password123"
                 }
-                """;
+                """.formatted(member.getId());
 
         mockMvc.perform(post("/api/members/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,8 +108,7 @@ class MemberSignupTest {
     void signupWithInvalidPassword() throws Exception {
         String requestBody = """
                 {
-                  "name": "hong",
-                  "branchId": 1,
+                  "memberId": 1,
                   "password": " "
                 }
                 """;

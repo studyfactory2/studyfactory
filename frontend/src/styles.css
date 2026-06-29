@@ -111,6 +111,47 @@ button {
   gap: 16px;
 }
 
+.signup-candidate-list {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #dcecf1;
+  border-radius: var(--radius-md);
+  background: #f8fbfb;
+}
+
+.signup-candidate-list > strong {
+  color: var(--color-primary-dark);
+  font-size: 14px;
+}
+
+.signup-candidate-card {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #d7e5ea;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--color-text-main);
+  text-align: left;
+  cursor: pointer;
+}
+
+.signup-candidate-card:hover {
+  border-color: rgba(38, 126, 130, 0.5);
+  box-shadow: 0 8px 18px rgba(38, 126, 130, 0.12);
+}
+
+.signup-candidate-card span {
+  font-weight: 900;
+}
+
+.signup-candidate-card small {
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
 .field {
   display: grid;
   gap: 8px;

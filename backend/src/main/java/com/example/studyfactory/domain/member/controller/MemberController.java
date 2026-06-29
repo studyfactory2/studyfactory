@@ -62,7 +62,7 @@ public class MemberController {
     }
 
     @PostMapping("/pre-registration/verify")
-    public PreRegistrationVerifyResponse verifyPreRegistration(
+    public List<PreRegistrationVerifyResponse> verifyPreRegistration(
             @Valid @RequestBody PreRegistrationVerifyRequest request
     ) {
         return memberService.verifyPreRegistration(request);

@@ -46,6 +46,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("branchId") Long branchId
     );
 
+    List<Member> findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(String name, Long branchId);
+
     List<Member> findAllByOrderByIdAsc();
 
     List<Member> findByNameContainingOrderByIdAsc(String name);

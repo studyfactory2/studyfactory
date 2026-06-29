@@ -72,30 +72,28 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public PreRegistrationVerifyResponse verifyPreRegistration(PreRegistrationVerifyRequest request) {
-        Member member = findPreRegisteredMember(request.name().trim(), request.branchId());
-        BeveragePreference beveragePreference = beverageService.findLatestPreference(member);
+    public List<PreRegistrationVerifyResponse> verifyPreRegistration(PreRegistrationVerifyRequest request) {
+        List<Member> members = memberRepository.findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(
+                request.name().trim(),
+                request.branchId()
+        );
+        if (members.isEmpty()) {
+            throw MemberException.preRegistrationNotFound();
+        }
 
-        return PreRegistrationVerifyResponse.from(member, beveragePreference);
+        return members.stream()
+                .map(member -> PreRegistrationVerifyResponse.from(member, beverageService.findLatestPreference(member)))
+                .toList();
     }
 
     @Transactional
     public MemberSignupResponse signup(MemberSignupRequest request) {
-        Member member = findPreRegisteredMember(request.name().trim(), request.branchId());
+        Member member = findMember(request.memberId());
         validateNotSignedUp(member);
+        validateDuplicatedPassword(member, request.password());
         member.signup(request.password());
 
         return MemberSignupResponse.from(member);
-    }
-
-    private Member findPreRegisteredMember(String name, Long branchId) {
-        Member member = memberRepository.findByNameAndBranchId(name, branchId)
-                .orElseThrow(MemberException::preRegistrationNotFound);
-        if (member.getPassword() != null) {
-            throw MemberException.alreadySignedUp();
-        }
-
-        return member;
     }
 
     private Member findMember(Long memberId) {
@@ -128,6 +126,12 @@ public class MemberService {
 
     private void validateNotSignedUp(Member member) {
         if (member.getPassword() != null) {
+            throw MemberException.alreadySignedUp();
+        }
+    }
+
+    private void validateDuplicatedPassword(Member member, String password) {
+        if (memberRepository.existsByNameAndBranchIdAndPassword(member.getName(), member.getBranchId(), password)) {
             throw MemberException.alreadySignedUp();
         }
     }

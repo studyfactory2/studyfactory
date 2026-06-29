@@ -17,6 +17,7 @@ import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,12 +48,14 @@ class MemberServiceTest {
     void verifyPreRegistration() {
         Member member = createPreRegisteredMember();
         BeveragePreference beveragePreference = new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게");
-        given(memberRepository.findByNameAndBranchId("hong", 1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc("hong", 1L))
+                .willReturn(List.of(member));
         given(beverageService.findLatestPreference(member)).willReturn(beveragePreference);
 
-        PreRegistrationVerifyResponse response = memberService.verifyPreRegistration(
+        List<PreRegistrationVerifyResponse> responses = memberService.verifyPreRegistration(
                 new PreRegistrationVerifyRequest(" hong ", 1L)
         );
+        PreRegistrationVerifyResponse response = responses.get(0);
 
         assertThat(response.memberId()).isEqualTo(1L);
         assertThat(response.branchId()).isEqualTo(1L);
@@ -66,9 +69,10 @@ class MemberServiceTest {
     @DisplayName("사전등록된 사원에 비밀번호를 세팅해 회원가입을 완료한다")
     void signup() {
         Member member = createPreRegisteredMember();
-        given(memberRepository.findByNameAndBranchId("hong", 1L)).willReturn(Optional.of(member));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "password123")).willReturn(false);
 
-        MemberSignupResponse response = memberService.signup(new MemberSignupRequest(" hong ", 1L, "password123"));
+        MemberSignupResponse response = memberService.signup(new MemberSignupRequest(1L, "password123"));
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.branchId()).isEqualTo(1L);
@@ -81,7 +85,8 @@ class MemberServiceTest {
     @Test
     @DisplayName("일치하는 사전등록 사원 정보가 없으면 예외가 발생한다")
     void throwExceptionWhenPreRegistrationDoesNotExist() {
-        given(memberRepository.findByNameAndBranchId("hong", 1L)).willReturn(Optional.empty());
+        given(memberRepository.findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc("hong", 1L))
+                .willReturn(List.of());
 
         assertThatThrownBy(() -> memberService.verifyPreRegistration(new PreRegistrationVerifyRequest("hong", 1L)))
                 .isInstanceOf(MemberException.class)
@@ -92,9 +97,9 @@ class MemberServiceTest {
     @DisplayName("이미 비밀번호가 있는 사원을 가입하면 예외가 발생한다")
     void throwExceptionWhenAlreadySignedUp() {
         Member member = createRegisteredMember();
-        given(memberRepository.findByNameAndBranchId("hong", 1L)).willReturn(Optional.of(member));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
 
-        assertThatThrownBy(() -> memberService.signup(new MemberSignupRequest("hong", 1L, "password123")))
+        assertThatThrownBy(() -> memberService.signup(new MemberSignupRequest(1L, "password123")))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("이미 가입된 사원입니다.");
     }

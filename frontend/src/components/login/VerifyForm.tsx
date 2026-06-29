@@ -1,6 +1,6 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import { Dropdown } from '../common/Dropdown';
-import type { Branch } from '../../types/domain';
+import type { Branch, PreRegistrationVerifyResponse } from '../../types/domain';
 import type { LoginFormState } from '../../hooks/useLoginScreen';
 import { LoginField } from './LoginField';
 
@@ -10,9 +10,11 @@ type VerifyFormProps = {
   branches: Branch[];
   form: LoginFormState;
   loading: boolean;
+  verifiedMembers: PreRegistrationVerifyResponse[];
   onBranchDropdownToggle: () => void;
   onBranchSelect: (branchId: number) => void;
   onChange: (key: keyof LoginFormState) => (event: ChangeEvent<HTMLInputElement>) => void;
+  onCandidateSelect: (member: PreRegistrationVerifyResponse) => void;
   onLoginClick: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
@@ -23,9 +25,11 @@ export function VerifyForm({
   branches,
   form,
   loading,
+  verifiedMembers,
   onBranchDropdownToggle,
   onBranchSelect,
   onChange,
+  onCandidateSelect,
   onLoginClick,
   onSubmit,
 }: VerifyFormProps) {
@@ -64,6 +68,24 @@ export function VerifyForm({
       <button className="primary-button" type="submit" disabled={loading}>
         {loading ? '확인 중...' : '확인'}
       </button>
+      {verifiedMembers.length > 1 && (
+        <div className="signup-candidate-list">
+          <strong>가입할 사원 선택</strong>
+          {verifiedMembers.map((member) => (
+            <button
+              key={member.memberId}
+              className="signup-candidate-card"
+              type="button"
+              onClick={() => onCandidateSelect(member)}
+            >
+              <span>{member.displayName || member.name}</span>
+              <small>
+                좌석 {member.seatNumber || '미정'} · 입사예정일 {member.expectedJoinDate || '-'}
+              </small>
+            </button>
+          ))}
+        </div>
+      )}
       <button className="ghost-button" type="button" onClick={onLoginClick}>
         로그인으로 돌아가기
       </button>

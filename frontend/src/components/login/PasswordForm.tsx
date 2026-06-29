@@ -22,7 +22,7 @@ export function PasswordForm({ branches, form, loading, member, onBackClick, onC
       <div className="summary">
         <strong>가입 정보</strong>
         <dl>
-          <SummaryItem label="이름" value={member?.name} />
+          <SummaryItem label="이름" value={member?.displayName || member?.name} />
           <SummaryItem label="지점" value={branchName} />
           <SummaryItem label="좌석" value={member?.seatNumber} />
           <SummaryItem label="입사예정일" value={member?.expectedJoinDate} />

@@ -29,6 +29,7 @@ export function useLoginScreen() {
   const [mode, setMode] = useState<LoginMode>('login');
   const [form, setForm] = useState<LoginFormState>(INITIAL_FORM);
   const [verifiedMember, setVerifiedMember] = useState<PreRegistrationVerifyResponse | null>(null);
+  const [verifiedMembers, setVerifiedMembers] = useState<PreRegistrationVerifyResponse[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchLoading, setBranchLoading] = useState(false);
   const [branchLoaded, setBranchLoaded] = useState(false);
@@ -45,10 +46,17 @@ export function useLoginScreen() {
   }, [mode, branches.length, branchLoading, branchLoaded]);
 
   const changeForm = (key: keyof LoginFormState) => (event: ChangeEvent<HTMLInputElement>) => {
+    if (key === 'signupName') {
+      setVerifiedMember(null);
+      setVerifiedMembers([]);
+    }
+
     setForm((current) => ({ ...current, [key]: event.target.value }));
   };
 
   const selectBranch = (branchId: number) => {
+    setVerifiedMember(null);
+    setVerifiedMembers([]);
     setForm((current) => ({ ...current, signupBranchId: String(branchId) }));
     setBranchDropdownOpen(false);
   };
@@ -60,13 +68,22 @@ export function useLoginScreen() {
   const openLogin = () => {
     setMode('login');
     setBranchDropdownOpen(false);
+    setVerifiedMember(null);
+    setVerifiedMembers([]);
     setMessage(null);
   };
 
   const openVerify = () => {
     setMode('verify');
     setBranchDropdownOpen(false);
+    setVerifiedMember(null);
     setMessage(null);
+  };
+
+  const selectVerifiedMember = (member: PreRegistrationVerifyResponse) => {
+    setVerifiedMember(member);
+    setMode('password');
+    showMessage('사전등록 정보를 확인했습니다. 사용할 비밀번호를 설정해주세요.', 'success');
   };
 
   const loadBranches = async () => {
@@ -100,6 +117,8 @@ export function useLoginScreen() {
 
     setLoading(true);
     setMessage(null);
+    setVerifiedMember(null);
+    setVerifiedMembers([]);
     try {
       const tokens = await apiRequest<LoginResponse>('/api/auth/login', {
         method: 'POST',
@@ -142,16 +161,22 @@ export function useLoginScreen() {
     setLoading(true);
     setMessage(null);
     try {
-      const member = await apiRequest<PreRegistrationVerifyResponse>('/api/members/pre-registration/verify', {
+      const members = await apiRequest<PreRegistrationVerifyResponse[]>('/api/members/pre-registration/verify', {
         method: 'POST',
         body: JSON.stringify({
           name: form.signupName.trim(),
           branchId: Number(form.signupBranchId),
         }),
       });
-      setVerifiedMember(member);
-      setMode('password');
-      showMessage('사전등록 정보를 확인했습니다. 사용할 비밀번호를 설정해주세요.', 'success');
+      const membersWithDisplayName = withDisplayNames(members);
+      setVerifiedMembers(membersWithDisplayName);
+
+      if (membersWithDisplayName.length === 1) {
+        selectVerifiedMember(membersWithDisplayName[0]);
+        return;
+      }
+
+      showMessage('같은 이름의 사전등록 정보가 있습니다. 본인 정보를 선택해주세요.', 'info');
     } catch (error) {
       showMessage(error instanceof Error ? error.message : '사전등록 정보를 찾지 못했습니다.', 'error');
     } finally {
@@ -180,8 +205,7 @@ export function useLoginScreen() {
       await apiRequest<void>('/api/members/signup', {
         method: 'POST',
         body: JSON.stringify({
-          name: verifiedMember.name,
-          branchId: verifiedMember.branchId,
+          memberId: verifiedMember.memberId,
           password: form.signupPassword,
         }),
       });
@@ -193,6 +217,7 @@ export function useLoginScreen() {
         signupPasswordConfirm: '',
       }));
       setVerifiedMember(null);
+      setVerifiedMembers([]);
       setMode('login');
       showMessage('가입이 완료되었습니다! 로그인해 주세요.', 'success');
     } catch (error) {
@@ -217,7 +242,23 @@ export function useLoginScreen() {
     openLogin,
     openVerify,
     selectBranch,
+    selectVerifiedMember,
     setBranchDropdownOpen,
     verifiedMember,
+    verifiedMembers,
   };
+}
+
+function withDisplayNames(members: PreRegistrationVerifyResponse[]) {
+  const nameCounts = new Map<string, number>();
+
+  return members.map((member) => {
+    const order = (nameCounts.get(member.name) || 0) + 1;
+    nameCounts.set(member.name, order);
+
+    return {
+      ...member,
+      displayName: order === 1 ? member.name : `${member.name}${order}`,
+    };
+  });
 }

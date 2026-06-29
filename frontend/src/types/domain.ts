@@ -28,6 +28,20 @@ export type TokenPayload = {
 };
 
 export type PreRegistrationVerifyResponse = {
+  memberId: number;
+  branchId: number;
+  name: string;
+  displayName?: string;
+  role: MemberRole;
+  seatNumber?: number | null;
+  expectedJoinDate?: string;
+  certificationId?: number | null;
+  drinkSetting?: string | null;
+  drinkNote?: string | null;
+  memberNote?: string | null;
+};
+
+export type PreRegistrationResponse = {
   id: number;
   branchId: number;
   name: string;
@@ -38,9 +52,6 @@ export type PreRegistrationVerifyResponse = {
   drinkSetting?: string | null;
   drinkNote?: string | null;
   memberNote?: string | null;
-};
-
-export type PreRegistrationResponse = PreRegistrationVerifyResponse & {
   createdAt: string;
   updatedAt: string;
 };
