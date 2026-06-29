@@ -82,9 +82,9 @@ jq \
           }]
       )
   | .Origins.Quantity = (.Origins.Items | length)
-  | .OrderedCacheBehaviors.Items =
+  | .CacheBehaviors.Items =
       (
-        (.OrderedCacheBehaviors.Items // [])
+        (.CacheBehaviors.Items // [])
         | map(select(.PathPattern != "/api/*"))
         | [{
             PathPattern: "/api/*",
@@ -119,7 +119,7 @@ jq \
             OriginRequestPolicyId: $originRequestPolicyId
           }] + .
       )
-  | .OrderedCacheBehaviors.Quantity = (.OrderedCacheBehaviors.Items | length)
+  | .CacheBehaviors.Quantity = (.CacheBehaviors.Items | length)
   ' "${workdir}/distribution.json" > "${workdir}/config.json"
 
 aws cloudfront update-distribution \
