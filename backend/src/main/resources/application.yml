@@ -2,7 +2,7 @@ spring:
   application:
     name: studyfactory
   datasource:
-    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5433}/${DB_NAME:studyfactory}
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:studyfactory}
     username: ${DB_USERNAME:studyfactory}
     password: ${DB_PASSWORD:studyfactory}
     driver-class-name: org.postgresql.Driver

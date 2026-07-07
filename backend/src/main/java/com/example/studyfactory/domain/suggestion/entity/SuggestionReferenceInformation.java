@@ -25,4 +25,12 @@ public class SuggestionReferenceInformation {
         this.branchId = branchId;
         this.resolvedByMemberId = resolvedByMemberId;
     }
+
+    public void resolveBy(Long memberId) {
+        this.resolvedByMemberId = memberId;
+    }
+
+    public void clearResolver() {
+        this.resolvedByMemberId = null;
+    }
 }

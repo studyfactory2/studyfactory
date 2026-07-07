@@ -9,6 +9,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,5 +38,10 @@ public class SuggestionController {
     @GetMapping
     public List<SuggestionResponse> findAll(@CurrentMember Long memberId) {
         return suggestionService.findAll();
+    }
+
+    @PatchMapping("/{suggestionId}/resolve")
+    public SuggestionResponse resolve(@CurrentMember Long memberId, @PathVariable Long suggestionId) {
+        return suggestionService.resolve(memberId, suggestionId);
     }
 }

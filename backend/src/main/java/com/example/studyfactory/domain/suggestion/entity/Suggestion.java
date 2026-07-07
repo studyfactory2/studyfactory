@@ -64,4 +64,23 @@ public class Suggestion extends BaseEntity {
     public boolean isResolved() {
         return isResolved;
     }
+
+    public void resolve(Long memberId) {
+        referenceInformation.resolveBy(memberId);
+        isResolved = true;
+    }
+
+    public void unresolve() {
+        referenceInformation.clearResolver();
+        isResolved = false;
+    }
+
+    public void toggleResolve(Long memberId) {
+        if (isResolved) {
+            unresolve();
+            return;
+        }
+
+        resolve(memberId);
+    }
 }

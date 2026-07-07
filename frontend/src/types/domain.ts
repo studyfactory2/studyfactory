@@ -76,8 +76,10 @@ export type SuggestionCategory = 'SUPPLIES' | 'STUDY' | 'GENERAL' | 'COUNSELING'
 export type SuggestionResponse = {
   id: number;
   memberId: number;
+  memberName?: string | null;
   branchId: number;
   resolvedByMemberId?: number | null;
+  resolvedByMemberName?: string | null;
   category: SuggestionCategory;
   content: string;
   isResolved: boolean;

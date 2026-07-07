@@ -136,7 +136,7 @@ export function useLoginScreen() {
       localStorage.setItem('memberRole', payload.role || '');
 
       if (payload.role === 'ADMIN') {
-        window.location.href = '/managerdashboard?view=grid';
+        window.location.href = '/managerdashboard?view=attendance';
         return;
       }
       if (payload.role === 'STAFF') {

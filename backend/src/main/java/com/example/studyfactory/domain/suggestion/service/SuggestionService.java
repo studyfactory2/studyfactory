@@ -8,7 +8,9 @@ import com.example.studyfactory.domain.suggestion.dto.SuggestionResponse;
 import com.example.studyfactory.domain.suggestion.entity.Suggestion;
 import com.example.studyfactory.domain.suggestion.entity.SuggestionReferenceInformation;
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,9 +47,41 @@ public class SuggestionService {
 
     @Transactional(readOnly = true)
     public List<SuggestionResponse> findAll() {
-        return suggestionRepository.findAllByOrderByCreatedAtDesc()
-                .stream()
-                .map(SuggestionResponse::from)
+        List<Suggestion> suggestions = suggestionRepository.findAllByOrderByCreatedAtDesc();
+        Map<Long, String> memberNames = findMemberNames(suggestions);
+
+        return suggestions.stream()
+                .map(suggestion -> SuggestionResponse.from(
+                        suggestion,
+                        memberNames.get(suggestion.getMemberId()),
+                        memberNames.get(suggestion.getResolvedByMemberId())
+                ))
                 .toList();
+    }
+
+    @Transactional
+    public SuggestionResponse resolve(Long currentMemberId, Long suggestionId) {
+        Member currentMember = memberRepository.findById(currentMemberId).orElseThrow(MemberException::memberNotFound);
+        Suggestion suggestion = suggestionRepository.findById(suggestionId).orElseThrow(MemberException::forbidden);
+        suggestion.toggleResolve(currentMember.getId());
+
+        String memberName = memberRepository.findById(suggestion.getMemberId())
+                .map(Member::getName)
+                .orElse(null);
+        String resolvedByMemberName = suggestion.isResolved() ? currentMember.getName() : null;
+
+        return SuggestionResponse.from(suggestion, memberName, resolvedByMemberName);
+    }
+
+    private Map<Long, String> findMemberNames(List<Suggestion> suggestions) {
+        List<Long> memberIds = suggestions.stream()
+                .flatMap(suggestion -> java.util.stream.Stream.of(suggestion.getMemberId(), suggestion.getResolvedByMemberId()))
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> memberNames = new HashMap<>();
+        memberRepository.findAllById(memberIds).forEach(member -> memberNames.put(member.getId(), member.getName()));
+
+        return memberNames;
     }
 }

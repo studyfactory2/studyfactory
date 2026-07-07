@@ -8,6 +8,9 @@ const STRONG_DIVIDER_SEATS = new Set([8, 18, 23, 28, 33, 38, 43, 48, 53, 59, 63,
 const SOFT_DIVIDER_SEATS = new Set([10, 12, 14, 16, 51]);
 const ROOM_END_DIVIDER_SEATS = new Set([55]);
 const BOTTOM_DIVIDER_SEATS = new Set([102]);
+const SHADED_NAME_SEATS = new Set([8, 9, 11, 14, 15, 16, 17]);
+const DARK_SHADED_NAME_SEATS = new Set([53, 54]);
+const ALERT_SHADED_NAME_SEATS = new Set([83]);
 type SelectedSlot = {
   memberId: number;
   name: string;
@@ -65,7 +68,14 @@ export function StaffAttendancePanel() {
     return new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
   }), [todos]);
   const todoCount = useMemo(() => todoItems.filter((item) => !item.completed).length, [todoItems]);
-  const suggestionItems = useMemo(() => suggestions.filter((suggestion) => !suggestion.isResolved), [suggestions]);
+  const suggestionItems = useMemo(() => [...suggestions].sort((first, second) => {
+    if (first.isResolved !== second.isResolved) {
+      return Number(first.isResolved) - Number(second.isResolved);
+    }
+
+    return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+  }), [suggestions]);
+  const unresolvedSuggestionCount = useMemo(() => suggestionItems.filter((suggestion) => !suggestion.isResolved).length, [suggestionItems]);
   const otherCalendar = useMemo(() => createMonthCalendar(otherDate), [otherDate]);
   const lunchSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'LUNCH'), [sideDishes]);
   const dinnerSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'DINNER'), [sideDishes]);
@@ -127,6 +137,15 @@ export function StaffAttendancePanel() {
       setSuggestions(response);
     } catch {
       setSuggestions([]);
+    }
+  };
+
+  const resolveSuggestion = async (suggestionId: number) => {
+    try {
+      const response = await apiRequest<SuggestionResponse>(`/api/suggestions/${suggestionId}/resolve`, { method: 'PATCH' });
+      setSuggestions((current) => current.map((suggestion) => suggestion.id === suggestionId ? response : suggestion));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '회원건의를 완료 처리하지 못했습니다.');
     }
   };
 
@@ -438,7 +457,7 @@ export function StaffAttendancePanel() {
       <div className="staff-attendance-actions">
         <button className="suggestion-tag" type="button" disabled={suggestionItems.length === 0} onClick={() => setSuggestionModalOpen(true)}>
           회원건의
-          {suggestionItems.length > 0 && <b>{suggestionItems.length}</b>}
+          {unresolvedSuggestionCount > 0 && <b>{unresolvedSuggestionCount}</b>}
         </button>
         <button className="meal-tag" type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>반찬신청</button>
         <button className="todo-tag" type="button" onClick={() => setTodoModalOpen(true)}>
@@ -479,6 +498,7 @@ export function StaffAttendancePanel() {
                 const rowClasses = [
                   row.seatNumber == null ? 'unassigned-row' : emptySeat ? 'empty-seat-row' : '',
                   getDividerClassName(row.seatNumber),
+                  getNameCellColorClassName(row.seatNumber),
                   row.seatNumber && BOTTOM_DIVIDER_SEATS.has(row.seatNumber) ? 'bottom-divider-row' : '',
                 ].filter(Boolean);
                 const rowClassName = rowClasses.join(' ');
@@ -678,13 +698,24 @@ export function StaffAttendancePanel() {
             </header>
             <div className="attendance-suggestion-list">
               {suggestionItems.map((suggestion) => (
-                <article className="attendance-suggestion-card" key={suggestion.id}>
-                  <div>
-                    <strong>{toSuggestionMemberName(suggestion.memberId, board)}</strong>
-                    <span>{getSuggestionCategoryLabel(suggestion.category)}</span>
+                <article className={`attendance-suggestion-card${suggestion.isResolved ? ' resolved' : ''}`} key={suggestion.id}>
+                  <button
+                    className="attendance-suggestion-check"
+                    type="button"
+                    aria-label={`${suggestion.content} ${suggestion.isResolved ? '완료 해제' : '완료 처리'}`}
+                    onClick={() => resolveSuggestion(suggestion.id)}
+                  >
+                    {suggestion.isResolved ? '✓' : ''}
+                  </button>
+                  <div className="attendance-suggestion-body">
+                    <p>
+                      <b>[{getSuggestionCategoryLabel(suggestion.category)}]</b>
+                      <span>{suggestion.content}</span>
+                    </p>
+                    <small>
+                      요청:{getSuggestionRequesterName(suggestion, board)} / 완료: {getSuggestionResolverName(suggestion, board)}
+                    </small>
                   </div>
-                  <p>{suggestion.content}</p>
-                  <time>{formatSuggestionDate(suggestion.createdAt)}</time>
                 </article>
               ))}
             </div>
@@ -958,16 +989,6 @@ function formatTodoReplyDate(date?: string | null) {
   return `${month}. ${day}. ${period} ${hour}:${minute}`;
 }
 
-function formatSuggestionDate(date: string) {
-  const parsed = new Date(date);
-  const month = String(parsed.getMonth() + 1).padStart(2, '0');
-  const day = String(parsed.getDate()).padStart(2, '0');
-  const hour = String(parsed.getHours()).padStart(2, '0');
-  const minute = String(parsed.getMinutes()).padStart(2, '0');
-
-  return `${month}.${day} ${hour}:${minute}`;
-}
-
 function getSuggestionCategoryLabel(category: SuggestionResponse['category']) {
   const labels: Record<SuggestionResponse['category'], string> = {
     SUPPLIES: '비품',
@@ -977,6 +998,26 @@ function getSuggestionCategoryLabel(category: SuggestionResponse['category']) {
   };
 
   return labels[category];
+}
+
+function getSuggestionRequesterName(suggestion: SuggestionResponse, board: DailyAttendanceBoardResponse | null) {
+  return suggestion.memberName || toSuggestionMemberName(suggestion.memberId, board);
+}
+
+function getSuggestionResolverName(suggestion: SuggestionResponse, board: DailyAttendanceBoardResponse | null) {
+  if (!suggestion.isResolved) {
+    return '-';
+  }
+
+  if (suggestion.resolvedByMemberName) {
+    return suggestion.resolvedByMemberName;
+  }
+
+  if (suggestion.resolvedByMemberId) {
+    return toSuggestionMemberName(suggestion.resolvedByMemberId, board);
+  }
+
+  return '-';
 }
 
 function toSuggestionMemberName(memberId: number, board: DailyAttendanceBoardResponse | null) {
@@ -1037,6 +1078,23 @@ function getDividerClassName(seatNumber?: number | null) {
   }
   if (SOFT_DIVIDER_SEATS.has(seatNumber)) {
     return 'soft-divider-row';
+  }
+
+  return '';
+}
+
+function getNameCellColorClassName(seatNumber?: number | null) {
+  if (!seatNumber) {
+    return '';
+  }
+  if (ALERT_SHADED_NAME_SEATS.has(seatNumber)) {
+    return 'alert-name-cell-row';
+  }
+  if (DARK_SHADED_NAME_SEATS.has(seatNumber)) {
+    return 'dark-shaded-name-cell-row';
+  }
+  if (SHADED_NAME_SEATS.has(seatNumber)) {
+    return 'shaded-name-cell-row';
   }
 
   return '';
