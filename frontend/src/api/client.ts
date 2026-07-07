@@ -30,8 +30,8 @@ async function resolveErrorMessage(response: Response): Promise<string> {
   }
 
   try {
-    const error = JSON.parse(message) as { message?: string; reason?: string; error?: string };
-    return error.message || error.reason || error.error || fallbackMessage;
+    const error = JSON.parse(message) as { message?: string; reason?: string; detail?: string; error?: string };
+    return error.message || error.reason || error.detail || error.error || fallbackMessage;
   } catch {
     return message;
   }

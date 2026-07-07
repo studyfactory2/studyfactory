@@ -35,6 +35,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("password") String password
     );
 
+    boolean existsByName(String name);
+
     @Query("""
             select m
             from Member m
