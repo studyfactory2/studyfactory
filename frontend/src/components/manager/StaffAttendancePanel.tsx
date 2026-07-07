@@ -4,6 +4,10 @@ import type { Branch, DailyAttendanceBoardResponse, DailySideDishResponse, MealT
 
 const SLOT_LABELS = [1, 2, 3, 4, 5, 6, 7];
 const OTHER_REASON_OPTIONS = ['지각', '조회', '외출', '이동', '시험', '컨디션'];
+const STRONG_DIVIDER_SEATS = new Set([8, 18, 23, 28, 33, 38, 43, 48, 53, 59, 63, 67, 71, 75, 80, 83, 84, 88, 91, 94, 97, 100]);
+const SOFT_DIVIDER_SEATS = new Set([10, 12, 14, 16, 51]);
+const ROOM_END_DIVIDER_SEATS = new Set([55]);
+const BOTTOM_DIVIDER_SEATS = new Set([102]);
 type SelectedSlot = {
   memberId: number;
   name: string;
@@ -437,7 +441,7 @@ export function StaffAttendancePanel() {
           {suggestionItems.length > 0 && <b>{suggestionItems.length}</b>}
         </button>
         <button className="meal-tag" type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>반찬신청</button>
-        <button className="todo-tag" type="button" disabled={todoCount === 0} onClick={() => setTodoModalOpen(true)}>
+        <button className="todo-tag" type="button" onClick={() => setTodoModalOpen(true)}>
           할일목록
           {todoCount > 0 && <b>{todoCount}</b>}
         </button>
@@ -472,7 +476,12 @@ export function StaffAttendancePanel() {
             <tbody>
               {filteredRows.map((row) => {
                 const emptySeat = row.name === '공석';
-                const rowClassName = row.seatNumber == null ? 'unassigned-row' : emptySeat ? 'empty-seat-row' : '';
+                const rowClasses = [
+                  row.seatNumber == null ? 'unassigned-row' : emptySeat ? 'empty-seat-row' : '',
+                  getDividerClassName(row.seatNumber),
+                  row.seatNumber && BOTTOM_DIVIDER_SEATS.has(row.seatNumber) ? 'bottom-divider-row' : '',
+                ].filter(Boolean);
+                const rowClassName = rowClasses.join(' ');
                 const joinDateRow = isJoinDateRow(row);
 
                 return (
@@ -1014,6 +1023,23 @@ function toStatusClassName(status: string, emptySeat: boolean) {
   }
 
   return 'status-leave';
+}
+
+function getDividerClassName(seatNumber?: number | null) {
+  if (!seatNumber) {
+    return '';
+  }
+  if (ROOM_END_DIVIDER_SEATS.has(seatNumber)) {
+    return 'room-end-divider-row';
+  }
+  if (STRONG_DIVIDER_SEATS.has(seatNumber)) {
+    return 'strong-divider-row';
+  }
+  if (SOFT_DIVIDER_SEATS.has(seatNumber)) {
+    return 'soft-divider-row';
+  }
+
+  return '';
 }
 
 function toTodoSourceLabel(todo: TodoResponse) {

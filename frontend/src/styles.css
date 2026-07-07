@@ -5373,6 +5373,23 @@ button.beverage-serving-cell:disabled {
   border-bottom: 0;
 }
 
+.staff-attendance-table tbody tr.soft-divider-row td {
+  border-top: 2px solid #a0aec0;
+}
+
+.staff-attendance-table tbody tr.strong-divider-row td {
+  border-top: 4px solid #718096;
+}
+
+.staff-attendance-table tbody tr.room-end-divider-row td {
+  border-top: 6px solid #267e82;
+}
+
+.staff-attendance-table tbody tr.bottom-divider-row td,
+.staff-attendance-table tbody tr.bottom-divider-row:last-child td {
+  border-bottom: 6px solid #267e82;
+}
+
 .staff-attendance-table .unassigned-row td {
   background: #fff;
   color: #71818a;
