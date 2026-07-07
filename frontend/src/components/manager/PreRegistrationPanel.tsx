@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { apiRequest } from '../../api/client';
 import { Dropdown, type DropdownOption } from '../common/Dropdown';
-import type { Branch, MemberRole, Certification, PreRegistrationResponse } from '../../types/domain';
+import type { Branch, MemberRole, Certification, MemberResponse, PreRegistrationResponse } from '../../types/domain';
 
 type PreRegistrationPanelProps = {
   branches: Branch[];
@@ -22,6 +22,7 @@ type PreRegistrationFormState = {
 };
 
 const FALLBACK_BRANCH: Branch = { id: 1, name: '망미점' };
+const MAX_SEAT_NUMBER = 102;
 const ROLE_OPTIONS: Array<{ value: MemberRole; label: string }> = [
   { value: 'MEMBER', label: '회원' },
   { value: 'STAFF', label: '스탭' },
@@ -52,6 +53,9 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
   const [editingSubmitting, setEditingSubmitting] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
+  const [seatOpen, setSeatOpen] = useState(false);
+  const [editSeatOpen, setEditSeatOpen] = useState(false);
+  const [membersByBranchId, setMembersByBranchId] = useState<Record<string, MemberResponse[]>>({});
 
   useEffect(() => {
     if (selectedBranchId || branchOptions.length === 0) {
@@ -65,8 +69,44 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     void loadPendingMembers();
   }, []);
 
+  useEffect(() => {
+    if (!selectedBranchId) {
+      return;
+    }
+
+    void loadBranchMembers(selectedBranchId);
+  }, [selectedBranchId]);
+
+  useEffect(() => {
+    if (!editDraft?.branchId) {
+      return;
+    }
+
+    void loadBranchMembers(editDraft.branchId);
+  }, [editDraft?.branchId]);
+
   const selectedBranch = branchOptions.find((branch) => String(branch.id) === selectedBranchId) || branchOptions[0];
   const selectedRoleOption = ROLE_OPTIONS.find((role) => role.value === selectedRole) || ROLE_OPTIONS[0];
+  const availableSeatOptions = useMemo(() => {
+    return toAvailableSeatOptions(membersByBranchId[selectedBranchId] || []);
+  }, [membersByBranchId, selectedBranchId]);
+  const editAvailableSeatOptions = useMemo(() => {
+    if (!editDraft) {
+      return [];
+    }
+
+    return toAvailableSeatOptions(membersByBranchId[editDraft.branchId] || [], editingMemberId);
+  }, [editDraft, editingMemberId, membersByBranchId]);
+
+  const loadBranchMembers = async (branchId: string) => {
+    try {
+      const params = new URLSearchParams({ branchId });
+      const responses = await apiRequest<MemberResponse[]>(`/api/members?${params.toString()}`);
+      setMembersByBranchId((current) => ({ ...current, [branchId]: responses }));
+    } catch {
+      setMembersByBranchId((current) => ({ ...current, [branchId]: [] }));
+    }
+  };
 
   const loadPendingMembers = async () => {
     setPendingLoading(true);
@@ -108,6 +148,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
       resetCreateForm();
       setModalMessage('사전 사원등록이 완료되었습니다.');
       await loadPendingMembers();
+      await loadBranchMembers(selectedBranchId);
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '사전 사원등록에 실패했습니다.' });
     } finally {
@@ -145,6 +186,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
 
     setEditingSubmitting(true);
     setMessage(null);
+    const editedBranchId = editDraft.branchId;
     try {
       await apiRequest<PreRegistrationResponse>(`/api/pre-registrations/${memberId}`, {
         method: 'PATCH',
@@ -153,6 +195,10 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
       resetInlineEdit();
       setModalMessage('사전 사원등록이 수정되었습니다.');
       await loadPendingMembers();
+      await loadBranchMembers(editedBranchId);
+      if (editedBranchId !== selectedBranchId) {
+        await loadBranchMembers(selectedBranchId);
+      }
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '사전 사원등록 수정에 실패했습니다.' });
     } finally {
@@ -166,6 +212,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     }
 
     setMessage(null);
+    const deletedBranchId = String(deleteTarget.branchId);
     try {
       await apiRequest<void>(`/api/pre-registrations/${deleteTarget.id}`, {
         method: 'DELETE',
@@ -176,6 +223,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
         resetInlineEdit();
       }
       await loadPendingMembers();
+      await loadBranchMembers(deletedBranchId);
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '사전 사원등록 삭제에 실패했습니다.' });
     }
@@ -208,6 +256,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setEditDraft(null);
     setEditBranchOpen(false);
     setEditRoleOpen(false);
+    setEditSeatOpen(false);
   };
 
   const changeEditDraft = (field: keyof PreRegistrationFormState, value: string) => {
@@ -240,6 +289,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
             onToggle={() => {
               setBranchOpen((current) => !current);
               setRoleOpen(false);
+              setSeatOpen(false);
             }}
             onSelect={(value) => {
               setSelectedBranchId(value);
@@ -258,6 +308,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
             onToggle={() => {
               setRoleOpen((current) => !current);
               setBranchOpen(false);
+              setSeatOpen(false);
             }}
             onSelect={(value) => {
               setSelectedRole(value as MemberRole);
@@ -269,14 +320,22 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
           <span>이름 (로그인 ID)</span>
           <input type="text" placeholder="이름을 입력하여 주세요." value={name} onChange={(event) => setName(event.target.value)} />
         </label>
-        <label>
+        <label className="full-field">
           <span>좌석 번호</span>
-          <input
-            type="number"
-            min="1"
-            placeholder="번호"
+          <SeatNumberField
             value={seatNumber}
-            onChange={(event) => setSeatNumber(event.target.value.replace(/[^0-9]/g, ''))}
+            open={seatOpen}
+            options={availableSeatOptions}
+            onChange={setSeatNumber}
+            onToggle={() => {
+              setSeatOpen((current) => !current);
+              setBranchOpen(false);
+              setRoleOpen(false);
+            }}
+            onSelect={(value) => {
+              setSeatNumber(value);
+              setSeatOpen(false);
+            }}
           />
         </label>
         <label>
@@ -346,6 +405,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                         onToggle={() => {
                           setEditBranchOpen((current) => !current);
                           setEditRoleOpen(false);
+                          setEditSeatOpen(false);
                         }}
                         onSelect={(value) => {
                           changeEditDraft('branchId', value);
@@ -364,6 +424,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                         onToggle={() => {
                           setEditRoleOpen((current) => !current);
                           setEditBranchOpen(false);
+                          setEditSeatOpen(false);
                         }}
                         onSelect={(value) => {
                           changeEditDraft('role', value);
@@ -375,12 +436,22 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                       <span>이름 (로그인 ID)</span>
                       <input value={editDraft.name} onChange={(event) => changeEditDraft('name', event.target.value)} />
                     </label>
-                    <label>
+                    <label className="full-field">
                       <span>좌석 번호</span>
-                      <input
-                        inputMode="numeric"
+                      <SeatNumberField
                         value={editDraft.seatNumber}
-                        onChange={(event) => changeEditDraft('seatNumber', event.target.value.replace(/[^0-9]/g, ''))}
+                        open={editSeatOpen}
+                        options={editAvailableSeatOptions}
+                        onChange={(value) => changeEditDraft('seatNumber', value)}
+                        onToggle={() => {
+                          setEditSeatOpen((current) => !current);
+                          setEditBranchOpen(false);
+                          setEditRoleOpen(false);
+                        }}
+                        onSelect={(value) => {
+                          changeEditDraft('seatNumber', value);
+                          setEditSeatOpen(false);
+                        }}
                       />
                     </label>
                     <label>
@@ -462,6 +533,58 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
 
 function toBranchOptions(branches: Branch[]): DropdownOption[] {
   return branches.map((branch) => ({ value: String(branch.id), label: branch.name }));
+}
+
+function toAvailableSeatOptions(members: MemberResponse[], excludeMemberId?: number | null): DropdownOption[] {
+  const assignedSeats = new Set<number>();
+  members.forEach((member) => {
+    if (excludeMemberId && member.id === excludeMemberId) {
+      return;
+    }
+    if (member.seatNumber && member.seatNumber > 0) {
+      assignedSeats.add(member.seatNumber);
+    }
+  });
+
+  return Array.from({ length: MAX_SEAT_NUMBER }, (_, index) => index + 1)
+    .filter((seatNumber) => !assignedSeats.has(seatNumber))
+    .map((seatNumber) => ({ value: String(seatNumber), label: `${seatNumber}번` }));
+}
+
+type SeatNumberFieldProps = {
+  value: string;
+  open: boolean;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+  onSelect: (value: string) => void;
+  onToggle: () => void;
+};
+
+function SeatNumberField({ value, open, options, onChange, onSelect, onToggle }: SeatNumberFieldProps) {
+  const selectedOption = value ? { value, label: `${value}번` } : { value: '', label: options.length > 0 ? '빈 좌석 선택' : '빈 좌석 없음' };
+
+  return (
+    <div className="seat-number-field">
+      <input
+        inputMode="numeric"
+        min="1"
+        placeholder="번호 직접 입력"
+        value={value}
+        onChange={(event) => onChange(event.target.value.replace(/[^0-9]/g, ''))}
+      />
+      <Dropdown
+        classNamePrefix="form-dropdown"
+        disabled={options.length === 0}
+        label="빈 좌석"
+        open={open}
+        options={options}
+        placeholderClass={!value}
+        selectedOption={selectedOption}
+        onToggle={onToggle}
+        onSelect={onSelect}
+      />
+    </div>
+  );
 }
 
 function findBranchName(branches: Branch[], branchId: number) {

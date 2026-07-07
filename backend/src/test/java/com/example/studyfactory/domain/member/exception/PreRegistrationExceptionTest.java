@@ -26,4 +26,13 @@ class PreRegistrationExceptionTest {
         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(exception.getReason()).isEqualTo("존재하지 않는 자격증입니다.");
     }
+
+    @Test
+    @DisplayName("이미 배정된 좌석 예외를 생성한다")
+    void createSeatAlreadyAssignedException() {
+        PreRegistrationException exception = PreRegistrationException.seatAlreadyAssigned();
+
+        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(exception.getReason()).isEqualTo("이미 배정된 좌석입니다. 다른 좌석을 선택해주세요.");
+    }
 }

@@ -2,6 +2,7 @@ package com.example.studyfactory.domain.member.service;
 
 import static org.mockito.BDDMockito.then;
 
+import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceNoteRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
@@ -33,6 +34,9 @@ class MemberDeletionCleanupServiceTest {
 
     @Mock
     private AttendanceRepository attendanceRepository;
+
+    @Mock
+    private AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
 
     @Mock
     private AttendanceNoteRepository attendanceNoteRepository;
@@ -71,6 +75,8 @@ class MemberDeletionCleanupServiceTest {
 
         then(beverageService).should().deleteAllByMemberId(1L);
         then(attendanceRepository).should().deleteByReferenceInformationMemberId(1L);
+        then(attendanceDailyInitializationRepository).should().deleteByMemberId(1L);
+        then(attendanceDailyInitializationRepository).should().deleteByInitializedByMemberId(1L);
         then(attendanceNoteRepository).should().deleteByCreatedByMemberId(1L);
         then(leaveRequestRepository).should().deleteByMemberId(1L);
         then(specialLeaveRepository).should().deleteByMemberId(1L);

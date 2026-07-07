@@ -62,8 +62,8 @@ public class PreRegistrationService {
 
     @Transactional
     public PreRegistrationResponse update(Long memberId, PreRegistrationCreateRequest request) {
-        validateRequest(request);
         Member member = findPendingMember(memberId);
+        validateUpdateRequest(member.getId(), request);
         Long certificationId = getCertificationId(request);
         member.updatePreRegistration(
                 request.branchId(),
@@ -89,6 +89,32 @@ public class PreRegistrationService {
     private void validateRequest(PreRegistrationCreateRequest request) {
         if (!branchRepository.existsById(request.branchId())) {
             throw PreRegistrationException.invalidBranch();
+        }
+        validateSeatAvailable(request.branchId(), request.seatNumber());
+    }
+
+    private void validateUpdateRequest(Long memberId, PreRegistrationCreateRequest request) {
+        if (!branchRepository.existsById(request.branchId())) {
+            throw PreRegistrationException.invalidBranch();
+        }
+        validateSeatAvailable(memberId, request.branchId(), request.seatNumber());
+    }
+
+    private void validateSeatAvailable(Long branchId, Integer seatNumber) {
+        if (seatNumber == null) {
+            return;
+        }
+        if (memberRepository.existsAssignedSeat(branchId, seatNumber)) {
+            throw PreRegistrationException.seatAlreadyAssigned();
+        }
+    }
+
+    private void validateSeatAvailable(Long memberId, Long branchId, Integer seatNumber) {
+        if (seatNumber == null) {
+            return;
+        }
+        if (memberRepository.existsAssignedSeat(branchId, seatNumber, memberId)) {
+            throw PreRegistrationException.seatAlreadyAssigned();
         }
     }
 

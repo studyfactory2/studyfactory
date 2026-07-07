@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.member.service;
 
+import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceNoteRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
@@ -21,6 +22,7 @@ public class MemberDeletionCleanupService {
 
     private final BeverageService beverageService;
     private final AttendanceRepository attendanceRepository;
+    private final AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
     private final AttendanceNoteRepository attendanceNoteRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final SpecialLeaveRepository specialLeaveRepository;
@@ -35,6 +37,8 @@ public class MemberDeletionCleanupService {
     public void cleanup(Long memberId) {
         beverageService.deleteAllByMemberId(memberId);
         attendanceRepository.deleteByReferenceInformationMemberId(memberId);
+        attendanceDailyInitializationRepository.deleteByMemberId(memberId);
+        attendanceDailyInitializationRepository.deleteByInitializedByMemberId(memberId);
         attendanceNoteRepository.deleteByCreatedByMemberId(memberId);
         leaveRequestRepository.deleteByMemberId(memberId);
         specialLeaveRepository.deleteByMemberId(memberId);

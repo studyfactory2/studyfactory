@@ -65,6 +65,17 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             from Member m
             where m.referenceInformation.branchId = :branchId
               and m.workInformation.seatNumber = :seatNumber
+            """)
+    boolean existsAssignedSeat(
+            @Param("branchId") Long branchId,
+            @Param("seatNumber") Integer seatNumber
+    );
+
+    @Query("""
+            select count(m) > 0
+            from Member m
+            where m.referenceInformation.branchId = :branchId
+              and m.workInformation.seatNumber = :seatNumber
               and m.id <> :memberId
             """)
     boolean existsAssignedSeat(

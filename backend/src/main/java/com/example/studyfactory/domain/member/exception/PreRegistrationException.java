@@ -20,4 +20,8 @@ public class PreRegistrationException extends BaseException {
     public static PreRegistrationException requiredCertification() {
         return new PreRegistrationException(HttpStatus.BAD_REQUEST, "자격증은 필수입니다.");
     }
+
+    public static PreRegistrationException seatAlreadyAssigned() {
+        return new PreRegistrationException(HttpStatus.CONFLICT, "이미 배정된 좌석입니다. 다른 좌석을 선택해주세요.");
+    }
 }

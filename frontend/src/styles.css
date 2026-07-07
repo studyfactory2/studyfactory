@@ -4712,6 +4712,28 @@ button.beverage-serving-cell:disabled {
   position: relative;
 }
 
+.seat-number-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(126px, 0.72fr);
+  gap: 8px;
+}
+
+.seat-number-field .form-dropdown-button {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.seat-number-field .form-dropdown-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seat-number-field .form-dropdown-menu {
+  max-height: 214px;
+  overflow-y: auto;
+}
+
 .form-dropdown-button {
   padding-right: 38px;
   cursor: pointer;

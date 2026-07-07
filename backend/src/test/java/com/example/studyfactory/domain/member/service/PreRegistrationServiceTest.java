@@ -158,6 +158,19 @@ class PreRegistrationServiceTest {
                 .hasMessageContaining("존재하지 않는 지점입니다.");
     }
 
+    @Test
+    @DisplayName("이미 배정된 좌석으로 사전등록하면 예외가 발생한다")
+    void throwExceptionWhenSeatAlreadyAssigned() {
+        PreRegistrationCreateRequest request = createRequest();
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(memberRepository.existsAssignedSeat(1L, 12)).willReturn(true);
+
+        assertThatThrownBy(() -> preRegistrationService.create(request))
+                .isInstanceOf(PreRegistrationException.class)
+                .hasMessageContaining("이미 배정된 좌석입니다. 다른 좌석을 선택해주세요.");
+        then(memberRepository).should(never()).save(any(Member.class));
+    }
+
     private PreRegistrationCreateRequest createRequest() {
         return new PreRegistrationCreateRequest(
                 1L,

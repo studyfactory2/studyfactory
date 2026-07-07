@@ -6,9 +6,11 @@ import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdate
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateType;
 import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardResponse;
 import com.example.studyfactory.domain.attendance.entity.Attendance;
+import com.example.studyfactory.domain.attendance.entity.AttendanceDailyInitialization;
 import com.example.studyfactory.domain.attendance.entity.AttendanceReferenceInformation;
 import com.example.studyfactory.domain.attendance.entity.AttendanceSlotInformation;
 import com.example.studyfactory.domain.attendance.entity.AttendanceStatusType;
+import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTypeRepository;
 import com.example.studyfactory.domain.certification.entity.Certification;
@@ -30,6 +32,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +49,7 @@ public class AttendanceService {
     private static final String PRESENT_STATUS_TYPE_NAME = "출석";
 
     private final AttendanceRepository attendanceRepository;
+    private final AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
     private final AttendanceStatusTypeRepository attendanceStatusTypeRepository;
     private final MemberRepository memberRepository;
     private final LeaveRequestRepository leaveRequestRepository;
@@ -66,8 +71,9 @@ public class AttendanceService {
         applyLeaveRequests(statusesByMemberId, targetBranchId, targetDate);
         applyFixedLeaves(statusesByMemberId, targetBranchId, targetDate);
         applySpecialLeaves(statusesByMemberId, targetBranchId, targetDate);
+        Set<Long> initializedMemberIds = findInitializedMemberIds(targetBranchId, targetDate);
 
-        return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId));
+        return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId, initializedMemberIds));
     }
 
     @Transactional
@@ -102,6 +108,11 @@ public class AttendanceService {
                 .forEach(leaveRequestRepository::delete);
         specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), request.date())
                 .forEach(specialLeaveRepository::delete);
+        if (!attendanceDailyInitializationRepository.existsByMemberIdAndAttendanceDate(member.getId(), request.date())) {
+            attendanceDailyInitializationRepository.save(new AttendanceDailyInitialization(
+                    member.getId(), member.getBranchId(), request.date(), currentMember.getId()
+            ));
+        }
     }
 
     private Member findMember(Long memberId) {
@@ -258,6 +269,12 @@ public class AttendanceService {
         }
     }
 
+    private Set<Long> findInitializedMemberIds(Long branchId, LocalDate date) {
+        return attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(branchId, date).stream()
+                .map(AttendanceDailyInitialization::getMemberId)
+                .collect(Collectors.toSet());
+    }
+
     private void setStatus(List<String> statuses, Integer slot, String status) {
         if (slot < 1 || slot > SLOT_COUNT) {
             return;
@@ -306,7 +323,8 @@ public class AttendanceService {
     private List<AttendanceBoardRowResponse> toRows(
             List<Member> members,
             Map<Integer, Member> membersBySeat,
-            Map<Long, List<String>> statusesByMemberId
+            Map<Long, List<String>> statusesByMemberId,
+            Set<Long> initializedMemberIds
     ) {
         List<AttendanceBoardRowResponse> rows = new ArrayList<>();
         int lastSeatNumber = Math.max(MAX_SEAT_NUMBER, membersBySeat.keySet().stream().max(Comparator.naturalOrder()).orElse(0));
@@ -320,7 +338,7 @@ public class AttendanceService {
                     member.getId(),
                     seatNumber,
                     member.getName(),
-                    member.getJoinDate(),
+                    initializedMemberIds.contains(member.getId()) ? null : member.getJoinDate(),
                     getCertificationContent(member),
                     statusesByMemberId.get(member.getId())
             ));
@@ -331,7 +349,7 @@ public class AttendanceService {
                         member.getId(),
                         null,
                         member.getName(),
-                        member.getJoinDate(),
+                        initializedMemberIds.contains(member.getId()) ? null : member.getJoinDate(),
                         getCertificationContent(member),
                         statusesByMemberId.get(member.getId())
                 )));

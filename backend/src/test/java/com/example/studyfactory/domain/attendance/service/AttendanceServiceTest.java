@@ -8,9 +8,11 @@ import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdate
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateType;
 import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardResponse;
 import com.example.studyfactory.domain.attendance.entity.Attendance;
+import com.example.studyfactory.domain.attendance.entity.AttendanceDailyInitialization;
 import com.example.studyfactory.domain.attendance.entity.AttendanceReferenceInformation;
 import com.example.studyfactory.domain.attendance.entity.AttendanceSlotInformation;
 import com.example.studyfactory.domain.attendance.entity.AttendanceStatusType;
+import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTypeRepository;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
@@ -22,6 +24,7 @@ import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
+import com.example.studyfactory.domain.member.entity.WorkInformation;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -44,6 +47,9 @@ class AttendanceServiceTest {
 
     @Mock
     private AttendanceRepository attendanceRepository;
+
+    @Mock
+    private AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
 
     @Mock
     private AttendanceStatusTypeRepository attendanceStatusTypeRepository;
@@ -80,6 +86,7 @@ class AttendanceServiceTest {
         given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of(leaveRequest));
         given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(fixedLeave));
         given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of(specialLeave));
+        given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date)).willReturn(List.of());
 
         DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, null);
 
@@ -90,6 +97,29 @@ class AttendanceServiceTest {
         assertThat(response.rows().get(6).slots()).containsExactly("오전", "오전", "오전", "오전", "O", "스터디", "알바");
         assertThat(response.rows().get(response.rows().size() - 1).seatNumber()).isNull();
         assertThat(response.rows().get(response.rows().size() - 1).name()).isEqualTo("좌석없음");
+    }
+
+    @Test
+    @DisplayName("신규 입사 출석 초기화 기록이 있으면 입사예정일 표시를 제거한다")
+    void initializedJoinDateMemberDoesNotShowJoinDateBanner() {
+        LocalDate date = LocalDate.of(2026, 7, 7);
+        Member staff = createMember(1L, "최민지", MemberRole.STAFF, 1);
+        Member member = createMember(2L, "김태환", MemberRole.MEMBER, 7);
+        ReflectionTestUtils.setField(member, "workInformation", new WorkInformation(7, date));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L)).willReturn(List.of(staff, member));
+        given(attendanceRepository.findDailyBoardAttendances(1L, date)).willReturn(List.of());
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
+        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of());
+        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
+        given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date))
+                .willReturn(List.of(new AttendanceDailyInitialization(2L, 1L, date, 1L)));
+
+        DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, null);
+
+        assertThat(response.rows().get(6).memberId()).isEqualTo(2L);
+        assertThat(response.rows().get(6).joinDate()).isNull();
+        assertThat(response.rows().get(6).slots()).containsExactly("X", "X", "X", "X", "X", "X", "X");
     }
 
     @Test
