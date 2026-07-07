@@ -24,10 +24,13 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        String name = request.name().trim();
+        validateLoginId(name);
+
         Member member = memberRepository.findByNameAndPassword(
-                request.name().trim(),
+                name,
                 request.password()
-        ).orElseThrow(AuthException::loginFailed);
+        ).orElseThrow(AuthException::passwordMismatch);
 
         String accessToken = jwtTokenProvider.createAccessToken(member);
         String refreshToken = jwtTokenProvider.createRefreshToken(member);
@@ -36,6 +39,12 @@ public class AuthService {
         refreshTokenRepository.save(new RefreshToken(member.getId(), refreshToken));
 
         return new LoginResponse(accessToken, refreshToken);
+    }
+
+    private void validateLoginId(String name) {
+        if (!memberRepository.existsByName(name)) {
+            throw AuthException.memberNotFound();
+        }
     }
 
     @Transactional(readOnly = true)

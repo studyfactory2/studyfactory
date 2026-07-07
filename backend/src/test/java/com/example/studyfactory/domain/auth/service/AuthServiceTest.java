@@ -48,6 +48,7 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest(" hong ", "password123");
         Member member = createMember();
         ReflectionTestUtils.setField(member, "id", 1L);
+        given(memberRepository.existsByName("hong")).willReturn(true);
         given(memberRepository.findByNameAndPassword("hong", "password123"))
                 .willReturn(Optional.of(member));
         given(jwtTokenProvider.createAccessToken(member)).willReturn("access-token");
@@ -66,15 +67,27 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("회원 정보가 일치하지 않으면 로그인 실패 예외가 발생한다")
-    void throwExceptionWhenLoginFailed() {
+    @DisplayName("존재하지 않는 ID로 로그인하면 예외가 발생한다")
+    void throwExceptionWhenLoginIdIsNotFound() {
+        LoginRequest request = new LoginRequest("unknown", "password123");
+        given(memberRepository.existsByName("unknown")).willReturn(false);
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("존재하지 않는 ID입니다.");
+    }
+
+    @Test
+    @DisplayName("비밀번호가 일치하지 않으면 예외가 발생한다")
+    void throwExceptionWhenPasswordMismatch() {
         LoginRequest request = new LoginRequest("hong", "wrong-password");
+        given(memberRepository.existsByName("hong")).willReturn(true);
         given(memberRepository.findByNameAndPassword("hong", "wrong-password"))
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(AuthException.class)
-                .hasMessageContaining("이름 또는 비밀번호가 일치하지 않습니다.");
+                .hasMessageContaining("비밀번호가 일치하지 않습니다.");
     }
 
     @Test
