@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { apiRequest } from '../../api/client';
-import type { Branch, DailyAttendanceBoardResponse, DailySideDishResponse, MealType, TodoResponse } from '../../types/domain';
+import type { Branch, DailyAttendanceBoardResponse, DailySideDishResponse, MealType, SuggestionResponse, TodoResponse } from '../../types/domain';
 
 const SLOT_LABELS = [1, 2, 3, 4, 5, 6, 7];
 const OTHER_REASON_OPTIONS = ['지각', '조회', '외출', '이동', '시험', '컨디션'];
@@ -24,6 +24,8 @@ export function StaffAttendancePanel() {
   const [otherReason, setOtherReason] = useState('');
   const [sideDishes, setSideDishes] = useState<DailySideDishResponse[]>([]);
   const [sideDishModalOpen, setSideDishModalOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestionResponse[]>([]);
+  const [suggestionModalOpen, setSuggestionModalOpen] = useState(false);
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [todoBranchId, setTodoBranchId] = useState('');
@@ -59,6 +61,7 @@ export function StaffAttendancePanel() {
     return new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
   }), [todos]);
   const todoCount = useMemo(() => todoItems.filter((item) => !item.completed).length, [todoItems]);
+  const suggestionItems = useMemo(() => suggestions.filter((suggestion) => !suggestion.isResolved), [suggestions]);
   const otherCalendar = useMemo(() => createMonthCalendar(otherDate), [otherDate]);
   const lunchSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'LUNCH'), [sideDishes]);
   const dinnerSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'DINNER'), [sideDishes]);
@@ -71,6 +74,7 @@ export function StaffAttendancePanel() {
 
   useEffect(() => {
     void loadBranches();
+    void loadSuggestions();
   }, []);
 
   useEffect(() => {
@@ -110,6 +114,15 @@ export function StaffAttendancePanel() {
       setSideDishes(response);
     } catch {
       setSideDishes([]);
+    }
+  };
+
+  const loadSuggestions = async () => {
+    try {
+      const response = await apiRequest<SuggestionResponse[]>('/api/suggestions');
+      setSuggestions(response);
+    } catch {
+      setSuggestions([]);
     }
   };
 
@@ -419,7 +432,10 @@ export function StaffAttendancePanel() {
       </div>
 
       <div className="staff-attendance-actions">
-        <button className="suggestion-tag" type="button" disabled>회원건의</button>
+        <button className="suggestion-tag" type="button" disabled={suggestionItems.length === 0} onClick={() => setSuggestionModalOpen(true)}>
+          회원건의
+          {suggestionItems.length > 0 && <b>{suggestionItems.length}</b>}
+        </button>
         <button className="meal-tag" type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>반찬신청</button>
         <button className="todo-tag" type="button" disabled={todoCount === 0} onClick={() => setTodoModalOpen(true)}>
           할일목록
@@ -636,6 +652,32 @@ export function StaffAttendancePanel() {
             <div className="attendance-side-dish-content">
               <SideDishMealSection title="점심 반찬 신청" mealType="LUNCH" sideDishes={lunchSideDishes} />
               <SideDishMealSection title="저녁 반찬 신청" mealType="DINNER" sideDishes={dinnerSideDishes} />
+            </div>
+          </section>
+        </div>
+      )}
+      {suggestionModalOpen && (
+        <div className="attendance-modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            setSuggestionModalOpen(false);
+          }
+        }}>
+          <section className="attendance-suggestion-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-suggestion-title">
+            <header>
+              <h2 id="attendance-suggestion-title">회원건의</h2>
+              <button type="button" aria-label="닫기" onClick={() => setSuggestionModalOpen(false)}>×</button>
+            </header>
+            <div className="attendance-suggestion-list">
+              {suggestionItems.map((suggestion) => (
+                <article className="attendance-suggestion-card" key={suggestion.id}>
+                  <div>
+                    <strong>{toSuggestionMemberName(suggestion.memberId, board)}</strong>
+                    <span>{getSuggestionCategoryLabel(suggestion.category)}</span>
+                  </div>
+                  <p>{suggestion.content}</p>
+                  <time>{formatSuggestionDate(suggestion.createdAt)}</time>
+                </article>
+              ))}
             </div>
           </section>
         </div>
@@ -905,6 +947,33 @@ function formatTodoReplyDate(date?: string | null) {
   const minute = String(parsed.getMinutes()).padStart(2, '0');
 
   return `${month}. ${day}. ${period} ${hour}:${minute}`;
+}
+
+function formatSuggestionDate(date: string) {
+  const parsed = new Date(date);
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  const hour = String(parsed.getHours()).padStart(2, '0');
+  const minute = String(parsed.getMinutes()).padStart(2, '0');
+
+  return `${month}.${day} ${hour}:${minute}`;
+}
+
+function getSuggestionCategoryLabel(category: SuggestionResponse['category']) {
+  const labels: Record<SuggestionResponse['category'], string> = {
+    SUPPLIES: '비품',
+    STUDY: '학습',
+    GENERAL: '일반',
+    COUNSELING: '상담',
+  };
+
+  return labels[category];
+}
+
+function toSuggestionMemberName(memberId: number, board: DailyAttendanceBoardResponse | null) {
+  const member = board?.rows.find((row) => row.memberId === memberId);
+
+  return member?.name || `회원 ${memberId}`;
 }
 
 function createMonthCalendar(date: string) {

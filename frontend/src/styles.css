@@ -5816,6 +5816,106 @@ button.beverage-serving-cell:disabled {
   cursor: pointer;
 }
 
+.attendance-suggestion-modal {
+  width: min(560px, calc(100vw - 28px));
+  max-height: min(620px, calc(100svh - 30px));
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border-radius: 16px;
+  background: #f8fbfd;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.24);
+}
+
+.attendance-suggestion-modal header {
+  min-height: 54px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2eaf0;
+  background: #fff;
+}
+
+.attendance-suggestion-modal h2 {
+  margin: 0;
+  color: #26323d;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.attendance-suggestion-modal header button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.attendance-suggestion-list {
+  min-height: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.attendance-suggestion-card {
+  padding: 13px 14px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid #b7ead2;
+  border-radius: 12px;
+  background: #f0fdf7;
+}
+
+.attendance-suggestion-card div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.attendance-suggestion-card strong {
+  color: #223040;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.attendance-suggestion-card span {
+  min-height: 22px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #dff8ea;
+  color: #047857;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.attendance-suggestion-card p {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.attendance-suggestion-card time {
+  color: #7a8a9a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .attendance-side-dish-content {
   padding: 16px 14px;
   display: grid;
