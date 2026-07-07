@@ -10,5 +10,7 @@ public interface TodoReplyRepository extends JpaRepository<TodoReply, Long> {
 
     void deleteByTodoItemId(Long todoItemId);
 
+    void deleteByTodoItemIdIn(List<Long> todoItemIds);
+
     void deleteByMemberId(Long memberId);
 }

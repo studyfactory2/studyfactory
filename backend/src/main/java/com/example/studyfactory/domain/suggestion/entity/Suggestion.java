@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,6 +37,8 @@ public class Suggestion extends BaseEntity {
 
     @Column(nullable = false)
     private boolean isResolved;
+
+    private LocalDateTime resolvedAt;
 
     public Suggestion(
             SuggestionReferenceInformation referenceInformation,
@@ -68,11 +71,13 @@ public class Suggestion extends BaseEntity {
     public void resolve(Long memberId) {
         referenceInformation.resolveBy(memberId);
         isResolved = true;
+        resolvedAt = LocalDateTime.now();
     }
 
     public void unresolve() {
         referenceInformation.clearResolver();
         isResolved = false;
+        resolvedAt = null;
     }
 
     public void toggleResolve(Long memberId) {
