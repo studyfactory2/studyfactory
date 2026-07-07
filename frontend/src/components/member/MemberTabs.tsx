@@ -13,7 +13,13 @@ export function MemberTabs({ currentView, onViewChange }: MemberTabsProps) {
 
   return (
     <nav className="manager-tabs" aria-label="회원 메뉴">
-      <div className="adjacent-tab previous-tab">{previousMenu && <span>{previousMenu.label}</span>}</div>
+      {previousMenu ? (
+        <button className="adjacent-tab previous-tab" type="button" onClick={() => onViewChange(previousMenu.id)}>
+          <span>{previousMenu.label}</span>
+        </button>
+      ) : (
+        <span className="adjacent-tab previous-tab" />
+      )}
       {previousMenu ? (
         <button className="tab-arrow previous-arrow" type="button" aria-label="이전 페이지" onClick={() => onViewChange(previousMenu.id)}>
           ‹
@@ -31,7 +37,13 @@ export function MemberTabs({ currentView, onViewChange }: MemberTabsProps) {
       ) : (
         <span className="tab-arrow-placeholder" />
       )}
-      <div className="adjacent-tab next-tab">{nextMenu && <span>{nextMenu.label}</span>}</div>
+      {nextMenu ? (
+        <button className="adjacent-tab next-tab" type="button" onClick={() => onViewChange(nextMenu.id)}>
+          <span>{nextMenu.label}</span>
+        </button>
+      ) : (
+        <span className="adjacent-tab next-tab" />
+      )}
     </nav>
   );
 }
