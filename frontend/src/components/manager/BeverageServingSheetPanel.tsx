@@ -511,7 +511,8 @@ function parseDrinks(drinks: string) {
   return drinks
     .split(/\n|,/)
     .map((drink) => drink.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((drink) => !isExcludedDrinkName(drink));
 }
 
 function isTumblerDrink(drink: string) {
@@ -623,6 +624,12 @@ function toLeaveTypeLabel(leaveType: DailyLeaveStatusResponse['leaveType']) {
 
 function normalizeDrinkName(drink: string) {
   return drink.replace(/\s+/g, '');
+}
+
+function isExcludedDrinkName(drink: string) {
+  const normalizedDrink = normalizeDrinkName(drink).toLowerCase();
+
+  return normalizedDrink === '없음' || normalizedDrink === 'x' || normalizedDrink === '안먹음';
 }
 
 function toSortedCounts(counts: Map<string, number>, deductions: Map<string, number>) {

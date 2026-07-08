@@ -1650,6 +1650,38 @@ button.beverage-serving-cell:disabled {
   font-style: normal;
 }
 
+.beverage-making-panel .beverage-summary-column {
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 15px;
+  padding: 12px 14px;
+}
+
+.beverage-making-panel .beverage-summary-column h3 {
+  font-size: 14px;
+}
+
+.beverage-making-panel .beverage-summary-column p {
+  font-size: 13px;
+}
+
+.beverage-making-panel .beverage-summary-column ul {
+  gap: 8px;
+}
+
+.beverage-making-panel .beverage-summary-column li {
+  min-height: 31px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.beverage-making-panel .beverage-summary-column li small {
+  font-size: 11px;
+}
+
+.beverage-making-panel .beverage-summary-column li span {
+  font-size: 13px;
+}
+
 .beverage-seat-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -4738,6 +4770,33 @@ button.beverage-serving-cell:disabled {
   overflow-y: auto;
 }
 
+.drink-setting-field {
+  display: grid;
+  gap: 8px;
+}
+
+.drink-setting-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 8px;
+}
+
+.drink-setting-main > button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(25, 92, 94, 0.16);
+}
+
+.drink-setting-main > button:hover {
+  background: var(--color-primary-dark);
+}
+
 .form-dropdown-button {
   padding-right: 38px;
   cursor: pointer;
@@ -5528,9 +5587,12 @@ button.beverage-serving-cell:disabled {
 
 .staff-attendance-table tbody td.selected-slot {
   position: relative;
-  outline: 2px solid #007a78;
+  outline: 3px solid #005f5d;
   outline-offset: -2px;
-  box-shadow: inset 0 0 0 2px rgba(0, 122, 120, 0.18);
+  box-shadow:
+    inset 0 0 0 3px #fff,
+    inset 0 0 0 6px rgba(0, 95, 93, 0.4),
+    0 0 0 2px rgba(0, 95, 93, 0.18);
 }
 
 .staff-attendance-command-bar {

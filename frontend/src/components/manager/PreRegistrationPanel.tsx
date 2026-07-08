@@ -28,6 +28,11 @@ const ROLE_OPTIONS: Array<{ value: MemberRole; label: string }> = [
   { value: 'STAFF', label: '스탭' },
   { value: 'ADMIN', label: '관리자' },
 ];
+const DRINK_OPTIONS: DropdownOption[] = [
+  { value: '선식', label: '선식' },
+  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '없음', label: '없음' },
+];
 
 export function PreRegistrationPanel({ branches, certifications }: PreRegistrationPanelProps) {
   const branchOptions = branches.length > 0 ? branches : [FALLBACK_BRANCH];
@@ -55,6 +60,10 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
   const [roleOpen, setRoleOpen] = useState(false);
   const [seatOpen, setSeatOpen] = useState(false);
   const [editSeatOpen, setEditSeatOpen] = useState(false);
+  const [drinkOpen, setDrinkOpen] = useState(false);
+  const [editDrinkOpen, setEditDrinkOpen] = useState(false);
+  const [showCustomDrink, setShowCustomDrink] = useState(false);
+  const [showEditCustomDrink, setShowEditCustomDrink] = useState(false);
   const [membersByBranchId, setMembersByBranchId] = useState<Record<string, MemberResponse[]>>({});
 
   useEffect(() => {
@@ -169,8 +178,10 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
       drinkNote: member.drinkNote || '',
       memberNote: member.memberNote || '',
     });
+    setShowEditCustomDrink(toDrinkParts(member.drinkSetting || '').customText.length > 0);
     setEditBranchOpen(false);
     setEditRoleOpen(false);
+    setEditDrinkOpen(false);
     setMessage(null);
   };
 
@@ -249,6 +260,8 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setDrinkSetting('');
     setDrinkNote('');
     setMemberNote('');
+    setShowCustomDrink(false);
+    setDrinkOpen(false);
   };
 
   const resetInlineEdit = () => {
@@ -257,6 +270,8 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setEditBranchOpen(false);
     setEditRoleOpen(false);
     setEditSeatOpen(false);
+    setEditDrinkOpen(false);
+    setShowEditCustomDrink(false);
   };
 
   const changeEditDraft = (field: keyof PreRegistrationFormState, value: string) => {
@@ -359,11 +374,19 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
         </label>
         <label className="full-field">
           <span>음료 설정 (선택사항)</span>
-          <input
-            type="text"
-            placeholder="예: 선식, 텀블러 아아"
+          <DrinkSettingField
             value={drinkSetting}
-            onChange={(event) => setDrinkSetting(event.target.value)}
+            open={drinkOpen}
+            showCustomInput={showCustomDrink}
+            onChange={setDrinkSetting}
+            onToggle={() => {
+              setDrinkOpen((current) => !current);
+              setBranchOpen(false);
+              setRoleOpen(false);
+              setSeatOpen(false);
+            }}
+            onAddCustomInput={() => setShowCustomDrink(true)}
+            onClose={() => setDrinkOpen(false)}
           />
         </label>
         <label className="full-field">
@@ -468,7 +491,20 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                     </label>
                     <label className="full-field">
                       <span>음료 설정 (선택사항)</span>
-                      <input value={editDraft.drinkSetting} onChange={(event) => changeEditDraft('drinkSetting', event.target.value)} />
+                      <DrinkSettingField
+                        value={editDraft.drinkSetting}
+                        open={editDrinkOpen}
+                        showCustomInput={showEditCustomDrink}
+                        onChange={(value) => changeEditDraft('drinkSetting', value)}
+                        onToggle={() => {
+                          setEditDrinkOpen((current) => !current);
+                          setEditBranchOpen(false);
+                          setEditRoleOpen(false);
+                          setEditSeatOpen(false);
+                        }}
+                        onAddCustomInput={() => setShowEditCustomDrink(true)}
+                        onClose={() => setEditDrinkOpen(false)}
+                      />
                     </label>
                     <label className="full-field">
                       <span>음료 참고사항</span>
@@ -585,6 +621,79 @@ function SeatNumberField({ value, open, options, onChange, onSelect, onToggle }:
       />
     </div>
   );
+}
+
+type DrinkSettingFieldProps = {
+  value: string;
+  open: boolean;
+  showCustomInput: boolean;
+  onChange: (value: string) => void;
+  onToggle: () => void;
+  onAddCustomInput: () => void;
+  onClose: () => void;
+};
+
+function DrinkSettingField({ value, open, showCustomInput, onChange, onToggle, onAddCustomInput, onClose }: DrinkSettingFieldProps) {
+  const { baseDrink, customText } = toDrinkParts(value);
+  const selectedOption = baseDrink
+    ? { value: baseDrink, label: baseDrink }
+    : { value: '', label: '음료를 선택해주세요' };
+
+  const changeBaseDrink = (nextBaseDrink: string) => {
+    onChange(toDrinkSettingValue(nextBaseDrink, customText));
+    onClose();
+  };
+
+  const changeCustomText = (nextCustomText: string) => {
+    onChange(toDrinkSettingValue(baseDrink, nextCustomText));
+  };
+
+  return (
+    <div className="drink-setting-field">
+      <div className="drink-setting-main">
+        <Dropdown
+          classNamePrefix="form-dropdown"
+          label="음료 설정"
+          open={open}
+          options={DRINK_OPTIONS}
+          placeholderClass={!baseDrink}
+          selectedOption={selectedOption}
+          onToggle={onToggle}
+          onSelect={changeBaseDrink}
+        />
+        <button type="button" aria-label="음료 직접 입력 추가" onClick={onAddCustomInput}>
+          +
+        </button>
+      </div>
+      {showCustomInput && (
+        <input
+          type="text"
+          placeholder="예: 콜라, 아아"
+          value={customText}
+          onChange={(event) => changeCustomText(event.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
+function toDrinkParts(value: string) {
+  const drinks = parseDrinkItems(value);
+  const baseDrink = drinks.find((drink) => DRINK_OPTIONS.some((option) => option.value === drink)) || '';
+  const customText = drinks.filter((drink) => drink !== baseDrink).join(', ');
+
+  return { baseDrink, customText };
+}
+
+function toDrinkSettingValue(baseDrink: string, customText: string) {
+  return [baseDrink, ...parseDrinkItems(customText)].filter(Boolean).join(',');
+}
+
+function parseDrinkItems(value: string) {
+  return value
+    .split(/[,\n\r]+/)
+    .map((drink) => drink.trim())
+    .filter(Boolean);
 }
 
 function findBranchName(branches: Branch[], branchId: number) {
