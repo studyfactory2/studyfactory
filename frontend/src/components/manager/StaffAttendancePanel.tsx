@@ -100,6 +100,12 @@ export function StaffAttendancePanel() {
     void loadTodos(selectedDate);
   }, [selectedDate, todoBranchId]);
 
+  useEffect(() => {
+    if (todoModalOpen) {
+      void loadTodos(selectedDate);
+    }
+  }, [todoModalOpen]);
+
   const loadBoard = async (date: string) => {
     setLoading(true);
     setMessage('');
@@ -394,9 +400,14 @@ export function StaffAttendancePanel() {
     }
   };
 
-  const isJoinDateRow = (row: DailyAttendanceBoardResponse['rows'][number]) => (
-    Boolean(row.memberId && row.joinDate === selectedDate)
-  );
+  const isJoinDateRow = (row: DailyAttendanceBoardResponse['rows'][number]) => {
+    if (!row.memberId || !row.joinDate) {
+      return false;
+    }
+    const registeredDate = toDatePart(row.createdAt) || row.joinDate;
+
+    return registeredDate <= selectedDate && selectedDate <= row.joinDate;
+  };
 
   const canResetJoinDateAttendance = (row: DailyAttendanceBoardResponse['rows'][number]) => (
     Boolean(row.memberId && row.joinDate === selectedDate && selectedDate === toDateKey(new Date()))
@@ -519,7 +530,7 @@ export function StaffAttendancePanel() {
                     {joinDateRow ? (
                       <td className="join-date-cell" colSpan={7}>
                         <button type="button" disabled={submitting || !canResetJoinDate} onClick={() => canResetJoinDate && row.memberId && resetJoinDateAttendance(row.memberId)}>
-                          {formatCompactDate(selectedDate)} {row.name}{row.certificationContent ? `(${row.certificationContent})` : ''} -
+                          {formatJoinDateText(row)}
                         </button>
                       </td>
                     ) : SLOT_LABELS.map((slot, index) => {
@@ -980,6 +991,22 @@ function formatCompactDate(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
 
   return `${parsed.getMonth() + 1}/${parsed.getDate()}`;
+}
+
+function toDatePart(date?: string | null) {
+  if (!date) {
+    return '';
+  }
+
+  return date.includes('T') ? date.split('T')[0] : date.slice(0, 10);
+}
+
+function formatJoinDateText(row: DailyAttendanceBoardResponse['rows'][number]) {
+  const certification = row.certificationContent?.trim();
+  const certificationText = certification ? `(${certification})` : '';
+  const suffix = certification ? '' : ' -';
+
+  return `${formatCompactDate(row.joinDate || '')} ${row.name}${certificationText}${suffix}`;
 }
 
 function formatTodoReplyDate(date?: string | null) {

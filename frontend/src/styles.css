@@ -8000,7 +8000,7 @@ button.beverage-serving-cell:disabled {
   box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
 }
 
-.beverage-input-row button {
+.beverage-input-row > button {
   min-height: 48px;
   border-radius: 10px;
   background: #247d82;
@@ -8067,6 +8067,15 @@ button.beverage-serving-cell:disabled {
   justify-self: end;
 }
 
+.beverage-input-row .custom-select-button {
+  min-height: 48px;
+  border-radius: 10px;
+}
+
+.beverage-custom-input-row .beverage-custom-submit {
+  font-size: 13px;
+}
+
 .trash-icon {
   width: 18px;
   height: 18px;
@@ -8128,6 +8137,7 @@ button.beverage-serving-cell:disabled {
     grid-template-columns: minmax(72px, 1fr) 28px minmax(140px, auto) 28px minmax(72px, 1fr);
     gap: 10px;
     padding: 0 4px;
+    transform: translateX(-8px);
   }
 
   .current-tab {
@@ -9515,7 +9525,8 @@ button.beverage-serving-cell:disabled {
   }
 
   .beverage-input-row input,
-  .beverage-input-row button {
+  .beverage-input-row > button,
+  .beverage-input-row .custom-select-button {
     min-height: 42px;
   }
 }

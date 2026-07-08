@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import { apiRequest } from '../../api/client';
 import type { BeveragePreferenceResponse } from '../../types/domain';
+import { Dropdown } from '../common/Dropdown';
+
+const BASE_DRINK_OPTIONS = [
+  { value: '', label: '음료를 선택해주세요' },
+  { value: '선식', label: '선식' },
+  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '없음', label: '없음' },
+];
+
+const BASE_DRINK_VALUES = new Set(BASE_DRINK_OPTIONS.map((option) => option.value).filter(Boolean));
 
 function parseDrinks(value: string) {
   return value
@@ -9,11 +19,34 @@ function parseDrinks(value: string) {
     .filter(Boolean);
 }
 
+function getBaseDrink(drinks: string[]) {
+  return drinks.find((drink) => BASE_DRINK_VALUES.has(drink)) || '';
+}
+
+function withoutBaseDrink(drinks: string[]) {
+  return drinks.filter((drink) => !BASE_DRINK_VALUES.has(drink));
+}
+
+function uniqueDrinks(drinks: string[]) {
+  const seen = new Set<string>();
+
+  return drinks.filter((drink) => {
+    if (seen.has(drink)) {
+      return false;
+    }
+
+    seen.add(drink);
+    return true;
+  });
+}
+
 export function BeveragePanel() {
   const [drinkInput, setDrinkInput] = useState('');
   const [drinks, setDrinks] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [isComposing, setIsComposing] = useState(false);
+  const [drinkDropdownOpen, setDrinkDropdownOpen] = useState(false);
+  const [customInputOpen, setCustomInputOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -35,6 +68,15 @@ export function BeveragePanel() {
     }
   };
 
+  const changeBaseDrink = (value: string) => {
+    setDrinks((current) => {
+      const customDrinks = withoutBaseDrink(current);
+      return uniqueDrinks([...(value ? [value] : []), ...customDrinks]);
+    });
+    setDrinkDropdownOpen(false);
+    setMessage(null);
+  };
+
   const addDrink = () => {
     const nextDrinks = parseDrinks(drinkInput);
 
@@ -42,8 +84,9 @@ export function BeveragePanel() {
       return;
     }
 
-    setDrinks((current) => [...current, ...nextDrinks]);
+    setDrinks((current) => uniqueDrinks([...current, ...nextDrinks]));
     setDrinkInput('');
+    setCustomInputOpen(false);
     setMessage(null);
   };
 
@@ -73,6 +116,9 @@ export function BeveragePanel() {
     }
   };
 
+  const selectedBaseDrink = getBaseDrink(drinks);
+  const selectedDrinkOption = BASE_DRINK_OPTIONS.find((option) => option.value === selectedBaseDrink) ?? BASE_DRINK_OPTIONS[0];
+
   return (
     <div className="member-panel">
       <section className="beverage-intro">
@@ -81,24 +127,41 @@ export function BeveragePanel() {
       </section>
       <div className="beverage-form">
         <div className="beverage-input-row">
-          <input
-            aria-label="음료"
-            placeholder="예: 선식, 텀블러 아아"
-            value={drinkInput}
-            onChange={(event) => setDrinkInput(event.target.value)}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={() => setIsComposing(false)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !isComposing) {
-                event.preventDefault();
-                addDrink();
-              }
-            }}
+          <Dropdown
+            classNamePrefix="custom-select"
+            label="기본 음료"
+            open={drinkDropdownOpen}
+            options={BASE_DRINK_OPTIONS}
+            placeholderClass={!selectedBaseDrink}
+            selectedOption={selectedDrinkOption}
+            onSelect={changeBaseDrink}
+            onToggle={() => setDrinkDropdownOpen((open) => !open)}
           />
-          <button type="button" aria-label="음료 추가" onClick={addDrink}>
+          <button type="button" aria-label="음료 직접 입력 열기" onClick={() => setCustomInputOpen((open) => !open)}>
             +
           </button>
         </div>
+        {customInputOpen && (
+          <div className="beverage-input-row beverage-custom-input-row">
+            <input
+              aria-label="직접 입력 음료"
+              placeholder="예: 텀블러 아아"
+              value={drinkInput}
+              onChange={(event) => setDrinkInput(event.target.value)}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !isComposing) {
+                  event.preventDefault();
+                  addDrink();
+                }
+              }}
+            />
+            <button className="beverage-custom-submit" type="button" onClick={addDrink}>
+              추가
+            </button>
+          </div>
+        )}
         <ol className="beverage-list">
           {initialLoading ? (
             <li className="empty">저장된 음료를 불러오는 중입니다.</li>

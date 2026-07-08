@@ -331,7 +331,7 @@ public class AttendanceService {
         for (int seatNumber = 1; seatNumber <= lastSeatNumber; seatNumber++) {
             Member member = membersBySeat.get(seatNumber);
             if (member == null) {
-                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", null, null, emptySlots()));
+                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", null, null, null, emptySlots()));
                 continue;
             }
             rows.add(new AttendanceBoardRowResponse(
@@ -339,6 +339,7 @@ public class AttendanceService {
                     seatNumber,
                     member.getName(),
                     initializedMemberIds.contains(member.getId()) ? null : member.getJoinDate(),
+                    member.getCreatedAt(),
                     getCertificationContent(member),
                     statusesByMemberId.get(member.getId())
             ));
@@ -350,6 +351,7 @@ public class AttendanceService {
                         null,
                         member.getName(),
                         initializedMemberIds.contains(member.getId()) ? null : member.getJoinDate(),
+                        member.getCreatedAt(),
                         getCertificationContent(member),
                         statusesByMemberId.get(member.getId())
                 )));
