@@ -10,6 +10,7 @@ export function ManagerTabs({ currentView, menus = ADMIN_MENUS, onViewChange }: 
   const visibleView = currentView === 'register' || currentView === 'status' || currentView === 'vacation_history' || currentView === 'other_leave_request'
     ? 'grid'
     : currentView === 'daily_leave_status'
+      || currentView === 'beverage_making_sheet'
       || currentView === 'beverage_serving_sheet'
       || currentView === 'seat_management'
       || currentView === 'beverage_management'

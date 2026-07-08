@@ -45,7 +45,7 @@ public class BeverageService {
     public BeveragePreferenceResponse updateDrink(Long memberId, BeverageRequest request) {
         Member member = findMember(memberId);
         BeveragePreference beveragePreference = findOrCreatePreference(member);
-        beveragePreference.update(request.drinkSetting(), request.drinkNote());
+        beveragePreference.update(toText(request.drinkSetting()), toNullableText(request.drinkNote()));
 
         return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
     }
@@ -58,7 +58,7 @@ public class BeverageService {
     @Transactional
     public BeveragePreference updatePreference(Member member, String drinks, String notes) {
         BeveragePreference beveragePreference = findOrCreatePreference(member);
-        beveragePreference.update(drinks, notes);
+        beveragePreference.update(toText(drinks), toNullableText(notes));
 
         return beveragePreference;
     }
@@ -87,7 +87,7 @@ public class BeverageService {
         validateAllPermissions(currentMember);
         Member targetMember = findMember(targetMemberId);
         BeveragePreference beveragePreference = findOrCreatePreference(targetMember);
-        beveragePreference.update(toText(request.drinkSetting()), toText(request.drinkNote()));
+        beveragePreference.update(toText(request.drinkSetting()), toNullableText(request.drinkNote()));
 
         return BeveragePreferenceResponse.from(beveragePreferenceRepository.save(beveragePreference));
     }
@@ -126,8 +126,8 @@ public class BeverageService {
     private BeveragePreference addDrink(Member member, BeverageRequest request) {
         BeveragePreference beveragePreference = beveragePreferenceRepository
                 .findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
-                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", request.drinkNote()));
-        beveragePreference.addDrinks(request.drinkSetting(), request.drinkNote());
+                .orElseGet(() -> new BeveragePreference(member.getId(), member.getBranchId(), "", toNullableText(request.drinkNote())));
+        beveragePreference.addDrinks(toText(request.drinkSetting()), toNullableText(request.drinkNote()));
 
         return beveragePreference;
     }
@@ -175,6 +175,14 @@ public class BeverageService {
     private String toText(String value) {
         if (value == null) {
             return "";
+        }
+
+        return value.trim();
+    }
+
+    private String toNullableText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
 
         return value.trim();

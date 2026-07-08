@@ -92,7 +92,7 @@ export type BeveragePreferenceResponse = {
   memberId: number;
   branchId: number;
   drinks: string;
-  notes: string;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
 };

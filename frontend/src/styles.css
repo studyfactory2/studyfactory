@@ -1596,6 +1596,10 @@ button.beverage-serving-cell:disabled {
   --summary-columns: 3;
 }
 
+.beverage-summary-column.cols-4 {
+  --summary-columns: 4;
+}
+
 .beverage-summary-column li {
   min-height: 24px;
   padding: 4px 7px;

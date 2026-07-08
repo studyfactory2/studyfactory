@@ -9,6 +9,7 @@ export type AdminMenuId =
   | 'staff-work'
   | 'staff-page'
   | 'daily_leave_status'
+  | 'beverage_making_sheet'
   | 'beverage_serving_sheet'
   | 'seat_management'
   | 'beverage_management'
@@ -42,6 +43,7 @@ export function resolveAdminMenuId(value: string | null): AdminMenuId {
     || value === 'fixed_leave_management'
     || value === 'staff-work'
     || value === 'daily_leave_status'
+    || value === 'beverage_making_sheet'
     || value === 'beverage_serving_sheet'
     || value === 'seat_management'
     || value === 'beverage_management'
@@ -85,7 +87,11 @@ export function getAdminMenuLabel(menuId: AdminMenuId): string {
   }
 
   if (menuId === 'beverage_serving_sheet') {
-    return '음료 서빙표';
+    return '음료 서빙';
+  }
+
+  if (menuId === 'beverage_making_sheet') {
+    return '음료 제조';
   }
 
   if (menuId === 'seat_management') {
