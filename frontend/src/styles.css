@@ -4770,6 +4770,170 @@ button.beverage-serving-cell:disabled {
   overflow-y: auto;
 }
 
+.join-date-field {
+  position: relative;
+}
+
+.join-date-button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid #e1e5e8;
+  border-radius: 5px;
+  background: #fff;
+  color: #25313a;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.join-date-button.empty {
+  color: #9aa5aa;
+}
+
+.join-date-button.open {
+  border-color: #8fc5c8;
+  box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
+}
+
+.join-date-button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: #3f555b;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.join-date-button.open svg {
+  color: #247d82;
+}
+
+.join-date-calendar {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 7px);
+  left: 0;
+  width: min(318px, calc(100vw - 44px));
+  padding: 14px;
+  border: 1px solid #dce7eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 16px 34px rgba(38, 52, 60, 0.16);
+}
+
+.join-date-calendar header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.join-date-calendar header strong {
+  color: #25313a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.join-date-calendar header div {
+  display: flex;
+  gap: 4px;
+}
+
+.join-date-calendar header button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #3f555b;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.join-date-calendar header button:hover {
+  background: #edf7f7;
+}
+
+.join-date-weekdays,
+.join-date-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.join-date-weekdays {
+  margin-bottom: 6px;
+}
+
+.join-date-weekdays span {
+  min-height: 26px;
+  display: grid;
+  place-items: center;
+  color: #65757d;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.join-date-calendar-grid button,
+.join-date-calendar-grid > span {
+  min-height: 31px;
+  border-radius: 6px;
+}
+
+.join-date-calendar-grid button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #25313a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.join-date-weekdays .holiday,
+.join-date-calendar-grid .holiday {
+  color: #e34f56;
+}
+
+.join-date-weekdays .saturday,
+.join-date-calendar-grid .saturday {
+  color: #2274cf;
+}
+
+.join-date-calendar-grid button:hover {
+  border-color: #b8d8da;
+  background: #f0f8f8;
+}
+
+.join-date-calendar-grid button.selected {
+  border-color: #247d82;
+  background: #2f898b;
+  color: #fff;
+}
+
+.join-date-calendar footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.join-date-calendar footer button {
+  border: 0;
+  background: transparent;
+  color: #247d82;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
 .drink-setting-field {
   display: grid;
   gap: 8px;
