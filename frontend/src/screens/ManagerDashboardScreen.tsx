@@ -124,7 +124,7 @@ export function ManagerDashboardScreen() {
       </section>
       <div className="manager-pagination" aria-hidden="true">
         {ADMIN_MENUS.map((menu) => (
-          <span className={menu.id === (currentView === 'register' || currentView === 'status' || currentView === 'vacation_history' || currentView === 'other_leave_request' || currentView === 'fixed_leave_management' ? 'grid' : currentView)} key={menu.id} />
+          <span className={menu.id === toVisibleView(currentView) ? 'active' : ''} key={menu.id} />
         ))}
       </div>
     </ManagerLayout>
@@ -231,15 +231,19 @@ function resolveAllowedView(view: AdminMenuId, role: string | null, staffExtraVi
 }
 
 function toViewOrder(view: AdminMenuId) {
-  const visibleView = view === 'register' || view === 'status' || view === 'vacation_history' || view === 'other_leave_request' || view === 'fixed_leave_management'
-    ? 'grid'
-    : view === 'daily_leave_status' || view === 'beverage_making_sheet' || view === 'beverage_serving_sheet' || view === 'seat_management' || view === 'beverage_management' || view === 'new_beverage_request' || view === 'staff_leave_request' || view === 'staff_side_dish_request'
-      ? 'staff-page'
-      : view;
+  const visibleView = toVisibleView(view);
   const tabOrder = ADMIN_MENUS.findIndex((menu) => menu.id === visibleView);
   if (tabOrder >= 0) {
     return tabOrder;
   }
 
   return ADMIN_MENUS.length;
+}
+
+function toVisibleView(view: AdminMenuId) {
+  return view === 'register' || view === 'status' || view === 'vacation_history' || view === 'other_leave_request' || view === 'fixed_leave_management'
+    ? 'grid'
+    : view === 'daily_leave_status' || view === 'beverage_making_sheet' || view === 'beverage_serving_sheet' || view === 'seat_management' || view === 'beverage_management' || view === 'new_beverage_request' || view === 'staff_leave_request' || view === 'staff_side_dish_request'
+      ? 'staff-page'
+      : view;
 }
