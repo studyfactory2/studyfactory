@@ -189,6 +189,7 @@ export type AttendanceBoardRowResponse = {
   seatNumber?: number | null;
   name: string;
   joinDate?: string | null;
+  createdAt?: string | null;
   certificationContent?: string | null;
   slots: string[];
 };

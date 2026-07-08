@@ -26,14 +26,6 @@ const STAFF_PAGE_SECTIONS: StaffPageSection[] = [
     ],
   },
   {
-    title: '사원 정보 관련 메뉴',
-    items: [
-      { icon: 'seat', label: '사원\n좌석 관리', href: '/managerdashboard?view=seat_management' },
-      { icon: 'cup', label: '사원\n음료 관리', href: '/managerdashboard?view=beverage_management' },
-      { icon: 'clipboard', label: '새로운 음료\n신청', href: '/managerdashboard?view=new_beverage_request' },
-    ],
-  },
-  {
     title: '스탭 개인 메뉴',
     items: [
       { icon: 'staff-leave', label: '스탭\n휴무 신청', href: '/managerdashboard?view=staff_leave_request' },

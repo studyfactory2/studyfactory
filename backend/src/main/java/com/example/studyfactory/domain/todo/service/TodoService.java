@@ -1,6 +1,8 @@
 package com.example.studyfactory.domain.todo.service;
 
 import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.certification.entity.Certification;
+import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
@@ -33,6 +35,7 @@ public class TodoService {
     private final TodoReplyRepository todoReplyRepository;
     private final MemberRepository memberRepository;
     private final BeveragePreferenceRepository beveragePreferenceRepository;
+    private final CertificationRepository certificationRepository;
 
     @Transactional(readOnly = true)
     public List<TodoResponse> findDaily(Long branchId, LocalDate date) {
@@ -156,16 +159,28 @@ public class TodoService {
 
     private String toJoinTodoContent(Member member) {
         String seat = member.getSeatNumber() == null ? "" : member.getSeatNumber() + "번 ";
+        String certification = getCertificationContent(member);
+        String certificationText = certification == null || certification.isBlank() ? "" : " (" + certification + ")";
         String drinks = beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
                 .map(preference -> toDrinkText(preference.getDrinks()))
                 .orElse("");
 
-        String content = seat + member.getName() + " 신규";
+        String content = seat + member.getName() + certificationText;
         if (drinks.isBlank()) {
             return content;
         }
 
         return content + " / 음료: " + drinks;
+    }
+
+    private String getCertificationContent(Member member) {
+        if (member.getCertificationId() == null) {
+            return null;
+        }
+
+        return certificationRepository.findById(member.getCertificationId())
+                .map(Certification::getContent)
+                .orElse(null);
     }
 
     private String toDrinkText(String drinks) {
