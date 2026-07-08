@@ -25,7 +25,7 @@ import { ManagerLayout } from '../layouts/ManagerLayout';
 export function ManagerDashboardScreen() {
   const role = localStorage.getItem('memberRole');
   const memberName = localStorage.getItem('memberName') || '사용자';
-  const staffExtraViews = ['daily_leave_status', 'beverage_serving_sheet', 'seat_management', 'beverage_management', 'new_beverage_request', 'staff_leave_request', 'staff_side_dish_request'];
+  const staffExtraViews = ['daily_leave_status', 'beverage_making_sheet', 'beverage_serving_sheet', 'seat_management', 'beverage_management', 'new_beverage_request', 'staff_leave_request', 'staff_side_dish_request'];
   const [currentView, setCurrentView] = useState<AdminMenuId>(() => resolveManagerViewFromUrl(role, staffExtraViews));
   const [slideDirection, setSlideDirection] = useState<'next' | 'previous'>('next');
   const { branches, certifications } = useManagerOptions(role === 'ADMIN' || role === 'STAFF');
@@ -88,10 +88,9 @@ export function ManagerDashboardScreen() {
           </div>
         </section>
         <div className="manager-pagination" aria-hidden="true">
-          <span className="active" />
-          <span />
-          <span />
-          <span />
+          {STAFF_MENUS.map((menu) => (
+            <span className={menu.id === currentView ? 'active' : undefined} key={menu.id} />
+          ))}
         </div>
       </ManagerLayout>
     );
@@ -124,10 +123,9 @@ export function ManagerDashboardScreen() {
         </div>
       </section>
       <div className="manager-pagination" aria-hidden="true">
-        <span className="active" />
-        <span />
-        <span />
-        <span />
+        {ADMIN_MENUS.map((menu) => (
+          <span className={menu.id === (currentView === 'register' || currentView === 'status' || currentView === 'vacation_history' || currentView === 'other_leave_request' || currentView === 'fixed_leave_management' ? 'grid' : currentView)} key={menu.id} />
+        ))}
       </div>
     </ManagerLayout>
   );
@@ -173,6 +171,10 @@ function ManagerPanel({ branches, certifications, currentView, editableStaffWork
     return <BeverageServingSheetPanel branches={branches} />;
   }
 
+  if (currentView === 'beverage_making_sheet') {
+    return <BeverageServingSheetPanel branches={branches} mode="making" />;
+  }
+
   if (currentView === 'seat_management') {
     return <StaffSeatManagementPanel branches={branches} />;
   }
@@ -214,6 +216,10 @@ function resolveManagerViewFromUrl(role: string | null, staffExtraViews: string[
 }
 
 function resolveAllowedView(view: AdminMenuId, role: string | null, staffExtraViews: string[]) {
+  if (role !== 'STAFF' && view === 'staff-work') {
+    return 'attendance';
+  }
+
   if (role !== 'STAFF') {
     return view;
   }
@@ -227,7 +233,7 @@ function resolveAllowedView(view: AdminMenuId, role: string | null, staffExtraVi
 function toViewOrder(view: AdminMenuId) {
   const visibleView = view === 'register' || view === 'status' || view === 'vacation_history' || view === 'other_leave_request' || view === 'fixed_leave_management'
     ? 'grid'
-    : view === 'daily_leave_status' || view === 'beverage_serving_sheet' || view === 'seat_management' || view === 'beverage_management' || view === 'new_beverage_request' || view === 'staff_leave_request' || view === 'staff_side_dish_request'
+    : view === 'daily_leave_status' || view === 'beverage_making_sheet' || view === 'beverage_serving_sheet' || view === 'seat_management' || view === 'beverage_management' || view === 'new_beverage_request' || view === 'staff_leave_request' || view === 'staff_side_dish_request'
       ? 'staff-page'
       : view;
   const tabOrder = ADMIN_MENUS.findIndex((menu) => menu.id === visibleView);

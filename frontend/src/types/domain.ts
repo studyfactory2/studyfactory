@@ -92,7 +92,7 @@ export type BeveragePreferenceResponse = {
   memberId: number;
   branchId: number;
   drinks: string;
-  notes: string;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -163,6 +163,7 @@ export type DailyLeaveStatusResponse = {
   seatNumber?: number | null;
   name: string;
   branch: string;
+  leaveDate: string;
   leaveType: LeaveType;
   createdAt: string;
 };

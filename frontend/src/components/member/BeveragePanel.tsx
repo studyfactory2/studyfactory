@@ -52,16 +52,6 @@ export function BeveragePanel() {
   };
 
   const saveDrinks = async () => {
-    if (drinks.length === 0) {
-      setMessage('음료를 하나 이상 추가해주세요.');
-      return;
-    }
-
-    if (!note.trim()) {
-      setMessage('참고사항을 입력해주세요.');
-      return;
-    }
-
     setLoading(true);
     setMessage(null);
     try {
@@ -74,7 +64,7 @@ export function BeveragePanel() {
       });
       setDrinks(parseDrinks(response.drinks));
       setDrinkInput('');
-      setNote(response.notes);
+      setNote(response.notes || '');
       setMessage('음료가 저장되었습니다.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '음료 저장에 실패했습니다.');

@@ -75,6 +75,10 @@ public class BeveragePreference extends BaseEntity {
 
     private String mergeDrinks(String newDrinks) {
         String trimmedDrinks = newDrinks.trim();
+        if (trimmedDrinks.isBlank()) {
+            return drinks == null ? "" : drinks;
+        }
+
         if (drinks == null || drinks.isBlank()) {
             return trimmedDrinks;
         }

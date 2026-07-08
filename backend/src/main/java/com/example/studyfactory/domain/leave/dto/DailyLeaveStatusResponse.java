@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.leave.dto;
 
 import com.example.studyfactory.domain.leave.entity.LeaveType;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record DailyLeaveStatusResponse(
@@ -9,6 +10,7 @@ public record DailyLeaveStatusResponse(
         Integer seatNumber,
         String name,
         String branch,
+        LocalDate leaveDate,
         LeaveType leaveType,
         LocalDateTime createdAt
 ) {

@@ -28,6 +28,55 @@ const ROLE_OPTIONS: Array<{ value: MemberRole; label: string }> = [
   { value: 'STAFF', label: '스탭' },
   { value: 'ADMIN', label: '관리자' },
 ];
+const DRINK_OPTIONS: DropdownOption[] = [
+  { value: '선식', label: '선식' },
+  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '없음', label: '없음' },
+];
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const KOREAN_HOLIDAYS: Record<string, string[]> = {
+  '2026': [
+    '2026-01-01',
+    '2026-02-16',
+    '2026-02-17',
+    '2026-02-18',
+    '2026-03-01',
+    '2026-03-02',
+    '2026-05-05',
+    '2026-05-24',
+    '2026-05-25',
+    '2026-06-06',
+    '2026-08-15',
+    '2026-08-17',
+    '2026-09-24',
+    '2026-09-25',
+    '2026-09-26',
+    '2026-10-03',
+    '2026-10-05',
+    '2026-10-09',
+    '2026-12-25',
+  ],
+  '2027': [
+    '2027-01-01',
+    '2027-02-06',
+    '2027-02-07',
+    '2027-02-08',
+    '2027-03-01',
+    '2027-05-05',
+    '2027-05-13',
+    '2027-06-06',
+    '2027-08-15',
+    '2027-08-16',
+    '2027-09-14',
+    '2027-09-15',
+    '2027-09-16',
+    '2027-10-03',
+    '2027-10-04',
+    '2027-10-09',
+    '2027-10-11',
+    '2027-12-25',
+  ],
+};
 
 export function PreRegistrationPanel({ branches, certifications }: PreRegistrationPanelProps) {
   const branchOptions = branches.length > 0 ? branches : [FALLBACK_BRANCH];
@@ -55,6 +104,14 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
   const [roleOpen, setRoleOpen] = useState(false);
   const [seatOpen, setSeatOpen] = useState(false);
   const [editSeatOpen, setEditSeatOpen] = useState(false);
+  const [joinDateOpen, setJoinDateOpen] = useState(false);
+  const [editJoinDateOpen, setEditJoinDateOpen] = useState(false);
+  const [joinDateMonth, setJoinDateMonth] = useState(() => startOfMonth(new Date()));
+  const [editJoinDateMonth, setEditJoinDateMonth] = useState(() => startOfMonth(new Date()));
+  const [drinkOpen, setDrinkOpen] = useState(false);
+  const [editDrinkOpen, setEditDrinkOpen] = useState(false);
+  const [showCustomDrink, setShowCustomDrink] = useState(false);
+  const [showEditCustomDrink, setShowEditCustomDrink] = useState(false);
   const [membersByBranchId, setMembersByBranchId] = useState<Record<string, MemberResponse[]>>({});
 
   useEffect(() => {
@@ -169,8 +226,12 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
       drinkNote: member.drinkNote || '',
       memberNote: member.memberNote || '',
     });
+    setShowEditCustomDrink(toDrinkParts(member.drinkSetting || '').customText.length > 0);
+    setEditJoinDateMonth(toDateMonth(member.expectedJoinDate || ''));
     setEditBranchOpen(false);
     setEditRoleOpen(false);
+    setEditJoinDateOpen(false);
+    setEditDrinkOpen(false);
     setMessage(null);
   };
 
@@ -249,6 +310,9 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setDrinkSetting('');
     setDrinkNote('');
     setMemberNote('');
+    setShowCustomDrink(false);
+    setDrinkOpen(false);
+    setJoinDateOpen(false);
   };
 
   const resetInlineEdit = () => {
@@ -257,6 +321,9 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setEditBranchOpen(false);
     setEditRoleOpen(false);
     setEditSeatOpen(false);
+    setEditDrinkOpen(false);
+    setEditJoinDateOpen(false);
+    setShowEditCustomDrink(false);
   };
 
   const changeEditDraft = (field: keyof PreRegistrationFormState, value: string) => {
@@ -340,7 +407,24 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
         </label>
         <label>
           <span>입사예정일</span>
-          <input type="date" value={expectedJoinDate} onChange={(event) => setExpectedJoinDate(event.target.value)} />
+          <JoinDateField
+            value={expectedJoinDate}
+            open={joinDateOpen}
+            visibleMonth={joinDateMonth}
+            onChange={(value) => {
+              setExpectedJoinDate(value);
+              setJoinDateOpen(false);
+            }}
+            onMoveMonth={(amount) => setJoinDateMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1))}
+            onToggle={() => {
+              setJoinDateMonth(toDateMonth(expectedJoinDate));
+              setJoinDateOpen((current) => !current);
+              setBranchOpen(false);
+              setRoleOpen(false);
+              setSeatOpen(false);
+              setDrinkOpen(false);
+            }}
+          />
         </label>
         <label>
           <span>자격증</span>
@@ -359,11 +443,19 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
         </label>
         <label className="full-field">
           <span>음료 설정 (선택사항)</span>
-          <input
-            type="text"
-            placeholder="예: 선식, 텀블러 아아"
+          <DrinkSettingField
             value={drinkSetting}
-            onChange={(event) => setDrinkSetting(event.target.value)}
+            open={drinkOpen}
+            showCustomInput={showCustomDrink}
+            onChange={setDrinkSetting}
+            onToggle={() => {
+              setDrinkOpen((current) => !current);
+              setBranchOpen(false);
+              setRoleOpen(false);
+              setSeatOpen(false);
+            }}
+            onAddCustomInput={() => setShowCustomDrink(true)}
+            onClose={() => setDrinkOpen(false)}
           />
         </label>
         <label className="full-field">
@@ -456,7 +548,24 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                     </label>
                     <label>
                       <span>입사예정일</span>
-                      <input type="date" value={editDraft.expectedJoinDate} onChange={(event) => changeEditDraft('expectedJoinDate', event.target.value)} />
+                      <JoinDateField
+                        value={editDraft.expectedJoinDate}
+                        open={editJoinDateOpen}
+                        visibleMonth={editJoinDateMonth}
+                        onChange={(value) => {
+                          changeEditDraft('expectedJoinDate', value);
+                          setEditJoinDateOpen(false);
+                        }}
+                        onMoveMonth={(amount) => setEditJoinDateMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1))}
+                        onToggle={() => {
+                          setEditJoinDateMonth(toDateMonth(editDraft.expectedJoinDate));
+                          setEditJoinDateOpen((current) => !current);
+                          setEditBranchOpen(false);
+                          setEditRoleOpen(false);
+                          setEditSeatOpen(false);
+                          setEditDrinkOpen(false);
+                        }}
+                      />
                     </label>
                     <label>
                       <span>자격증</span>
@@ -468,7 +577,20 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                     </label>
                     <label className="full-field">
                       <span>음료 설정 (선택사항)</span>
-                      <input value={editDraft.drinkSetting} onChange={(event) => changeEditDraft('drinkSetting', event.target.value)} />
+                      <DrinkSettingField
+                        value={editDraft.drinkSetting}
+                        open={editDrinkOpen}
+                        showCustomInput={showEditCustomDrink}
+                        onChange={(value) => changeEditDraft('drinkSetting', value)}
+                        onToggle={() => {
+                          setEditDrinkOpen((current) => !current);
+                          setEditBranchOpen(false);
+                          setEditRoleOpen(false);
+                          setEditSeatOpen(false);
+                        }}
+                        onAddCustomInput={() => setShowEditCustomDrink(true)}
+                        onClose={() => setEditDrinkOpen(false)}
+                      />
                     </label>
                     <label className="full-field">
                       <span>음료 참고사항</span>
@@ -585,6 +707,197 @@ function SeatNumberField({ value, open, options, onChange, onSelect, onToggle }:
       />
     </div>
   );
+}
+
+type JoinDateFieldProps = {
+  value: string;
+  open: boolean;
+  visibleMonth: Date;
+  onChange: (value: string) => void;
+  onMoveMonth: (amount: number) => void;
+  onToggle: () => void;
+};
+
+function JoinDateField({ value, open, visibleMonth, onChange, onMoveMonth, onToggle }: JoinDateFieldProps) {
+  return (
+    <div className="join-date-field">
+      <button className={`join-date-button${open ? ' open' : ''}${value ? '' : ' empty'}`} type="button" onClick={onToggle}>
+        <span>{value ? formatDateLabel(value) : '연도. 월. 일.'}</span>
+        <CalendarIcon />
+      </button>
+      {open && (
+        <div className="join-date-calendar" role="dialog" aria-label="입사예정일 선택">
+          <header>
+            <strong>{visibleMonth.getFullYear()}년 {visibleMonth.getMonth() + 1}월</strong>
+            <div>
+              <button type="button" aria-label="이전 달" onClick={() => onMoveMonth(-1)}>‹</button>
+              <button type="button" aria-label="다음 달" onClick={() => onMoveMonth(1)}>›</button>
+            </div>
+          </header>
+          <div className="join-date-weekdays">
+            {WEEKDAYS.map((day, index) => (
+              <span className={index === 0 ? 'holiday' : index === 6 ? 'saturday' : ''} key={day}>{day}</span>
+            ))}
+          </div>
+          <div className="join-date-calendar-grid">
+            {getCalendarCells(visibleMonth).map((date, index) => {
+              if (!date) {
+                return <span aria-hidden="true" key={`empty-${index}`} />;
+              }
+
+              const dateKey = toDateKey(date);
+              const day = date.getDay();
+              const holiday = isKoreanHoliday(dateKey);
+              const className = [
+                dateKey === value ? 'selected' : '',
+                holiday || day === 0 ? 'holiday' : '',
+                !holiday && day === 6 ? 'saturday' : '',
+              ].filter(Boolean).join(' ');
+
+              return (
+                <button className={className} type="button" key={dateKey} onClick={() => onChange(dateKey)}>
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+          <footer>
+            <button type="button" onClick={() => onChange(toDateKey(new Date()))}>오늘</button>
+          </footer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 4v3" />
+      <path d="M17 4v3" />
+      <path d="M5 9h14" />
+      <path d="M6 6h12a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 18 20H6a1.5 1.5 0 0 1-1.5-1.5v-11A1.5 1.5 0 0 1 6 6Z" />
+    </svg>
+  );
+}
+
+type DrinkSettingFieldProps = {
+  value: string;
+  open: boolean;
+  showCustomInput: boolean;
+  onChange: (value: string) => void;
+  onToggle: () => void;
+  onAddCustomInput: () => void;
+  onClose: () => void;
+};
+
+function DrinkSettingField({ value, open, showCustomInput, onChange, onToggle, onAddCustomInput, onClose }: DrinkSettingFieldProps) {
+  const { baseDrink, customText } = toDrinkParts(value);
+  const selectedOption = baseDrink
+    ? { value: baseDrink, label: baseDrink }
+    : { value: '', label: '음료를 선택해주세요' };
+
+  const changeBaseDrink = (nextBaseDrink: string) => {
+    onChange(toDrinkSettingValue(nextBaseDrink, customText));
+    onClose();
+  };
+
+  const changeCustomText = (nextCustomText: string) => {
+    onChange(toDrinkSettingValue(baseDrink, nextCustomText));
+  };
+
+  return (
+    <div className="drink-setting-field">
+      <div className="drink-setting-main">
+        <Dropdown
+          classNamePrefix="form-dropdown"
+          label="음료 설정"
+          open={open}
+          options={DRINK_OPTIONS}
+          placeholderClass={!baseDrink}
+          selectedOption={selectedOption}
+          onToggle={onToggle}
+          onSelect={changeBaseDrink}
+        />
+        <button type="button" aria-label="음료 직접 입력 추가" onClick={onAddCustomInput}>
+          +
+        </button>
+      </div>
+      {showCustomInput && (
+        <input
+          type="text"
+          placeholder="예: 콜라, 아아"
+          value={customText}
+          onChange={(event) => changeCustomText(event.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
+function toDrinkParts(value: string) {
+  const drinks = parseDrinkItems(value);
+  const baseDrink = drinks.find((drink) => DRINK_OPTIONS.some((option) => option.value === drink)) || '';
+  const customText = drinks.filter((drink) => drink !== baseDrink).join(', ');
+
+  return { baseDrink, customText };
+}
+
+function toDrinkSettingValue(baseDrink: string, customText: string) {
+  return [baseDrink, ...parseDrinkItems(customText)].filter(Boolean).join(',');
+}
+
+function parseDrinkItems(value: string) {
+  return value
+    .split(/[,\n\r]+/)
+    .map((drink) => drink.trim())
+    .filter(Boolean);
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function toDateMonth(value: string) {
+  if (!value) {
+    return startOfMonth(new Date());
+  }
+
+  return startOfMonth(new Date(`${value}T00:00:00`));
+}
+
+function getCalendarCells(month: Date) {
+  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+  const lastDate = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const cells: Array<Date | null> = Array.from({ length: firstDay }, () => null);
+
+  for (let day = 1; day <= lastDate; day += 1) {
+    cells.push(new Date(month.getFullYear(), month.getMonth(), day));
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  return cells;
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateLabel(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+
+  return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`;
+}
+
+function isKoreanHoliday(dateKey: string) {
+  return KOREAN_HOLIDAYS[dateKey.slice(0, 4)]?.includes(dateKey) || false;
 }
 
 function findBranchName(branches: Branch[], branchId: number) {

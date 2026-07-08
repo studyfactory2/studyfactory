@@ -12,6 +12,7 @@ import type {
 
 type BeverageServingSheetPanelProps = {
   branches: Branch[];
+  mode?: 'serving' | 'making';
 };
 
 const TIMETABLE = [
@@ -31,7 +32,8 @@ const TIMETABLE = [
   { label: '7교시', startTime: '20:40', endTime: '22:00', isBreak: false },
 ];
 
-export function BeverageServingSheetPanel({ branches }: BeverageServingSheetPanelProps) {
+export function BeverageServingSheetPanel({ branches, mode = 'serving' }: BeverageServingSheetPanelProps) {
+  const isMakingMode = mode === 'making';
   const branch = branches[0] || { id: 1, name: '망미점' };
   const [rooms, setRooms] = useState<RoomLayoutResponse[]>([]);
   const [beverages, setBeverages] = useState<MemberBeverageResponse[]>([]);
@@ -60,13 +62,27 @@ export function BeverageServingSheetPanel({ branches }: BeverageServingSheetPane
 
   useEffect(() => {
     void loadSheet();
-  }, [branch.id]);
+  }, [branch.id, mode]);
 
   const loadSheet = async () => {
     try {
       const params = new URLSearchParams({ branchId: String(branch.id) });
-      const attendanceParams = new URLSearchParams({ branchId: String(branch.id), date: toDateKey(new Date()) });
       const leaveParams = new URLSearchParams({ branchId: String(branch.id), date: toDateKey(new Date()) });
+      if (isMakingMode) {
+        const [beverageResponse, leaveResponse] = await Promise.all([
+          apiRequest<MemberBeverageResponse[]>(`/api/beverages/members?${params.toString()}`),
+          apiRequest<DailyLeaveStatusResponse[]>(`/api/leaves/daily-status?${leaveParams.toString()}`),
+        ]);
+        setRooms([]);
+        setBeverages(beverageResponse);
+        setDailyLeaveStatuses(leaveResponse);
+        setLeaveMemberIds(new Set());
+        setSelectedRoomId(null);
+        setMessage(null);
+        return;
+      }
+
+      const attendanceParams = new URLSearchParams({ branchId: String(branch.id), date: toDateKey(new Date()) });
       const [roomResponse, beverageResponse, attendanceResponse, leaveResponse] = await Promise.all([
         apiRequest<RoomLayoutResponse[]>(`/api/rooms?${params.toString()}`),
         apiRequest<MemberBeverageResponse[]>(`/api/beverages/members?${params.toString()}`),
@@ -83,7 +99,7 @@ export function BeverageServingSheetPanel({ branches }: BeverageServingSheetPane
       setRooms([]);
       setBeverages([]);
       setDailyLeaveStatuses([]);
-      setMessage(error instanceof Error ? error.message : '음료 서빙표를 불러오지 못했습니다.');
+      setMessage(error instanceof Error ? error.message : `${isMakingMode ? '음료 제조 정보' : '음료 서빙표'}를 불러오지 못했습니다.`);
     }
   };
 
@@ -116,17 +132,19 @@ export function BeverageServingSheetPanel({ branches }: BeverageServingSheetPane
   };
 
   return (
-    <div className="beverage-serving-panel">
+    <div className={`beverage-serving-panel${isMakingMode ? ' beverage-making-panel' : ''}`}>
       <header className="beverage-serving-title">
         <a href="/managerdashboard?view=staff-page" aria-label="스텝페이지로 돌아가기">
           <BackIcon />
         </a>
-        <h2>음료 서빙표</h2>
+        <h2>{isMakingMode ? '음료 제조' : '음료 서빙'}</h2>
         <span>{branch.name}</span>
       </header>
 
       {message ? (
         <p className="beverage-serving-empty">{message}</p>
+      ) : isMakingMode ? (
+        <BeverageSummaryBoard summary={summary} />
       ) : selectedRoom ? (
         <>
           <div className="beverage-serving-room-tabs">
@@ -170,7 +188,6 @@ export function BeverageServingSheetPanel({ branches }: BeverageServingSheetPane
               ))}
             </div>
           </div>
-          <BeverageSummaryBoard summary={summary} />
         </>
       ) : (
         <p className="beverage-serving-empty">등록된 작업실이 없습니다.</p>
@@ -219,7 +236,7 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
       <BeverageSummaryColumn
         title="음료 수정"
         emptyText="금일 신청 및 수정 내역 없음"
-        columns={2}
+        columns={4}
         items={summary.changedMembers.map((member) => ({
           key: member.id,
           left: member.label,
@@ -229,7 +246,7 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
       <BeverageSummaryColumn
         title="8시 이후 신청휴무"
         emptyText="8시 이후 신청휴무 없음"
-        columns={3}
+        columns={4}
         items={summary.afterEightLeaveMembers.map((member) => ({
           key: member.id,
           left: member.label,
@@ -239,7 +256,7 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
       <BeverageSummaryColumn
         title="텀블러 수량"
         emptyText="텀블러 음료 없음"
-        columns={3}
+        columns={4}
         items={summary.tumblerCounts.map((count) => ({
           key: count.name,
           left: count.name,
@@ -250,7 +267,7 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
       <BeverageSummaryColumn
         title="컵 수량"
         emptyText="컵 음료 없음"
-        columns={3}
+        columns={4}
         items={summary.cupCounts.map((count) => ({
           key: count.name,
           left: count.name,
@@ -265,7 +282,7 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
 type BeverageSummaryColumnProps = {
   title: string;
   emptyText: string;
-  columns: 2 | 3;
+  columns: 2 | 3 | 4;
   items: Array<{
     key: string | number;
     left: string;
@@ -494,7 +511,8 @@ function parseDrinks(drinks: string) {
   return drinks
     .split(/\n|,/)
     .map((drink) => drink.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((drink) => !isExcludedDrinkName(drink));
 }
 
 function isTumblerDrink(drink: string) {
@@ -511,8 +529,9 @@ function createBeverageSummary(
     .map((beverage) => toTodayBeverageChange(beverage, now))
     .filter((change): change is SummaryMember => change !== null)
     .sort(compareSummaryMembers);
+  const afterEightTodayLeaves = dailyLeaveStatuses.filter((status) => isTodayLeaveRequestedAfterEight(status, now));
   const afterEightLeaveMembers = dailyLeaveStatuses
-    .filter((status) => isAfterEightToday(status.createdAt, now))
+    .filter((status) => isTodayLeaveRequestedAfterEight(status, now))
     .map((beverage) => ({
       id: `${beverage.memberId}-${beverage.createdAt}-${beverage.leaveType}`,
       label: formatLeaveMemberLabel(beverage),
@@ -520,9 +539,7 @@ function createBeverageSummary(
     }))
     .sort(compareSummaryMembers);
   const afterEightLeaveMemberIds = new Set(
-    dailyLeaveStatuses
-      .filter((status) => isAfterEightToday(status.createdAt, now))
-      .map((status) => status.memberId)
+    afterEightTodayLeaves.map((status) => status.memberId)
   );
   const tumblerCounts = new Map<string, number>();
   const cupCounts = new Map<string, number>();
@@ -609,6 +626,12 @@ function normalizeDrinkName(drink: string) {
   return drink.replace(/\s+/g, '');
 }
 
+function isExcludedDrinkName(drink: string) {
+  const normalizedDrink = normalizeDrinkName(drink).toLowerCase();
+
+  return normalizedDrink === '없음' || normalizedDrink === 'x' || normalizedDrink === '안먹음';
+}
+
 function toSortedCounts(counts: Map<string, number>, deductions: Map<string, number>) {
   return Array.from(counts.entries())
     .map(([name, count]) => ({ name, count, deduction: deductions.get(name) || 0 }))
@@ -643,12 +666,13 @@ function isSameDate(first: Date, second: Date) {
     && first.getDate() === second.getDate();
 }
 
-function isAfterEightToday(value: string, now: Date) {
-  const date = new Date(value);
+function isTodayLeaveRequestedAfterEight(status: DailyLeaveStatusResponse, now: Date) {
+  const leaveDate = new Date(`${status.leaveDate}T00:00:00`);
+  const requestedAt = new Date(status.createdAt);
   const eight = new Date(now);
   eight.setHours(8, 0, 0, 0);
 
-  return isSameDate(date, now) && date >= eight;
+  return status.leaveType !== 'AFTERNOON' && isSameDate(leaveDate, now) && isSameDate(requestedAt, now) && requestedAt >= eight;
 }
 
 function toDateKey(date: Date) {

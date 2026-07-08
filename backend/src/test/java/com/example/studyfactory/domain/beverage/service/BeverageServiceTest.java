@@ -55,6 +55,36 @@ class BeverageServiceTest {
     }
 
     @Test
+    @DisplayName("음료 참고사항이 비어 있어도 음료 설정을 수정한다")
+    void updateDrinkWithEmptyNote() {
+        Member member = createMember(1L, MemberRole.MEMBER);
+        BeveragePreference beveragePreference = new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게");
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(1L)).willReturn(Optional.of(beveragePreference));
+        given(beveragePreferenceRepository.save(any(BeveragePreference.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        BeveragePreferenceResponse response = beverageService.updateDrink(1L, new BeverageRequest("따뜻한 라떼", ""));
+
+        assertThat(response.drinks()).isEqualTo("따뜻한 라떼");
+        assertThat(response.notes()).isNull();
+    }
+
+    @Test
+    @DisplayName("음료 설정과 참고사항이 비어 있어도 수정한다")
+    void updateDrinkWithEmptyDrinkAndEmptyNote() {
+        Member member = createMember(1L, MemberRole.MEMBER);
+        BeveragePreference beveragePreference = new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게");
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(1L)).willReturn(Optional.of(beveragePreference));
+        given(beveragePreferenceRepository.save(any(BeveragePreference.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        BeveragePreferenceResponse response = beverageService.updateDrink(1L, new BeverageRequest("", ""));
+
+        assertThat(response.drinks()).isEmpty();
+        assertThat(response.notes()).isNull();
+    }
+
+    @Test
     @DisplayName("토큰의 사원 ID로 기존 음료 설정에 새 음료를 추가한다")
     void addDrink() {
         Member member = createMember(1L, MemberRole.MEMBER);

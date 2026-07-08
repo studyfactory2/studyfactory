@@ -65,7 +65,7 @@ export function StaffBeverageManagementPanel({ branches }: StaffBeverageManageme
         method: 'POST',
         body: JSON.stringify({
           drinkSetting: nextDrink,
-          drinkNote: beverage.notes?.trim() || '입력 없음',
+          drinkNote: beverage.notes?.trim() || null,
         }),
       });
       updateBeverage(beverage.memberId, response);

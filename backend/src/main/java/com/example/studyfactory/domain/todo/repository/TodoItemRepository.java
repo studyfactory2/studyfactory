@@ -5,6 +5,7 @@ import com.example.studyfactory.domain.todo.entity.TodoSourceType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,8 @@ public interface TodoItemRepository extends JpaRepository<TodoItem, Long> {
     List<TodoItem> findByBranchIdAndTodoDateOrderByCompletedAscPriorityDescCreatedAtAsc(Long branchId, LocalDate todoDate);
 
     boolean existsBySourceTypeAndSourceIdAndTodoDate(TodoSourceType sourceType, Long sourceId, LocalDate todoDate);
+
+    Optional<TodoItem> findBySourceTypeAndSourceIdAndTodoDate(TodoSourceType sourceType, Long sourceId, LocalDate todoDate);
 
     void deleteByTargetMemberId(Long memberId);
 
