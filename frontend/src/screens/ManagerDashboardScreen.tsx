@@ -88,10 +88,9 @@ export function ManagerDashboardScreen() {
           </div>
         </section>
         <div className="manager-pagination" aria-hidden="true">
-          <span className="active" />
-          <span />
-          <span />
-          <span />
+          {STAFF_MENUS.map((menu) => (
+            <span className={menu.id === currentView ? 'active' : undefined} key={menu.id} />
+          ))}
         </div>
       </ManagerLayout>
     );
@@ -124,10 +123,9 @@ export function ManagerDashboardScreen() {
         </div>
       </section>
       <div className="manager-pagination" aria-hidden="true">
-        <span className="active" />
-        <span />
-        <span />
-        <span />
+        {ADMIN_MENUS.map((menu) => (
+          <span className={menu.id === (currentView === 'register' || currentView === 'status' || currentView === 'vacation_history' || currentView === 'other_leave_request' || currentView === 'fixed_leave_management' ? 'grid' : currentView)} key={menu.id} />
+        ))}
       </div>
     </ManagerLayout>
   );
@@ -214,6 +212,10 @@ function resolveManagerViewFromUrl(role: string | null, staffExtraViews: string[
 }
 
 function resolveAllowedView(view: AdminMenuId, role: string | null, staffExtraViews: string[]) {
+  if (role !== 'STAFF' && view === 'staff-work') {
+    return 'attendance';
+  }
+
   if (role !== 'STAFF') {
     return view;
   }

@@ -24,7 +24,6 @@ export type AdminMenu = {
 export const ADMIN_MENUS: AdminMenu[] = [
   { id: 'grid', label: '관리자 페이지' },
   { id: 'attendance', label: '출석부' },
-  { id: 'staff-work', label: '근무표' },
   { id: 'staff-page', label: '스텝페이지' },
 ];
 
@@ -41,6 +40,7 @@ export function resolveAdminMenuId(value: string | null): AdminMenuId {
     || value === 'vacation_history'
     || value === 'other_leave_request'
     || value === 'fixed_leave_management'
+    || value === 'staff-work'
     || value === 'daily_leave_status'
     || value === 'beverage_serving_sheet'
     || value === 'seat_management'
@@ -78,6 +78,10 @@ export function getAdminMenuLabel(menuId: AdminMenuId): string {
 
   if (menuId === 'daily_leave_status') {
     return '일별 사원 휴무 현황';
+  }
+
+  if (menuId === 'staff-work') {
+    return '근무표';
   }
 
   if (menuId === 'beverage_serving_sheet') {

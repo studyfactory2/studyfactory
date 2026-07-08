@@ -7,3 +7,8 @@ services:
       - 'POSTGRES_USER=studyfactory'
     ports:
       - '5432:5432'
+    volumes:
+      - studyfactory_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  studyfactory_postgres_data:

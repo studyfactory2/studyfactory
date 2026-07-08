@@ -398,6 +398,10 @@ export function StaffAttendancePanel() {
     Boolean(row.memberId && row.joinDate === selectedDate)
   );
 
+  const canResetJoinDateAttendance = (row: DailyAttendanceBoardResponse['rows'][number]) => (
+    Boolean(row.memberId && row.joinDate === selectedDate && selectedDate === toDateKey(new Date()))
+  );
+
   const openOtherModal = () => {
     if (!selectedSlot) {
       return;
@@ -503,6 +507,7 @@ export function StaffAttendancePanel() {
                 ].filter(Boolean);
                 const rowClassName = rowClasses.join(' ');
                 const joinDateRow = isJoinDateRow(row);
+                const canResetJoinDate = canResetJoinDateAttendance(row);
 
                 return (
                   <tr className={rowClassName} key={`${row.seatNumber || 'unassigned'}-${row.name}`}>
@@ -510,7 +515,7 @@ export function StaffAttendancePanel() {
                     <td>{row.name}</td>
                     {joinDateRow ? (
                       <td className="join-date-cell" colSpan={7}>
-                        <button type="button" disabled={submitting} onClick={() => row.memberId && resetJoinDateAttendance(row.memberId)}>
+                        <button type="button" disabled={submitting || !canResetJoinDate} onClick={() => canResetJoinDate && row.memberId && resetJoinDateAttendance(row.memberId)}>
                           {formatCompactDate(selectedDate)} {row.name}{row.certificationContent ? `(${row.certificationContent})` : ''} -
                         </button>
                       </td>

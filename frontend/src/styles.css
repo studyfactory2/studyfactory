@@ -396,7 +396,7 @@ button {
 .manager-page {
   min-height: 100vh;
   padding: 16px 18px 28px;
-  background: linear-gradient(180deg, #eef7fb 0%, #f7fbfd 100%);
+  background: linear-gradient(180deg, #f8fdfc 0%, #f1faf8 100%);
   color: #26323a;
 }
 
@@ -413,9 +413,9 @@ button {
   width: 38px;
   height: 38px;
   border-radius: 999px;
-  background: #247d82;
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(36, 125, 130, 0.24);
+  background: #eef8f6;
+  color: #006f6c;
+  box-shadow: 0 8px 18px rgba(0, 111, 108, 0.12);
 }
 
 .round-action {
@@ -445,9 +445,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: #247d82;
-  box-shadow: 0 6px 16px rgba(36, 125, 130, 0.24);
+  border: 1px solid #d7ebe8;
+  background: #e9f6f3;
+  box-shadow: 0 8px 18px rgba(0, 111, 108, 0.12);
 }
 
 .round-logo img {
@@ -476,7 +476,7 @@ button {
 }
 
 .current-tab {
-  color: #247d82;
+  color: #006f6c;
   font-size: 18px;
   text-align: center;
   white-space: nowrap;
@@ -485,12 +485,12 @@ button {
 .adjacent-tab {
   min-width: 0;
   width: 100%;
-  color: rgba(36, 49, 56, 0.36);
+  color: rgba(0, 96, 94, 0.38);
   font-size: 13px;
   font-weight: 800;
   overflow: hidden;
   cursor: pointer;
-  text-shadow: 0 3px 12px rgba(36, 125, 130, 0.16);
+  text-shadow: 0 3px 12px rgba(0, 111, 108, 0.12);
   white-space: nowrap;
 }
 
@@ -515,7 +515,7 @@ button {
 }
 
 .manager-tabs .tab-arrow {
-  color: #247d82;
+  color: #007a78;
   font-size: 34px;
   line-height: 1;
   text-align: center;
@@ -5100,10 +5100,10 @@ button.beverage-serving-cell:disabled {
 .staff-attendance-search,
 .staff-attendance-actions button {
   min-height: 32px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #d7ebe8;
   border-radius: 20px;
-  background: #fff;
-  color: #718096;
+  background: #f8fdfc;
+  color: #006f6c;
   font-size: clamp(0.65rem, 2.5vw, 0.85rem);
   font-weight: 900;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -5153,7 +5153,7 @@ button.beverage-serving-cell:disabled {
   padding: 4px;
   border: 0;
   background: none;
-  color: #4a5568;
+  color: #007a78;
   font-size: 28px;
   line-height: 0.9;
   cursor: pointer;
@@ -5161,7 +5161,7 @@ button.beverage-serving-cell:disabled {
 
 .staff-date-control strong {
   min-width: 0;
-  color: #2d3748;
+  color: #18343b;
   font-size: clamp(1rem, 4vw, 1.2rem);
   font-weight: 900;
   text-align: center;
@@ -5183,7 +5183,7 @@ button.beverage-serving-cell:disabled {
   width: 100%;
   min-width: 0;
   border: 0;
-  color: #4a5568;
+  color: #18343b;
   font-size: 0.85rem;
   outline: none;
   background: transparent;
@@ -5204,14 +5204,14 @@ button.beverage-serving-cell:disabled {
   min-width: 0;
   min-height: 38px;
   padding: 0 8px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid #d7ebe8;
+  background: #eef8f6;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
   border-radius: 12px;
-  color: #718096;
+  color: #006f6c;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5219,33 +5219,33 @@ button.beverage-serving-cell:disabled {
 }
 
 .staff-attendance-actions .suggestion-tag:not(:disabled) {
-  border-color: #a7f3d0;
-  background: #ecfdf5;
-  color: #047857;
+  border-color: #007a78;
+  background: linear-gradient(180deg, #008a87 0%, #006f6c 100%);
+  color: #fff;
 }
 
 .staff-attendance-actions .meal-tag:not(:disabled) {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #c2410c;
+  border-color: #d7ebe8;
+  background: #eef8f6;
+  color: #006f6c;
 }
 
 .staff-attendance-actions .todo-tag:not(:disabled) {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
-  color: #15803d;
+  border-color: #d7ebe8;
+  background: #eef8f6;
+  color: #006f6c;
 }
 
 .staff-attendance-actions .note-tag:not(:disabled) {
-  border-color: #bae6fd;
-  background: #f0f9ff;
-  color: #0369a1;
+  border-color: #d7ebe8;
+  background: #eef8f6;
+  color: #006f6c;
 }
 
 .staff-attendance-actions button:disabled {
-  color: #9aa9b0;
-  background: #f5f8f9;
-  border-color: #e2e8f0;
+  color: #9ab0ad;
+  background: #f6fbfa;
+  border-color: #e2efed;
   cursor: not-allowed;
 }
 
@@ -5255,17 +5255,19 @@ button.beverage-serving-cell:disabled {
   height: 20px;
   place-items: center;
   border-radius: 999px;
-  background: #267e82;
-  color: #fff;
+  background: #fff;
+  color: #006f6c;
   font-size: 12px;
 }
 
 .staff-attendance-actions .todo-tag:not(:disabled) b {
-  background: #15803d;
+  background: #fff;
+  color: #006f6c;
 }
 
 .staff-attendance-actions .note-tag:not(:disabled) b {
-  background: #0369a1;
+  background: #fff;
+  color: #006f6c;
 }
 
 .staff-attendance-actions button:disabled b {
@@ -5288,7 +5290,7 @@ button.beverage-serving-cell:disabled {
   position: relative;
   touch-action: pan-x pan-y;
   display: block;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #d7ebe8;
   background: white;
 }
 
@@ -5320,8 +5322,8 @@ button.beverage-serving-cell:disabled {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f7fafc;
-  color: #4a5568;
+  background: #eaf7f5;
+  color: #006f6c;
   font-size: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
@@ -5331,7 +5333,7 @@ button.beverage-serving-cell:disabled {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #f7fafc;
+  background: #f7fcfb;
 }
 
 .staff-attendance-table thead tr:first-child th:nth-child(2),
@@ -5339,8 +5341,8 @@ button.beverage-serving-cell:disabled {
   position: sticky;
   left: 56px;
   z-index: 2;
-  background: #f7fafc;
-  box-shadow: 2px 0 5px -2px rgba(31, 49, 58, 0.18);
+  background: #f7fcfb;
+  box-shadow: 2px 0 5px -2px rgba(0, 111, 108, 0.16);
 }
 
 .staff-attendance-table thead tr:first-child th:nth-child(1),
@@ -5355,7 +5357,7 @@ button.beverage-serving-cell:disabled {
 
 .staff-attendance-table thead tr:nth-child(2) th {
   top: 26px;
-  color: #718096;
+  color: #006f6c;
   font-size: 11px;
 }
 
@@ -5364,8 +5366,8 @@ button.beverage-serving-cell:disabled {
   min-width: 58px;
   height: 46px;
   padding: 0 6px;
-  border-right: 1px solid #e2e8f0;
-  border-bottom: 1px solid #edf2f7;
+  border-right: 1px solid #d7ebe8;
+  border-bottom: 1px solid #e2efed;
 }
 
 .staff-attendance-table th {
@@ -5383,7 +5385,7 @@ button.beverage-serving-cell:disabled {
 .staff-attendance-table td:nth-child(2) {
   text-align: left;
   font-weight: 900;
-  color: #2d3748;
+  color: #18343b;
 }
 
 .staff-attendance-table th:last-child,
@@ -5396,20 +5398,20 @@ button.beverage-serving-cell:disabled {
 }
 
 .staff-attendance-table tbody tr.soft-divider-row td {
-  border-top: 2px solid #a0aec0;
+  border-top: 2px solid #81aaa7;
 }
 
 .staff-attendance-table tbody tr.strong-divider-row td {
-  border-top: 4px solid #718096;
+  border-top: 4px solid #427f7c;
 }
 
 .staff-attendance-table tbody tr.room-end-divider-row td {
-  border-top: 6px solid #267e82;
+  border-top: 6px solid #007a78;
 }
 
 .staff-attendance-table tbody tr.bottom-divider-row td,
 .staff-attendance-table tbody tr.bottom-divider-row:last-child td {
-  border-bottom: 6px solid #267e82;
+  border-bottom: 6px solid #007a78;
 }
 
 .staff-attendance-table tbody tr.shaded-name-cell-row td:nth-child(1),
@@ -5446,39 +5448,39 @@ button.beverage-serving-cell:disabled {
 }
 
 .staff-attendance-table .status-empty-seat {
-  background: #f8fbfd;
-  color: #c7d4dd;
+  background: #f5fbfa;
+  color: #bed0cd;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-absent {
-  background: #ffe6e6;
-  color: #d71920;
+  background: #eef8f6;
+  color: #006f6c;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-present {
-  background: #bdf1d5;
-  color: #155b40;
+  background: linear-gradient(180deg, #008a87 0%, #006f6c 100%);
+  color: #fff;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-half-leave {
-  background: #bdf1d5;
+  background: #c8f3dc;
   color: #155b40;
   font-size: 11px;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-leave {
-  background: #bdf1d5;
+  background: #c8f3dc;
   color: #d71920;
   font-size: 11px;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-special {
-  background: #bdf1d5;
+  background: #c8f3dc;
   color: #d71920;
   font-size: 11px;
   font-weight: 900;
@@ -5524,9 +5526,9 @@ button.beverage-serving-cell:disabled {
 
 .staff-attendance-table tbody td.selected-slot {
   position: relative;
-  outline: 2px solid #267e82;
+  outline: 2px solid #007a78;
   outline-offset: -2px;
-  box-shadow: inset 0 0 0 2px rgba(38, 126, 130, 0.18);
+  box-shadow: inset 0 0 0 2px rgba(0, 122, 120, 0.18);
 }
 
 .staff-attendance-command-bar {
@@ -5538,7 +5540,7 @@ button.beverage-serving-cell:disabled {
   padding: 8px 14px 12px;
   display: flex;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   border-radius: 16px 16px 0 0;
 }
 
@@ -5558,20 +5560,20 @@ button.beverage-serving-cell:disabled {
 }
 
 .staff-attendance-command-bar .command-present {
-  background: #c8f3dc;
-  color: #155b40;
+  background: linear-gradient(180deg, #008a87 0%, #006f6c 100%);
+  color: #fff;
 }
 
 .staff-attendance-command-bar .command-absent {
-  background: #ffe2e2;
-  color: #d71920;
+  background: #eef8f6;
+  color: #006f6c;
 }
 
 .staff-attendance-command-bar .command-other,
 .staff-attendance-command-bar .command-undo {
-  border-color: #cbd5e0;
+  border-color: #d7ebe8;
   background: #fff;
-  color: #344051;
+  color: #18343b;
 }
 
 .attendance-modal-backdrop {
