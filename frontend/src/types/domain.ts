@@ -163,6 +163,7 @@ export type DailyLeaveStatusResponse = {
   seatNumber?: number | null;
   name: string;
   branch: string;
+  leaveDate: string;
   leaveType: LeaveType;
   createdAt: string;
 };

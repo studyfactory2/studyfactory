@@ -5218,19 +5218,16 @@ button.beverage-serving-cell:disabled {
   white-space: nowrap;
 }
 
-.staff-attendance-actions .suggestion-tag:not(:disabled) {
+.staff-attendance-actions .suggestion-tag:not(:disabled),
+.staff-attendance-actions .meal-tag.has-content,
+.staff-attendance-actions .todo-tag.has-content {
   border-color: #007a78;
   background: linear-gradient(180deg, #008a87 0%, #006f6c 100%);
   color: #fff;
 }
 
-.staff-attendance-actions .meal-tag:not(:disabled) {
-  border-color: #d7ebe8;
-  background: #eef8f6;
-  color: #006f6c;
-}
-
-.staff-attendance-actions .todo-tag:not(:disabled) {
+.staff-attendance-actions .meal-tag:not(.has-content),
+.staff-attendance-actions .todo-tag:not(.has-content) {
   border-color: #d7ebe8;
   background: #eef8f6;
   color: #006f6c;
@@ -5260,7 +5257,8 @@ button.beverage-serving-cell:disabled {
   font-size: 12px;
 }
 
-.staff-attendance-actions .todo-tag:not(:disabled) b {
+.staff-attendance-actions .meal-tag.has-content b,
+.staff-attendance-actions .todo-tag.has-content b {
   background: #fff;
   color: #006f6c;
 }

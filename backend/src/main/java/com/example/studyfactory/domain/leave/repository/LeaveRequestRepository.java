@@ -30,6 +30,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
                 m.workInformation.seatNumber,
                 m.name,
                 b.name,
+                l.leaveDate,
                 l.leaveType,
                 l.createdAt
             )

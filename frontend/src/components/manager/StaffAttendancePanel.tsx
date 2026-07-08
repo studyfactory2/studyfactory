@@ -463,8 +463,11 @@ export function StaffAttendancePanel() {
           회원건의
           {unresolvedSuggestionCount > 0 && <b>{unresolvedSuggestionCount}</b>}
         </button>
-        <button className="meal-tag" type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>반찬신청</button>
-        <button className="todo-tag" type="button" onClick={() => setTodoModalOpen(true)}>
+        <button className={`meal-tag${sideDishes.length > 0 ? ' has-content' : ''}`} type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>
+          반찬신청
+          {sideDishes.length > 0 && <b>{sideDishes.length}</b>}
+        </button>
+        <button className={`todo-tag${todoCount > 0 ? ' has-content' : ''}`} type="button" onClick={() => setTodoModalOpen(true)}>
           할일목록
           {todoCount > 0 && <b>{todoCount}</b>}
         </button>

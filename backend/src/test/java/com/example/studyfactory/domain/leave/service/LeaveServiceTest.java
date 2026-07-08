@@ -177,6 +177,7 @@ class LeaveServiceTest {
                 10,
                 "kim",
                 "강남점",
+                date,
                 LeaveType.FULL,
                 LocalDateTime.of(2026, 6, 19, 10, 0)
         );
@@ -188,6 +189,7 @@ class LeaveServiceTest {
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).name()).isEqualTo("kim");
         assertThat(responses.get(0).branch()).isEqualTo("강남점");
+        assertThat(responses.get(0).leaveDate()).isEqualTo(date);
         assertThat(responses.get(0).leaveType()).isEqualTo(LeaveType.FULL);
     }
 

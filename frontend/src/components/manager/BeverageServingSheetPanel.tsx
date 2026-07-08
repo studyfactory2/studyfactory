@@ -511,8 +511,9 @@ function createBeverageSummary(
     .map((beverage) => toTodayBeverageChange(beverage, now))
     .filter((change): change is SummaryMember => change !== null)
     .sort(compareSummaryMembers);
+  const afterEightTodayLeaves = dailyLeaveStatuses.filter((status) => isTodayLeaveRequestedAfterEight(status, now));
   const afterEightLeaveMembers = dailyLeaveStatuses
-    .filter((status) => isAfterEightToday(status.createdAt, now))
+    .filter((status) => isTodayLeaveRequestedAfterEight(status, now))
     .map((beverage) => ({
       id: `${beverage.memberId}-${beverage.createdAt}-${beverage.leaveType}`,
       label: formatLeaveMemberLabel(beverage),
@@ -520,9 +521,7 @@ function createBeverageSummary(
     }))
     .sort(compareSummaryMembers);
   const afterEightLeaveMemberIds = new Set(
-    dailyLeaveStatuses
-      .filter((status) => isAfterEightToday(status.createdAt, now))
-      .map((status) => status.memberId)
+    afterEightTodayLeaves.map((status) => status.memberId)
   );
   const tumblerCounts = new Map<string, number>();
   const cupCounts = new Map<string, number>();
@@ -643,12 +642,13 @@ function isSameDate(first: Date, second: Date) {
     && first.getDate() === second.getDate();
 }
 
-function isAfterEightToday(value: string, now: Date) {
-  const date = new Date(value);
+function isTodayLeaveRequestedAfterEight(status: DailyLeaveStatusResponse, now: Date) {
+  const leaveDate = new Date(`${status.leaveDate}T00:00:00`);
+  const requestedAt = new Date(status.createdAt);
   const eight = new Date(now);
   eight.setHours(8, 0, 0, 0);
 
-  return isSameDate(date, now) && date >= eight;
+  return status.leaveType !== 'AFTERNOON' && isSameDate(leaveDate, now) && isSameDate(requestedAt, now) && requestedAt >= eight;
 }
 
 function toDateKey(date: Date) {
