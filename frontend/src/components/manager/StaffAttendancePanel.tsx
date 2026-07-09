@@ -306,7 +306,13 @@ export function StaffAttendancePanel() {
     }
   };
 
-  const updateSlotStatus = async (status: SlotStatusUpdateType, reason?: string, date = selectedDate, slot: number | null | undefined = selectedSlot?.slot) => {
+  const updateSlotStatus = async (
+    status: SlotStatusUpdateType,
+    reason?: string,
+    date = selectedDate,
+    slot: number | null | undefined = selectedSlot?.slot,
+    autoAdvance = false,
+  ) => {
     if (!selectedSlot) {
       setMessage('변경할 교시를 먼저 선택해주세요.');
       return;
@@ -318,6 +324,7 @@ export function StaffAttendancePanel() {
 
     setSubmitting(true);
     setMessage('');
+    const currentSlot = selectedSlot;
     try {
       await apiRequest<void>('/api/attendances/daily-board/slot', {
         method: 'PATCH',
@@ -329,7 +336,26 @@ export function StaffAttendancePanel() {
           reason,
         }),
       });
-      await loadBoard(selectedDate);
+      if (date === selectedDate) {
+        setBoard((current) => current ? {
+          ...current,
+          rows: current.rows.map((row) => {
+            if (row.memberId !== currentSlot.memberId) {
+              return row;
+            }
+
+            return {
+              ...row,
+              slots: row.slots.map((currentStatus, index) => index === slot - 1 ? toAttendanceStatusLabel(status, reason) : currentStatus),
+            };
+          }),
+        } : current);
+      }
+      if (autoAdvance) {
+        moveToNextEditableSlot(currentSlot);
+      } else {
+        setSelectedSlot(currentSlot);
+      }
       setOtherModalOpen(false);
       setOtherReason('');
       setSelectedOtherReason('');
@@ -412,6 +438,25 @@ export function StaffAttendancePanel() {
   const canResetJoinDateAttendance = (row: DailyAttendanceBoardResponse['rows'][number]) => (
     Boolean(row.memberId && row.joinDate === selectedDate && selectedDate === toDateKey(new Date()))
   );
+
+  const moveToNextEditableSlot = (currentSlot = selectedSlot) => {
+    if (!currentSlot) {
+      return;
+    }
+
+    const editableSlots = SLOT_LABELS.flatMap((slot) => filteredRows
+      .filter((row) => row.memberId && row.seatNumber != null && row.name !== '공석' && !isJoinDateRow(row))
+      .map((row) => ({ memberId: row.memberId as number, name: row.name, slot })));
+    const currentIndex = editableSlots.findIndex((slot) => slot.memberId === currentSlot.memberId && slot.slot === currentSlot.slot);
+    const nextSlot = editableSlots[currentIndex + 1];
+
+    if (nextSlot) {
+      setSelectedSlot(nextSlot);
+      return;
+    }
+
+    setSelectedSlot(currentSlot);
+  };
 
   const openOtherModal = () => {
     if (!selectedSlot) {
@@ -500,11 +545,8 @@ export function StaffAttendancePanel() {
             </colgroup>
             <thead>
               <tr>
-                <th rowSpan={2}>좌석</th>
-                <th rowSpan={2}>이름</th>
-                <th colSpan={7}>{formatShortDate(selectedDate)}</th>
-              </tr>
-              <tr>
+                <th>좌석</th>
+                <th>이름</th>
                 {SLOT_LABELS.map((slot) => (
                   <th key={slot}>{slot}</th>
                 ))}
@@ -525,7 +567,9 @@ export function StaffAttendancePanel() {
 
                 return (
                   <tr className={rowClassName} key={`${row.seatNumber || 'unassigned'}-${row.name}`}>
-                    <td>{row.seatNumber ?? '-'}</td>
+                    <td className="staff-seat-cell">
+                      {row.seatNumber == null ? '-' : <span>{row.seatNumber}</span>}
+                    </td>
                     <td>{row.name}</td>
                     {joinDateRow ? (
                       <td className="join-date-cell" colSpan={7}>
@@ -558,10 +602,10 @@ export function StaffAttendancePanel() {
             </tbody>
           </table>
           <div className="staff-attendance-command-bar">
-            <button className="command-present" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('PRESENT')}>O</button>
-            <button className="command-absent" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('ABSENT')}>X</button>
+            <button className="command-present" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('PRESENT', undefined, selectedDate, selectedSlot?.slot)}>O 출석</button>
+            <button className="command-absent" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('ABSENT', undefined, selectedDate, selectedSlot?.slot)}>X 결석</button>
             <button className="command-other" type="button" disabled={!selectedSlot || submitting} onClick={openOtherModal}>기타</button>
-            <button className="command-undo" type="button" disabled={!selectedSlot || submitting} onClick={() => setSelectedSlot(null)}>↩</button>
+            <button className="command-undo" type="button" disabled={!selectedSlot || submitting} onClick={() => moveToNextEditableSlot()}>↵</button>
           </div>
         </div>
       )}
@@ -980,13 +1024,6 @@ function formatKoreanDate(date: string) {
   return `${parsed.getFullYear()}.${String(parsed.getMonth() + 1).padStart(2, '0')}.${String(parsed.getDate()).padStart(2, '0')} (${weekdays[parsed.getDay()]})`;
 }
 
-function formatShortDate(date: string) {
-  const parsed = new Date(`${date}T00:00:00`);
-  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-
-  return `${parsed.getMonth() + 1}.${parsed.getDate()}(${weekdays[parsed.getDay()]})`;
-}
-
 function formatCompactDate(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
 
@@ -1099,6 +1136,17 @@ function toStatusClassName(status: string, emptySeat: boolean) {
   }
 
   return 'status-leave';
+}
+
+function toAttendanceStatusLabel(status: SlotStatusUpdateType, reason?: string) {
+  if (status === 'PRESENT') {
+    return 'O';
+  }
+  if (status === 'ABSENT') {
+    return 'X';
+  }
+
+  return reason?.trim() || '기타';
 }
 
 function getDividerClassName(seatNumber?: number | null) {

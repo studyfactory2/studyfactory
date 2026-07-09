@@ -16,8 +16,8 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:studyfactory-local-development-secret-key}
-  access-expiration-millis: 3600000
-  refresh-expiration-millis: 1209600000
+  access-expiration-millis: 3153600000000
+  refresh-expiration-millis: 3153600000000
 
 app:
   cors:

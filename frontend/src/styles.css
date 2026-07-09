@@ -396,7 +396,7 @@ button {
 .manager-page {
   min-height: 100vh;
   padding: 16px 18px 28px;
-  background: linear-gradient(180deg, #f8fdfc 0%, #f1faf8 100%);
+  background: linear-gradient(180deg, #fcfefe 0%, #fbfdfd 58%, #f8fcfb 100%);
   color: #26323a;
 }
 
@@ -461,9 +461,11 @@ button {
   width: min(560px, 100%);
   margin: 0 auto 22px;
   display: grid;
-  grid-template-columns: minmax(80px, 1fr) 26px minmax(140px, auto) 26px minmax(80px, 1fr);
+  grid-template-columns: 24px minmax(132px, auto) 24px;
+  justify-content: center;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  position: relative;
 }
 
 .manager-tabs a,
@@ -484,7 +486,7 @@ button {
 
 .adjacent-tab {
   min-width: 0;
-  width: 100%;
+  width: min(104px, 27vw);
   color: rgba(0, 96, 94, 0.38);
   font-size: 13px;
   font-weight: 800;
@@ -505,11 +507,15 @@ button {
 }
 
 .previous-tab {
+  position: absolute;
+  right: calc(50% + 108px);
   text-align: right;
   mask-image: linear-gradient(90deg, transparent 0%, #000 42%, #000 100%);
 }
 
 .next-tab {
+  position: absolute;
+  left: calc(50% + 108px);
   text-align: left;
   mask-image: linear-gradient(90deg, #000 0%, #000 58%, transparent 100%);
 }
@@ -523,7 +529,7 @@ button {
 }
 
 .tab-arrow-placeholder {
-  width: 26px;
+  width: 24px;
   height: 30px;
 }
 
@@ -562,8 +568,8 @@ button {
   .manager-tabs {
     width: min(660px, 100%);
     margin-bottom: 26px;
-    grid-template-columns: minmax(110px, 1fr) 30px minmax(170px, auto) 30px minmax(110px, 1fr);
-    gap: 14px;
+    grid-template-columns: 28px minmax(164px, auto) 28px;
+    gap: 10px;
   }
 
   .current-tab {
@@ -572,6 +578,15 @@ button {
 
   .adjacent-tab {
     font-size: 15px;
+    width: min(134px, 22vw);
+  }
+
+  .previous-tab {
+    right: calc(50% + 132px);
+  }
+
+  .next-tab {
+    left: calc(50% + 132px);
   }
 
   .manager-tabs .tab-arrow {
@@ -3056,6 +3071,7 @@ button.beverage-serving-cell:disabled {
 .manager-card:has(.staff-side-dish-panel) {
   width: min(526px, calc(100vw - 32px));
   min-height: 0;
+  margin-top: -14px;
   padding: 28px;
 }
 
@@ -5306,6 +5322,12 @@ button.beverage-serving-cell:disabled {
 .staff-attendance-card {
   overflow: hidden;
   padding: 0;
+  border-radius: 24px;
+  box-shadow: 0 18px 34px rgba(23, 82, 80, 0.12);
+}
+
+.manager-card:has(.staff-attendance-panel) {
+  margin-top: -14px;
 }
 
 .staff-attendance-panel {
@@ -5313,14 +5335,15 @@ button.beverage-serving-cell:disabled {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   background: #fff;
+  padding: 6px;
 }
 
 .staff-attendance-tools {
   display: grid;
-  grid-template-columns: minmax(86px, 0.72fr) minmax(168px, 1.28fr);
+  grid-template-columns: minmax(128px, 0.74fr) minmax(210px, 1.26fr);
   align-items: center;
-  gap: 8px;
-  padding: 10px 10px 4px;
+  gap: 10px;
+  padding: 0 0 6px;
 }
 
 .staff-search-button,
@@ -5328,12 +5351,12 @@ button.beverage-serving-cell:disabled {
 .staff-attendance-actions button {
   min-height: 32px;
   border: 1px solid #d7ebe8;
-  border-radius: 20px;
-  background: #f8fdfc;
+  border-radius: 16px;
+  background: #fff;
   color: #006f6c;
-  font-size: clamp(0.65rem, 2.5vw, 0.85rem);
+  font-size: clamp(0.72rem, 2.5vw, 0.9rem);
   font-weight: 900;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(23, 82, 80, 0.04);
 }
 
 .staff-search-slot {
@@ -5369,41 +5392,44 @@ button.beverage-serving-cell:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transform: translateX(5px);
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d7ebe8;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(23, 82, 80, 0.04);
 }
 
 .staff-date-control button {
   flex-shrink: 0;
-  width: 30px;
+  width: 26px;
   height: 30px;
   padding: 4px;
   border: 0;
   background: none;
-  color: #007a78;
-  font-size: 28px;
+  color: #006f6c;
+  font-size: 26px;
   line-height: 0.9;
   cursor: pointer;
 }
 
 .staff-date-control strong {
-  min-width: 0;
+  min-width: 138px;
   color: #18343b;
-  font-size: clamp(1rem, 4vw, 1.2rem);
+  font-size: clamp(0.98rem, 3.5vw, 1.18rem);
   font-weight: 900;
   text-align: center;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .staff-attendance-search {
   width: 100%;
-  height: 32px;
-  padding: 0 10px;
+  height: 42px;
+  padding: 0 14px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 }
 
 .staff-attendance-search input {
@@ -5423,13 +5449,13 @@ button.beverage-serving-cell:disabled {
 .staff-attendance-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
-  padding: 5px 10px 9px;
+  gap: 10px;
+  padding: 0 0 6px;
 }
 
 .staff-attendance-actions button {
   min-width: 0;
-  min-height: 38px;
+  min-height: 42px;
   padding: 0 8px;
   border: 1px solid #d7ebe8;
   background: #eef8f6;
@@ -5437,7 +5463,7 @@ button.beverage-serving-cell:disabled {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border-radius: 12px;
+  border-radius: 13px;
   color: #006f6c;
   cursor: pointer;
   overflow: hidden;
@@ -5509,19 +5535,20 @@ button.beverage-serving-cell:disabled {
 
 .staff-attendance-table-wrap {
   min-height: 0;
-  height: min(66vh, 620px);
-  max-height: 620px;
+  height: min(68vh, 640px);
+  max-height: 640px;
   overflow: auto;
   position: relative;
   touch-action: pan-x pan-y;
   display: block;
-  border-top: 1px solid #d7ebe8;
-  background: white;
+  border: 1px solid #d7ebe8;
+  border-radius: 2px 2px 18px 18px;
+  background: #fff;
 }
 
 .staff-attendance-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 0;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
@@ -5532,25 +5559,25 @@ button.beverage-serving-cell:disabled {
 }
 
 .staff-seat-column {
-  width: 56px;
+  width: 58px;
 }
 
 .staff-name-column {
-  width: 96px;
+  width: 104px;
 }
 
 .staff-slot-column {
-  width: calc((100% - 152px) / 7);
+  width: calc((100% - 162px) / 7);
 }
 
 .staff-attendance-table th {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #eaf7f5;
+  background: #eef8f6;
   color: #006f6c;
   font-size: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
 .staff-attendance-table thead tr:first-child th:nth-child(1),
@@ -5580,37 +5607,32 @@ button.beverage-serving-cell:disabled {
   background: #fff;
 }
 
-.staff-attendance-table thead tr:nth-child(2) th {
-  top: 26px;
-  color: #006f6c;
-  font-size: 11px;
-}
-
 .staff-attendance-table th,
 .staff-attendance-table td {
   min-width: 58px;
-  height: 46px;
-  padding: 0 6px;
+  height: 36px;
+  padding: 1px 5px;
   border-right: 1px solid #d7ebe8;
   border-bottom: 1px solid #e2efed;
 }
 
 .staff-attendance-table th {
-  height: 30px;
-}
-
-.staff-attendance-table thead tr:first-child th {
   height: 26px;
 }
 
-.staff-attendance-table thead tr:first-child th[rowspan] {
-  height: 52px;
+.staff-attendance-table thead tr:first-child th:nth-child(n + 3) {
+  color: #006f6c;
+  font-size: 11px;
 }
 
 .staff-attendance-table td:nth-child(2) {
   text-align: left;
   font-weight: 900;
   color: #18343b;
+}
+
+.staff-attendance-table .staff-seat-cell {
+  text-align: center;
 }
 
 .staff-attendance-table th:last-child,
@@ -5672,40 +5694,52 @@ button.beverage-serving-cell:disabled {
   white-space: nowrap;
 }
 
+.staff-attendance-table .staff-seat-cell span {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 999px;
+  background: #e9f6f4;
+  color: #007a78;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .staff-attendance-table .status-empty-seat {
-  background: #f5fbfa;
+  background: #fff;
   color: #bed0cd;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-absent {
-  background: #eef8f6;
+  background: #fff;
   color: #006f6c;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-present {
-  background: linear-gradient(180deg, #008a87 0%, #006f6c 100%);
+  background: #fff;
   color: #fff;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-half-leave {
-  background: #c8f3dc;
+  background: #fff;
   color: #155b40;
   font-size: 11px;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-leave {
-  background: #c8f3dc;
+  background: #fff;
   color: #d71920;
   font-size: 11px;
   font-weight: 900;
 }
 
 .staff-attendance-table .status-special {
-  background: #c8f3dc;
+  background: #fff;
   color: #d71920;
   font-size: 11px;
   font-weight: 900;
@@ -5718,6 +5752,33 @@ button.beverage-serving-cell:disabled {
 .staff-attendance-table .status-special span {
   width: 100%;
   height: 100%;
+  min-height: 34px;
+  border-radius: 8px;
+}
+
+.staff-attendance-table .status-empty-seat span {
+  width: 100%;
+  height: 100%;
+  min-height: 34px;
+  border-radius: 8px;
+  background: #f4faf9;
+  color: #b9cfcc;
+}
+
+.staff-attendance-table .status-absent span {
+  background: #eef8f6;
+  color: #006f6c;
+}
+
+.staff-attendance-table .status-present span {
+  background: linear-gradient(180deg, #0b8c88 0%, #006f6c 100%);
+  color: #fff;
+}
+
+.staff-attendance-table .status-half-leave span,
+.staff-attendance-table .status-leave span,
+.staff-attendance-table .status-special span {
+  background: #c8f3dc;
 }
 
 .staff-attendance-table tbody td.status-absent,
@@ -5764,20 +5825,20 @@ button.beverage-serving-cell:disabled {
   bottom: 0;
   z-index: 30;
   width: fit-content;
-  margin: 0 14px 0 auto;
-  padding: 8px 14px 12px;
+  margin: 0 18px 0 auto;
+  padding: 8px 14px 10px;
   display: flex;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   border-radius: 16px 16px 0 0;
 }
 
 .staff-attendance-command-bar button {
-  min-width: 52px;
-  height: 42px;
-  border-radius: 10px;
+  min-width: 76px;
+  height: 40px;
+  border-radius: 9px;
   border: 1px solid transparent;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
   box-shadow: 0 5px 12px rgba(54, 70, 80, 0.12);
 }
@@ -8126,18 +8187,19 @@ button.beverage-serving-cell:disabled {
   }
 
   .manager-page {
-    padding: 14px 12px 24px;
+    padding: 8px 12px 20px;
   }
 
   .manager-topbar {
-    margin-bottom: 20px;
+    margin-bottom: 14px;
   }
 
   .manager-tabs {
-    grid-template-columns: minmax(72px, 1fr) 28px minmax(140px, auto) 28px minmax(72px, 1fr);
-    gap: 10px;
+    grid-template-columns: 22px minmax(112px, auto) 22px;
+    justify-content: center;
+    gap: 6px;
     padding: 0 4px;
-    transform: translateX(-8px);
+    margin-bottom: 12px;
   }
 
   .current-tab {
@@ -8146,6 +8208,15 @@ button.beverage-serving-cell:disabled {
 
   .adjacent-tab {
     font-size: clamp(14px, 3.1vw, 16px);
+    width: min(82px, 23vw);
+  }
+
+  .previous-tab {
+    right: calc(50% + 86px);
+  }
+
+  .next-tab {
+    left: calc(50% + 86px);
   }
 
   .manager-tabs .tab-arrow {
@@ -8161,6 +8232,10 @@ button.beverage-serving-cell:disabled {
 
   .staff-attendance-card {
     padding: 0;
+  }
+
+  .manager-card:has(.staff-attendance-panel) {
+    margin-top: -16px;
   }
 
   .manager-card:has(.staff-work-panel) {
@@ -8217,63 +8292,84 @@ button.beverage-serving-cell:disabled {
   }
 
   .staff-attendance-tools {
-    grid-template-columns: minmax(86px, 0.72fr) minmax(168px, 1.28fr);
-    gap: 8px;
+    grid-template-columns: minmax(96px, 0.64fr) minmax(198px, 1.36fr);
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+
+  .staff-date-control {
+    gap: 4px;
+    min-height: 36px;
+    padding: 0 6px;
+  }
+
+  .staff-date-control button {
+    width: 22px;
+    height: 28px;
+    font-size: 23px;
+  }
+
+  .staff-date-control strong {
+    min-width: 116px;
+    font-size: 0.92rem;
   }
 
   .staff-attendance-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    padding-bottom: 4px;
   }
 
   .staff-attendance-actions button,
   .staff-search-button,
   .staff-attendance-search {
-    min-height: 38px;
+    min-height: 36px;
+    border-radius: 12px;
   }
 
   .staff-attendance-table-wrap {
-    height: min(64vh, 540px);
-    max-height: 540px;
+    height: min(70vh, 560px);
+    max-height: 560px;
   }
 
   .staff-attendance-table {
     min-width: 0;
     width: 100%;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .staff-seat-column {
-    width: 38px;
+    width: 42px;
   }
 
   .staff-name-column {
-    width: 58px;
+    width: 68px;
   }
 
   .staff-slot-column {
-    width: calc((100% - 96px) / 7);
+    width: calc((100% - 110px) / 7);
   }
 
   .staff-attendance-table th,
   .staff-attendance-table td {
     min-width: 0;
-    height: 40px;
-    padding: 0 2px;
-    font-size: 10px;
+    height: 33px;
+    padding: 1px 2px;
+    font-size: 11px;
   }
 
   .staff-attendance-table .join-date-cell button {
-    min-height: 40px;
+    min-height: 33px;
     font-size: 11px;
   }
 
   .staff-attendance-table thead tr:first-child th:nth-child(2),
   .staff-attendance-table tbody td:nth-child(2) {
-    left: 38px;
+    left: 42px;
   }
 
   .staff-attendance-table td:nth-child(2) {
-    font-size: 10px;
+    font-size: 11px;
     text-align: center;
     word-break: keep-all;
   }
@@ -8285,10 +8381,41 @@ button.beverage-serving-cell:disabled {
     line-height: 1;
   }
 
+  .staff-attendance-table .staff-seat-cell span {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    font-size: 11px;
+  }
+
+  .staff-attendance-table .status-absent span,
+  .staff-attendance-table .status-present span,
+  .staff-attendance-table .status-half-leave span,
+  .staff-attendance-table .status-leave span,
+  .staff-attendance-table .status-special span,
+  .staff-attendance-table .status-empty-seat span {
+    min-height: 27px;
+    border-radius: 7px;
+  }
+
   .staff-attendance-table .status-leave,
   .staff-attendance-table .status-half-leave,
   .staff-attendance-table .status-special {
     font-size: 9px;
+  }
+
+  .staff-attendance-command-bar {
+    right: 10px;
+    margin-right: 8px;
+    padding: 7px 8px 9px;
+    gap: 6px;
+  }
+
+  .staff-attendance-command-bar button {
+    min-width: 58px;
+    height: 36px;
+    font-size: 13px;
   }
 
   .manager-card:has(.admin-grid-panel) {
@@ -8401,6 +8528,7 @@ button.beverage-serving-cell:disabled {
   .manager-card:has(.staff-side-dish-panel) {
     width: 100%;
     min-height: 640px;
+    margin-top: -12px;
     padding: 22px 14px 30px;
   }
 
@@ -8889,6 +9017,7 @@ button.beverage-serving-cell:disabled {
     .manager-card:has(.staff-side-dish-panel) {
       width: min(720px, calc(100vw - 48px));
       min-height: 720px;
+      margin-top: -12px;
       padding: 30px 28px 38px;
     }
 
@@ -9544,7 +9673,21 @@ button.beverage-serving-cell:disabled {
   .manager-tabs {
     width: min(680px, 100%);
     margin-bottom: 24px;
-    grid-template-columns: minmax(100px, 1fr) 30px minmax(170px, auto) 30px minmax(100px, 1fr);
+    grid-template-columns: 26px minmax(158px, auto) 26px;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .adjacent-tab {
+    width: min(126px, 21vw);
+  }
+
+  .previous-tab {
+    right: calc(50% + 126px);
+  }
+
+  .next-tab {
+    left: calc(50% + 126px);
   }
 
   .manager-card,
