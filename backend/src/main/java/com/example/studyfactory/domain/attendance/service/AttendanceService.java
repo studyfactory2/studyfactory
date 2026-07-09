@@ -127,6 +127,7 @@ public class AttendanceService {
 
     private void clearSlotStatus(Long memberId, LocalDate date, Integer slot) {
         attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
+        attendanceRepository.flush();
         deleteLeaveRequestsBySlot(memberId, date, slot);
         deleteSpecialLeavesBySlot(memberId, date, slot);
     }
