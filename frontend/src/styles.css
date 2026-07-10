@@ -10147,7 +10147,7 @@ button.beverage-serving-cell:disabled {
   min-height: 52px;
   background: transparent;
   color: var(--member-teal);
-  font-size: 38px;
+  font-size: 34px;
   font-weight: 950;
   letter-spacing: -0.08em;
   line-height: 1;
@@ -10246,10 +10246,15 @@ button.beverage-serving-cell:disabled {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  touch-action: pan-y;
 }
 
 .member-dashboard-shell .member-panel {
   gap: 18px;
+}
+
+.member-dashboard-column {
+  display: contents;
 }
 
 .member-dashboard-shell .member-list-box,
@@ -10272,7 +10277,8 @@ button.beverage-serving-cell:disabled {
   gap: 10px;
 }
 
-.member-dashboard-shell .member-panel > .member-calendar-header {
+.member-dashboard-shell .member-panel > .member-calendar-header,
+.member-dashboard-shell .member-dashboard-column-primary > .member-calendar-header {
   border: 1px solid var(--member-line);
   border-bottom: 0;
   border-radius: 30px 30px 0 0;
@@ -10304,7 +10310,8 @@ button.beverage-serving-cell:disabled {
   gap: 12px 16px;
 }
 
-.member-dashboard-shell .member-panel > .member-calendar-grid {
+.member-dashboard-shell .member-panel > .member-calendar-grid,
+.member-dashboard-shell .member-dashboard-column-primary > .member-calendar-grid {
   margin-top: -19px;
   padding: 12px 32px 34px;
   border: 1px solid var(--member-line);
@@ -11003,7 +11010,7 @@ button.beverage-serving-cell:disabled {
 
   .member-wordmark {
     min-width: 68px;
-    font-size: 31px;
+    font-size: 28px;
   }
 
   .member-topbar-actions {
@@ -11040,6 +11047,7 @@ button.beverage-serving-cell:disabled {
   }
 
   .member-dashboard-shell .member-panel > .member-calendar-grid,
+  .member-dashboard-shell .member-dashboard-column-primary > .member-calendar-grid,
   .member-dashboard-shell .side-dish-calendar .member-calendar-grid {
     padding: 10px 22px 26px;
     gap: 8px 10px;
@@ -11215,5 +11223,359 @@ button.beverage-serving-cell:disabled {
 
   .member-dashboard-shell .beverage-list {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .member-dashboard-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .member-segment-tabs button {
+    min-height: 40px;
+    padding: 0 6px;
+    font-size: 14px;
+  }
+
+  .member-dashboard-shell .member-notice-box {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 12px 16px;
+    padding: 20px;
+  }
+
+  .member-dashboard-shell .member-notice-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+  }
+
+  .member-dashboard-shell .member-notice-icon svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .member-dashboard-shell .member-notice-box strong {
+    font-size: clamp(18px, 5.2vw, 20px);
+    line-height: 1.18;
+    word-break: keep-all;
+    overflow-wrap: normal;
+  }
+
+  .member-dashboard-shell .member-notice-box p {
+    font-size: 13px;
+  }
+
+  .member-dashboard-shell .member-notice-box a {
+    min-height: 38px;
+    padding: 0 16px;
+    font-size: 14px;
+  }
+
+  .member-dashboard-shell .member-calendar-header strong {
+    font-size: 29px;
+  }
+
+  .member-dashboard-shell .member-calendar-grid button {
+    font-size: 17px;
+  }
+
+  .suggestion-hero h1 {
+    font-size: 36px;
+  }
+
+  .suggestion-hero p {
+    font-size: 16px;
+  }
+
+  .member-dashboard-shell .suggestion-category-grid {
+    gap: 10px;
+  }
+
+  .member-dashboard-shell .suggestion-category-button {
+    min-height: 176px;
+    padding: 18px 18px 22px;
+    border-radius: 24px;
+  }
+
+  .member-dashboard-shell .suggestion-category-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+  }
+
+  .member-dashboard-shell .suggestion-category-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .member-dashboard-shell .suggestion-category-button strong {
+    margin-top: 16px;
+    padding-right: 24px;
+    font-size: clamp(18px, 6.5vw, 22px);
+    word-break: keep-all;
+  }
+
+  .member-dashboard-shell .suggestion-category-button span:not(.suggestion-category-icon) {
+    padding-right: 26px;
+    font-size: 11px;
+  }
+
+  .member-dashboard-shell .suggestion-category-button em {
+    right: 14px;
+    bottom: 20px;
+    font-size: 28px;
+  }
+}
+
+@media (min-width: 900px) {
+  .member-dashboard-shell {
+    padding: 48px clamp(32px, 5vw, 72px) 64px;
+  }
+
+  .member-topbar,
+  .member-segment-tabs,
+  .member-dashboard-shell .member-dashboard-main,
+  .member-dashboard-shell .manager-card.member-dashboard-main {
+    width: min(1180px, 100%);
+  }
+
+  .member-topbar {
+    margin-bottom: 22px;
+  }
+
+  .member-wordmark {
+    font-size: 31px;
+  }
+
+  .member-icon-action {
+    width: 48px;
+    height: 48px;
+  }
+
+  .member-segment-tabs {
+    max-width: 760px;
+    margin-bottom: 28px;
+  }
+
+  .member-segment-tabs button {
+    min-height: 44px;
+    font-size: 18px;
+  }
+
+  .member-dashboard-shell .member-dashboard-main,
+  .member-dashboard-shell .manager-card.member-dashboard-main {
+    overflow: visible;
+  }
+
+  .member-dashboard-shell .member-panel {
+    gap: 22px;
+  }
+
+  .member-dashboard-shell.member-view-leave-plan .member-panel,
+  .member-dashboard-shell.member-view-side-dish .member-panel {
+    grid-template-columns: minmax(420px, 0.9fr) minmax(420px, 1fr);
+    align-items: start;
+    column-gap: 28px;
+  }
+
+  .member-dashboard-shell.member-view-leave-plan .member-dashboard-column,
+  .member-dashboard-shell.member-view-side-dish .member-dashboard-column {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 22px;
+  }
+
+  .member-dashboard-shell .member-calendar-header {
+    min-height: 56px;
+  }
+
+  .member-dashboard-shell .member-calendar-header strong {
+    font-size: 34px;
+  }
+
+  .member-dashboard-shell .member-calendar-header button {
+    width: 44px;
+    height: 44px;
+    font-size: 34px;
+  }
+
+  .member-dashboard-shell .member-calendar-grid {
+    gap: 8px 10px;
+  }
+
+  .member-dashboard-shell .member-panel > .member-calendar-grid,
+  .member-dashboard-shell .member-dashboard-column-primary > .member-calendar-grid,
+  .member-dashboard-shell .side-dish-calendar .member-calendar-grid {
+    padding: 10px 28px 28px;
+  }
+
+  .member-dashboard-shell .member-calendar-grid button {
+    border-radius: 14px;
+    font-size: 22px;
+  }
+
+  .member-dashboard-shell .leave-type-actions button,
+  .member-dashboard-shell .meal-toggle button,
+  .member-dashboard-shell .beverage-mode-toggle button {
+    min-height: 44px;
+    font-size: 18px;
+  }
+
+  .member-dashboard-shell .member-primary-action,
+  .member-dashboard-shell.member-view-side-dish .member-primary-action {
+    min-height: 58px;
+    border-radius: 15px;
+    font-size: 22px;
+  }
+
+  .member-dashboard-shell .member-notice-box {
+    grid-template-columns: 68px minmax(0, 1fr);
+    padding: 24px;
+  }
+
+  .member-dashboard-shell .member-notice-icon {
+    width: 68px;
+    height: 68px;
+  }
+
+  .member-dashboard-shell .member-notice-icon svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .member-dashboard-shell .member-notice-box strong {
+    font-size: 24px;
+  }
+
+  .member-dashboard-shell .member-notice-box p {
+    font-size: 15px;
+  }
+
+  .member-dashboard-shell .member-notice-box a {
+    min-height: 40px;
+    font-size: 17px;
+  }
+
+  .member-dashboard-shell .section-heading strong {
+    font-size: 18px;
+  }
+
+  .member-dashboard-shell .section-heading p:first-of-type {
+    font-size: 25px;
+  }
+
+  .member-dashboard-shell .side-dish-own-total strong {
+    font-size: 48px;
+  }
+
+  .member-dashboard-shell .side-dish-add-button {
+    min-height: 46px;
+    font-size: 17px;
+  }
+
+  .member-section-title h2,
+  .side-dish-list-header strong {
+    font-size: 26px;
+  }
+
+  .leave-history-card {
+    min-height: 82px;
+  }
+
+  .member-dashboard-shell .leave-history-card strong {
+    font-size: 28px;
+  }
+
+  .side-dish-history-list {
+    gap: 16px;
+  }
+
+  .side-dish-order-card-header strong {
+    font-size: 21px;
+  }
+
+  .side-dish-history-item li {
+    font-size: 18px;
+  }
+
+  .side-dish-list-total strong {
+    font-size: 38px;
+  }
+
+  .member-dashboard-shell.member-view-suggestion .member-panel {
+    grid-template-columns: minmax(320px, 0.72fr) minmax(520px, 1fr);
+    align-items: start;
+    column-gap: 34px;
+  }
+
+  .member-dashboard-shell.member-view-suggestion .suggestion-hero,
+  .member-dashboard-shell.member-view-suggestion .suggestion-recent-section {
+    grid-column: 1;
+  }
+
+  .member-dashboard-shell.member-view-suggestion .suggestion-category-section {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    padding-top: 6px;
+  }
+
+  .suggestion-hero h1 {
+    font-size: 52px;
+  }
+
+  .suggestion-hero p {
+    font-size: 20px;
+  }
+
+  .member-dashboard-shell .suggestion-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .member-dashboard-shell .suggestion-category-button {
+    min-height: 220px;
+  }
+
+  .member-dashboard-shell .suggestion-category-button strong {
+    font-size: 28px;
+  }
+
+  .member-dashboard-shell.member-view-beverage .member-panel {
+    grid-template-columns: minmax(340px, 0.72fr) minmax(500px, 1fr);
+    align-items: start;
+    column-gap: 34px;
+  }
+
+  .member-dashboard-shell.member-view-beverage .beverage-intro {
+    grid-column: 1;
+    padding: 24px;
+    border: 1px solid var(--member-line);
+    background: var(--member-card);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68), 0 16px 36px rgba(4, 47, 59, 0.06);
+  }
+
+  .member-dashboard-shell.member-view-beverage .beverage-form {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .member-dashboard-shell .beverage-intro strong {
+    font-size: 48px;
+  }
+
+  .member-dashboard-shell .beverage-intro p {
+    font-size: 19px;
+  }
+
+  .member-dashboard-shell .beverage-menu-row .custom-select-button,
+  .member-dashboard-shell .beverage-input-row input,
+  .member-dashboard-shell .member-field textarea {
+    font-size: 20px;
+  }
+
+  .member-dashboard-shell .member-field span {
+    font-size: 24px;
   }
 }
