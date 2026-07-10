@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../../api/client';
 import type { SuggestionResponse } from '../../types/domain';
 
@@ -9,6 +9,7 @@ type SuggestionOption = {
   category: SuggestionCategory;
   icon: 'package' | 'book' | 'message' | 'heart';
   label: string;
+  description: string;
   examples: string[];
 };
 
@@ -21,25 +22,29 @@ const SUGGESTION_OPTIONS: SuggestionOption[] = [
   {
     category: 'SUPPLIES',
     icon: 'package',
-    label: '비품관련',
+    label: '비품 관련',
+    description: '사무용품 · 비품 요청',
     examples: ['A4 용지가 떨어졌어요', '남자화장실 휴지가 떨어졌어요', '여자화장실 휴지가 떨어졌어요', '이름스티커 더 필요해요'],
   },
   {
     category: 'STUDY',
     icon: 'book',
-    label: '학습관련',
+    label: '학습 관련',
+    description: '교재 · 강의 문의',
     examples: ['강의실 온도가 너무 낮아요', '스터디룸이 너무 시끄러워요', '좌석 조명이 어두워요', '학습 자료 확인이 필요해요'],
   },
   {
     category: 'GENERAL',
     icon: 'message',
-    label: '기타건의',
+    label: '기타 건의',
+    description: '자유 건의사항',
     examples: ['공용공간 정리가 필요해요', '와이파이 연결이 불안정해요', '출입 관련 확인이 필요해요', '기타 불편사항이 있어요'],
   },
   {
     category: 'COUNSELING',
     icon: 'heart',
-    label: '상담요청',
+    label: '상담 요청',
+    description: '1:1 상담 신청',
     examples: ['학습 상담을 받고 싶어요', '생활 관리 상담이 필요해요', '스케줄 상담을 요청해요', '담당자와 상담하고 싶어요'],
   },
 ];
@@ -53,6 +58,12 @@ export function SuggestionPanel() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const recentSuggestion = useMemo(() => suggestions[0] ?? null, [suggestions]);
+
+  useEffect(() => {
+    void loadSuggestions();
+  }, []);
 
   const selectOption = (option: SuggestionOption) => {
     setSelectedOption(option);
@@ -60,10 +71,7 @@ export function SuggestionPanel() {
     setView('detail');
   };
 
-  const openHistory = async () => {
-    setView('history');
-    setMessage(null);
-
+  const loadSuggestions = async () => {
     if (historyLoaded || historyLoading) {
       return;
     }
@@ -78,6 +86,12 @@ export function SuggestionPanel() {
     } finally {
       setHistoryLoading(false);
     }
+  };
+
+  const openHistory = async () => {
+    setView('history');
+    setMessage(null);
+    await loadSuggestions();
   };
 
   const backToCategories = () => {
@@ -102,7 +116,8 @@ export function SuggestionPanel() {
         method: 'POST',
         body: JSON.stringify(confirmTarget),
       });
-      setMessage('건의사항이 전송되었습니다.');
+      setMessage(null);
+      setSuccessOpen(true);
       setHistoryLoaded(false);
       setConfirmTarget(null);
     } catch (error) {
@@ -161,23 +176,53 @@ export function SuggestionPanel() {
             onConfirm={submitSuggestion}
           />
         )}
+        {successOpen && (
+          <SuggestionAlertModal
+            title="전송 완료"
+            description="건의 사항이 전송되었습니다."
+            onClose={() => setSuccessOpen(false)}
+          />
+        )}
       </div>
     );
   }
 
   return (
     <div className="member-panel">
-      <section className="member-list-box">
+      <section className="suggestion-hero">
+        <h1>무엇을<br />도와드릴까요?</h1>
+        <p>카테고리를 선택하세요</p>
+      </section>
+      <section className="suggestion-category-section">
         <div className="suggestion-category-grid">
-          {SUGGESTION_OPTIONS.map((option) => (
-            <button className="suggestion-category-button" type="button" key={option.category} onClick={() => selectOption(option)}>
+          {SUGGESTION_OPTIONS.map((option, index) => (
+            <button className={`suggestion-category-button category-${index}`} type="button" key={option.category} onClick={() => selectOption(option)}>
               <span className="suggestion-category-icon" aria-hidden="true">
                 <SuggestionIcon type={option.icon} />
               </span>
-              <span>{option.label}</span>
+              <strong>{option.label}</strong>
+              <span>{option.description}</span>
+              <em aria-hidden="true">→</em>
             </button>
           ))}
         </div>
+      </section>
+      <section className="suggestion-recent-section">
+        <div className="member-section-title">
+          <h2>최근 문의</h2>
+          <button type="button" onClick={openHistory}>전체 보기 ›</button>
+        </div>
+        {historyLoading ? (
+          <p className="suggestion-empty">최근 문의를 불러오는 중입니다.</p>
+        ) : recentSuggestion ? (
+          <button className="suggestion-recent-card" type="button" onClick={openHistory}>
+            <span>{recentSuggestion.isResolved ? '처리완료' : '접수중'}</span>
+            <strong>{recentSuggestion.content}</strong>
+            <small>{formatSuggestionDate(recentSuggestion.createdAt)} ›</small>
+          </button>
+        ) : (
+          <p className="suggestion-empty">최근 문의가 없습니다.</p>
+        )}
       </section>
     </div>
   );
@@ -204,6 +249,24 @@ function SuggestionPanelHeader({ title, onBack, onHistory, showHistoryButton = t
       ) : (
         <span aria-hidden="true" />
       )}
+    </div>
+  );
+}
+
+type SuggestionAlertModalProps = {
+  title: string;
+  description: string;
+  onClose: () => void;
+};
+
+function SuggestionAlertModal({ title, description, onClose }: SuggestionAlertModalProps) {
+  return (
+    <div className="side-dish-modal-backdrop" role="presentation">
+      <section className="side-dish-small-modal" role="alertdialog" aria-modal="true" aria-labelledby="suggestion-alert-title">
+        <h2 id="suggestion-alert-title">{title}</h2>
+        <p>{description}</p>
+        <button className="side-dish-alert-close" type="button" onClick={onClose}>확인</button>
+      </section>
     </div>
   );
 }
@@ -256,8 +319,7 @@ function SuggestionIcon({ type }: { type: SuggestionOption['icon'] }) {
   if (type === 'heart') {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 21s-7-4.4-9.4-8.6C.5 8.9 2.7 5 6.4 5c2 0 3.3 1.1 4.1 2.1C11.3 6.1 12.6 5 14.6 5c3.7 0 5.9 3.9 3.8 7.4C16 16.6 12 21 12 21Z" />
-        <path d="m15 13 2 2 4-4" />
+        <path d="M20.8 8.8c0 5.3-8.8 10.2-8.8 10.2S3.2 14.1 3.2 8.8A4.6 4.6 0 0 1 7.8 4.2c1.9 0 3.3 1 4.2 2.5.9-1.5 2.3-2.5 4.2-2.5a4.6 4.6 0 0 1 4.6 4.6Z" />
       </svg>
     );
   }

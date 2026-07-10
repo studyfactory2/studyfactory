@@ -1,8 +1,9 @@
-const CACHE_NAME = 'studyfactory-pwa-v1';
+const CACHE_NAME = 'studyfactory-pwa-v2';
 const PRECACHE_URLS = [
   '/',
   '/manifest.webmanifest',
   '/studyfactory-character.png',
+  '/studyfactory-character-walk.mp4',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
