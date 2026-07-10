@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.sideDish.controller;
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
+import com.example.studyfactory.domain.sideDish.dto.SideDishMealTotalResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
 import com.example.studyfactory.domain.sideDish.service.SideDishService;
 import jakarta.validation.Valid;
@@ -46,6 +47,11 @@ public class SideDishController {
             @RequestParam(required = false) Long branchId
     ) {
         return sideDishService.findDaily(memberId, date, branchId);
+    }
+
+    @GetMapping("/totals")
+    public List<SideDishMealTotalResponse> findMealTotals(@CurrentMember Long memberId, @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return sideDishService.findMealTotals(memberId, date);
     }
 
     @DeleteMapping("/{sideDishId}")
