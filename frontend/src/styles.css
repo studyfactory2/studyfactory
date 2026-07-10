@@ -45,9 +45,7 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(360px, 480px);
   align-items: stretch;
-  background:
-    linear-gradient(120deg, rgba(38, 126, 130, 0.08), transparent 38%),
-    var(--color-background);
+  background: #f6f7f4;
 }
 
 .brand-panel {
@@ -56,18 +54,41 @@ button {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background:
-    radial-gradient(circle at 22% 18%, rgba(38, 126, 130, 0.1), transparent 30%),
-    linear-gradient(145deg, #ffffff 0%, #f7fbfb 46%, #edf5f6 100%);
+  background: transparent;
   color: var(--color-text-main);
 }
 
-.brand-character {
+.brand-character-frame {
+  --brand-character-scale: 1.85;
+  display: block;
   width: clamp(116px, 17vw, 192px);
-  height: auto;
+  height: clamp(116px, 17vw, 192px);
   margin-bottom: 28px;
-  border-radius: 28px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 3px solid #111111;
+  border-radius: 50%;
   box-shadow: 0 18px 48px rgba(38, 126, 130, 0.14);
+}
+
+.brand-character {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(var(--brand-character-scale));
+  transform-origin: center;
+}
+
+.brand-title {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  color: #9c9c9c;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .eyebrow {
@@ -83,8 +104,8 @@ button {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: var(--shadow-md);
+  background: transparent;
+  box-shadow: none;
 }
 
 .card-header {
@@ -391,6 +412,102 @@ button {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.5;
+}
+
+.login-card .form {
+  gap: 18px;
+}
+
+.login-card .field {
+  gap: 0;
+}
+
+.login-card .field span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.login-card .field input {
+  min-height: 62px;
+  padding: 0 28px;
+  border: 1px solid rgba(105, 113, 116, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.72), 0 8px 24px rgba(17, 31, 34, 0.035);
+}
+
+.login-card .field input::placeholder {
+  color: #8f8f8f;
+  font-weight: 800;
+}
+
+.login-card .field input:focus {
+  border-color: rgba(6, 77, 87, 0.38);
+  box-shadow: 0 0 0 5px rgba(189, 255, 16, 0.2), 0 10px 30px rgba(6, 77, 87, 0.08);
+}
+
+.login-card .primary-button,
+.login-card .ghost-button,
+.login-card .install-button {
+  min-height: 62px;
+  border-radius: 999px;
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.login-card .primary-button {
+  margin-top: 8px;
+  background: linear-gradient(180deg, #caff18 0%, #b9ff05 100%);
+  color: #050505;
+  box-shadow: 0 16px 30px rgba(188, 255, 10, 0.28);
+}
+
+.login-card .primary-button:hover {
+  background: linear-gradient(180deg, #d3ff2a 0%, #b5f900 100%);
+}
+
+.login-card .ghost-button {
+  border: 1px solid rgba(105, 113, 116, 0.24);
+  background: rgba(255, 255, 255, 0.86);
+  color: #064d57;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.65);
+}
+
+.login-card .ghost-button:hover {
+  border-color: rgba(6, 77, 87, 0.24);
+  background: rgba(248, 252, 252, 0.96);
+}
+
+.login-card .install-guide {
+  gap: 14px;
+}
+
+.login-card .install-button {
+  position: relative;
+  border: 1px solid rgba(105, 113, 116, 0.24);
+  background: rgba(255, 255, 255, 0.84);
+  color: #6e6e6e;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.65);
+}
+
+.login-card .install-button::before {
+  content: "+";
+  position: absolute;
+  left: 28px;
+  top: 50%;
+  color: #737373;
+  font-size: 1.35em;
+  font-weight: 400;
+  line-height: 1;
+  transform: translateY(-52%);
 }
 
 .manager-page {
@@ -8158,26 +8275,36 @@ button.beverage-serving-cell:disabled {
   .login-page {
     display: block;
     min-height: 100svh;
-    background: var(--color-background);
+    background: #f6f7f4;
   }
 
   .brand-panel {
-    min-height: 34svh;
-    padding: 30px 22px 38px;
+    min-height: 36svh;
+    padding: 48px 22px 26px;
+    align-items: center;
     justify-content: flex-end;
+    text-align: center;
   }
 
-  .brand-character {
-    width: 92px;
-    margin-bottom: 18px;
-    border-radius: 20px;
+  .brand-character-frame {
+    --brand-character-scale: 1.95;
+    width: clamp(112px, 25vw, 154px);
+    height: clamp(112px, 25vw, 154px);
+    margin: 0;
+    border-radius: 50%;
+  }
+
+  .brand-title {
+    gap: 14px;
+    margin-top: 26px;
+    font-size: 14px;
   }
 
   .login-card {
-    min-height: 66svh;
+    min-height: 64svh;
     padding: 26px 20px calc(30px + env(safe-area-inset-bottom));
-    border-radius: 22px 22px 0 0;
-    margin-top: -20px;
+    border-radius: 0;
+    margin-top: 0;
     position: relative;
   }
 
