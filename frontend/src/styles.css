@@ -59,10 +59,10 @@ button {
 }
 
 .brand-character-frame {
-  --brand-character-scale: 1.85;
+  --brand-character-scale: 2.02;
   display: block;
-  width: clamp(108px, 15vw, 176px);
-  height: clamp(108px, 15vw, 176px);
+  width: clamp(98px, 13.6vw, 160px);
+  height: clamp(98px, 13.6vw, 160px);
   margin-bottom: 18px;
   overflow: hidden;
   background: #ffffff;
@@ -93,7 +93,7 @@ button {
 
 .brand-panel > .brand-character-frame,
 .brand-panel > .brand-title {
-  transform: translateY(clamp(14px, 3vh, 34px));
+  transform: translateY(clamp(38px, 6.4vh, 72px));
 }
 
 .eyebrow {
@@ -421,7 +421,7 @@ button {
 
 .login-card .form {
   --login-control-width: calc(100% - 28px);
-  gap: 18px;
+  gap: 10px;
   justify-items: center;
 }
 
@@ -475,7 +475,7 @@ button {
 }
 
 .login-card .primary-button {
-  margin-top: 8px;
+  margin-top: 0;
   background: linear-gradient(180deg, #dfff54 0%, #cfff24 100%);
   color: #050505;
   box-shadow: 0 16px 30px rgba(198, 255, 34, 0.24);
@@ -499,8 +499,9 @@ button {
 
 .login-card .install-guide {
   width: var(--login-control-width);
+  margin-top: 0;
   justify-self: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .login-card .install-button {
@@ -8504,9 +8505,9 @@ button.beverage-serving-cell:disabled {
   }
 
   .brand-character-frame {
-    --brand-character-scale: 1.95;
-    width: clamp(104px, 23vw, 144px);
-    height: clamp(104px, 23vw, 144px);
+    --brand-character-scale: 2.14;
+    width: clamp(94px, 21vw, 132px);
+    height: clamp(94px, 21vw, 132px);
     margin: 0;
     border-radius: 50%;
   }
@@ -8519,12 +8520,12 @@ button.beverage-serving-cell:disabled {
 
   .brand-panel > .brand-character-frame,
   .brand-panel > .brand-title {
-    transform: translateY(20px);
+    transform: translateY(52px);
   }
 
   .login-card {
     min-height: 64svh;
-    padding: 26px 20px calc(30px + env(safe-area-inset-bottom));
+    padding: 42px 20px calc(20px + env(safe-area-inset-bottom));
     border-radius: 0;
     margin-top: 0;
     position: relative;
@@ -10428,7 +10429,7 @@ button.beverage-serving-cell:disabled {
 .member-dashboard-shell .meal-toggle,
 .member-dashboard-shell .beverage-mode-toggle {
   display: grid;
-  gap: 12px;
+  gap: 6px;
 }
 
 .member-dashboard-shell .leave-type-actions {
@@ -11659,7 +11660,19 @@ button.beverage-serving-cell:disabled {
 }
 
 .member-dashboard-shell .member-calendar-header strong {
+  font-size: clamp(24px, 6vw, 30px);
   font-weight: 600;
+}
+
+.member-dashboard-shell .member-calendar-header {
+  min-height: 46px;
+  padding-top: 4px;
+}
+
+.member-dashboard-shell .member-panel > .member-calendar-grid,
+.member-dashboard-shell .member-dashboard-column-primary > .member-calendar-grid {
+  margin-top: -22px;
+  padding-top: 6px;
 }
 
 .member-dashboard-shell .member-calendar-grid button,
@@ -11675,11 +11688,11 @@ button.beverage-serving-cell:disabled {
 .member-dashboard-shell .member-panel > .member-calendar-grid,
 .member-dashboard-shell .member-dashboard-column-primary > .member-calendar-grid,
 .member-dashboard-shell .side-dish-calendar .member-calendar-grid {
-  padding-bottom: 24px;
+  padding-bottom: 14px;
 }
 
 .member-dashboard-shell .side-dish-calendar .member-calendar-grid {
-  padding-bottom: 10px;
+  padding-bottom: 6px;
 }
 
 .member-dashboard-shell .member-calendar-grid button {
@@ -11741,4 +11754,25 @@ button.beverage-serving-cell:disabled {
   margin-left: auto;
   padding: 0 8px;
   font-size: clamp(11px, 3vw, 13px);
+}
+
+.member-dashboard-shell {
+  padding-top: calc(12px + env(safe-area-inset-top));
+}
+
+.member-topbar {
+  margin-bottom: 18px;
+}
+
+.member-dashboard-shell .member-primary-action {
+  font-size: clamp(19px, 4.5vw, 27px);
+}
+
+.member-dashboard-shell .leave-type-actions + .member-primary-action {
+  min-height: 50px;
+  font-size: clamp(18px, 4.4vw, 24px);
+}
+
+.member-dashboard-shell .member-calendar-header button {
+  transform: translateY(-3px);
 }
