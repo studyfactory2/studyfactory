@@ -12,6 +12,7 @@ import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
+import com.example.studyfactory.domain.sideDish.dto.SideDishMealTotalResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
 import com.example.studyfactory.domain.sideDish.entity.MealType;
 import com.example.studyfactory.domain.sideDish.entity.SideDishMealInformation;
@@ -140,6 +141,22 @@ class SideDishServiceTest {
         assertThatThrownBy(() -> sideDishService.findDaily(1L, LocalDate.of(2026, 6, 19), null))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("일반 회원은 본인 지점의 날짜별 반찬 식사 합계를 조회한다")
+    void findMealTotals() {
+        LocalDate mealDate = LocalDate.of(2026, 6, 19);
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
+        SideDishMealTotalResponse lunchTotal = new SideDishMealTotalResponse(MealType.LUNCH, 15000);
+        SideDishMealTotalResponse dinnerTotal = new SideDishMealTotalResponse(MealType.DINNER, 8000);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(sideDishRequestRepository.findMealTotalsByBranchAndDate(2L, mealDate)).willReturn(List.of(lunchTotal, dinnerTotal));
+
+        List<SideDishMealTotalResponse> responses = sideDishService.findMealTotals(1L, mealDate);
+
+        assertThat(responses).containsExactly(lunchTotal, dinnerTotal);
+        then(sideDishRequestRepository).should().findMealTotalsByBranchAndDate(2L, mealDate);
     }
 
     @Test

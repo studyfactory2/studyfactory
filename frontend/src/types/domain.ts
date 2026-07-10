@@ -155,6 +155,11 @@ export type DailySideDishResponse = {
   totalPrice: number;
 };
 
+export type SideDishMealTotalResponse = {
+  mealType: MealType;
+  totalPrice: number;
+};
+
 export type LeaveType = 'FULL' | 'MORNING' | 'AFTERNOON';
 
 export type DailyLeaveStatusResponse = {

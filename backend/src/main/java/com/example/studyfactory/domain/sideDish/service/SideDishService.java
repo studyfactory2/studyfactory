@@ -5,6 +5,7 @@ import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
+import com.example.studyfactory.domain.sideDish.dto.SideDishMealTotalResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
 import com.example.studyfactory.domain.sideDish.entity.SideDishMealInformation;
 import com.example.studyfactory.domain.sideDish.entity.SideDishOrderInformation;
@@ -56,6 +57,13 @@ public class SideDishService {
         validateAllPermissions(currentMember);
 
         return sideDishRequestRepository.findDailyByBranchAndDate(resolveBranchId(currentMember, branchId), resolveDate(date));
+    }
+
+    @Transactional(readOnly = true)
+    public List<SideDishMealTotalResponse> findMealTotals(Long memberId, LocalDate date) {
+        Member currentMember = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+
+        return sideDishRequestRepository.findMealTotalsByBranchAndDate(currentMember.getBranchId(), resolveDate(date));
     }
 
     @Transactional
