@@ -4,7 +4,7 @@ import { LeavePlanPanel } from '../components/member/LeavePlanPanel';
 import { MemberTabs } from '../components/member/MemberTabs';
 import { SideDishPanel } from '../components/member/SideDishPanel';
 import { SuggestionPanel } from '../components/member/SuggestionPanel';
-import { ManagerTopBar } from '../components/manager/ManagerTopBar';
+import { LogoutIcon } from '../components/manager/LogoutIcon';
 import { MEMBER_MENUS, resolveMemberMenuId, type MemberMenuId } from '../constants/memberMenus';
 import { ManagerLayout } from '../layouts/ManagerLayout';
 
@@ -38,8 +38,8 @@ export function MemberDashboardScreen() {
   };
 
   return (
-    <ManagerLayout>
-      <ManagerTopBar />
+    <ManagerLayout className={`member-dashboard-shell member-view-${currentView}`}>
+      <MemberTopBar currentView={currentView} onViewChange={changeView} />
       <MemberTabs currentView={currentView} onViewChange={changeView} />
       <section className="manager-card member-dashboard-main">
         <div className={`member-slide-panel slide-${slideDirection}`} key={currentView}>
@@ -69,4 +69,38 @@ function MemberPanel({ currentView }: { currentView: MemberMenuId }) {
   }
 
   return <LeavePlanPanel />;
+}
+
+function MemberTopBar({
+  currentView,
+  onViewChange,
+}: {
+  currentView: MemberMenuId;
+  onViewChange: (view: MemberMenuId) => void;
+}) {
+  const logout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('memberName');
+    localStorage.removeItem('memberId');
+    localStorage.removeItem('branchId');
+    localStorage.removeItem('memberRole');
+    window.location.href = '/login';
+  };
+
+  return (
+    <header className="member-topbar">
+      <button className="member-wordmark" type="button" onClick={() => onViewChange('leave-plan')} aria-label="휴무계획으로 이동">
+        자공
+      </button>
+      <div className="member-topbar-actions">
+        <button className="member-icon-action" type="button" aria-label="로그아웃" onClick={logout}>
+          <LogoutIcon />
+        </button>
+        <button className="member-icon-action" type="button" aria-label="새로고침" onClick={() => window.location.reload()}>
+          ↻
+        </button>
+      </div>
+    </header>
+  );
 }

@@ -7,43 +7,29 @@ type MemberTabsProps = {
 
 export function MemberTabs({ currentView, onViewChange }: MemberTabsProps) {
   const currentIndex = Math.max(MEMBER_MENUS.findIndex((menu) => menu.id === currentView), 0);
-  const previousMenu = MEMBER_MENUS[currentIndex - 1];
-  const currentMenu = MEMBER_MENUS[currentIndex];
-  const nextMenu = MEMBER_MENUS[currentIndex + 1];
+  const visibleMenus =
+    currentView === 'leave-plan'
+      ? MEMBER_MENUS.slice(0, 2)
+      : currentView === 'beverage'
+      ? MEMBER_MENUS.slice(2, 4)
+      : MEMBER_MENUS.slice(
+          Math.max(0, Math.min(currentIndex - 1, MEMBER_MENUS.length - 3)),
+          Math.max(0, Math.min(currentIndex - 1, MEMBER_MENUS.length - 3)) + 3
+        );
 
   return (
-    <nav className="manager-tabs" aria-label="회원 메뉴">
-      {previousMenu ? (
-        <button className="adjacent-tab previous-tab" type="button" onClick={() => onViewChange(previousMenu.id)}>
-          <span>{previousMenu.label}</span>
+    <nav className={`member-segment-tabs count-${visibleMenus.length}`} aria-label="회원 메뉴">
+      {visibleMenus.map((menu) => (
+        <button
+          className={menu.id === currentView ? 'active' : ''}
+          type="button"
+          aria-current={menu.id === currentView ? 'page' : undefined}
+          key={menu.id}
+          onClick={() => onViewChange(menu.id)}
+        >
+          {menu.label.replace(' 신청/변경', '')}
         </button>
-      ) : (
-        <span className="adjacent-tab previous-tab" />
-      )}
-      {previousMenu ? (
-        <button className="tab-arrow previous-arrow" type="button" aria-label="이전 페이지" onClick={() => onViewChange(previousMenu.id)}>
-          ‹
-        </button>
-      ) : (
-        <span className="tab-arrow-placeholder" />
-      )}
-      <button className="current-tab" type="button" aria-current="page">
-        {currentMenu.label}
-      </button>
-      {nextMenu ? (
-        <button className="tab-arrow next-arrow" type="button" aria-label="다음 페이지" onClick={() => onViewChange(nextMenu.id)}>
-          ›
-        </button>
-      ) : (
-        <span className="tab-arrow-placeholder" />
-      )}
-      {nextMenu ? (
-        <button className="adjacent-tab next-tab" type="button" onClick={() => onViewChange(nextMenu.id)}>
-          <span>{nextMenu.label}</span>
-        </button>
-      ) : (
-        <span className="adjacent-tab next-tab" />
-      )}
+      ))}
     </nav>
   );
 }

@@ -150,8 +150,8 @@ export function LeavePlanPanel() {
   return (
     <div className="member-panel">
       <div className="member-calendar-header">
+        <strong>{visibleMonth.getFullYear()}. {String(visibleMonth.getMonth() + 1).padStart(2, '0')}</strong>
         <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
-        <strong>{visibleMonth.getFullYear()}년 {visibleMonth.getMonth() + 1}월</strong>
         <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
       </div>
       <div className="member-calendar-grid" aria-label="휴무 달력">
@@ -214,11 +214,15 @@ export function LeavePlanPanel() {
         </button>
       </div>
       <button className="member-primary-action" type="button" disabled={submitting} onClick={openConfirm}>
-        <span className="check-icon" aria-hidden="true">✓</span>
-        {submitting ? '신청 중' : '신청하기'}
+        {submitting ? '신청 중' : '휴가 신청하기'}
+        <span aria-hidden="true">→</span>
       </button>
       {message && <p className={`side-dish-message ${message.type}`}>{message.text}</p>}
       <section className="member-list-box">
+        <div className="member-section-title">
+          <h2>신청 내역</h2>
+          <span>{leaves.length}건</span>
+        </div>
         {loading ? (
           <p>휴무 내역을 불러오는 중입니다.</p>
         ) : leaves.length === 0 ? (

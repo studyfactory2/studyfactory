@@ -3,28 +3,23 @@ import { apiRequest } from '../../api/client';
 import type { BeveragePreferenceResponse } from '../../types/domain';
 import { Dropdown } from '../common/Dropdown';
 
-const BASE_DRINK_OPTIONS = [
-  { value: '', label: '음료를 선택해주세요' },
+type BeverageInputMode = 'menu' | 'custom';
+
+const MENU_DRINK_OPTIONS = [
+  { value: '', label: '메뉴를 선택하세요' },
   { value: '선식', label: '선식' },
   { value: '해독쥬스', label: '해독쥬스' },
-  { value: '없음', label: '없음' },
+  { value: '아아', label: '아아' },
+  { value: '뜨아', label: '뜨아' },
+  { value: '텀아아', label: '텀아아' },
+  { value: '텀뜨아', label: '텀뜨아' },
 ];
-
-const BASE_DRINK_VALUES = new Set(BASE_DRINK_OPTIONS.map((option) => option.value).filter(Boolean));
 
 function parseDrinks(value: string) {
   return value
     .split(/[,\n]/)
     .map((drink) => drink.trim())
     .filter(Boolean);
-}
-
-function getBaseDrink(drinks: string[]) {
-  return drinks.find((drink) => BASE_DRINK_VALUES.has(drink)) || '';
-}
-
-function withoutBaseDrink(drinks: string[]) {
-  return drinks.filter((drink) => !BASE_DRINK_VALUES.has(drink));
 }
 
 function uniqueDrinks(drinks: string[]) {
@@ -41,12 +36,12 @@ function uniqueDrinks(drinks: string[]) {
 }
 
 export function BeveragePanel() {
+  const [inputMode, setInputMode] = useState<BeverageInputMode>('menu');
   const [drinkInput, setDrinkInput] = useState('');
   const [drinks, setDrinks] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [isComposing, setIsComposing] = useState(false);
   const [drinkDropdownOpen, setDrinkDropdownOpen] = useState(false);
-  const [customInputOpen, setCustomInputOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -68,15 +63,6 @@ export function BeveragePanel() {
     }
   };
 
-  const changeBaseDrink = (value: string) => {
-    setDrinks((current) => {
-      const customDrinks = withoutBaseDrink(current);
-      return uniqueDrinks([...(value ? [value] : []), ...customDrinks]);
-    });
-    setDrinkDropdownOpen(false);
-    setMessage(null);
-  };
-
   const addDrink = () => {
     const nextDrinks = parseDrinks(drinkInput);
 
@@ -86,7 +72,16 @@ export function BeveragePanel() {
 
     setDrinks((current) => uniqueDrinks([...current, ...nextDrinks]));
     setDrinkInput('');
-    setCustomInputOpen(false);
+    setMessage(null);
+  };
+
+  const selectMenuDrink = (value: string) => {
+    setDrinkDropdownOpen(false);
+    if (!value) {
+      return;
+    }
+
+    setDrinks((current) => uniqueDrinks([...current, value]));
     setMessage(null);
   };
 
@@ -116,36 +111,38 @@ export function BeveragePanel() {
     }
   };
 
-  const selectedBaseDrink = getBaseDrink(drinks);
-  const selectedDrinkOption = BASE_DRINK_OPTIONS.find((option) => option.value === selectedBaseDrink) ?? BASE_DRINK_OPTIONS[0];
-
   return (
     <div className="member-panel">
       <section className="beverage-intro">
-        <strong>음료</strong>
-        <p>아침에 서빙해드릴 음료를 자유롭게 입력해주세요. 언제든 변경할 수 있습니다.</p>
+        <strong>
+          오늘의 음료
+          <BeverageTitleIcon />
+        </strong>
+        <p>아침에 서빙해드릴 음료를 선택하세요.<br />언제든 변경 가능해요</p>
       </section>
       <div className="beverage-form">
-        <div className="beverage-input-row">
-          <Dropdown
-            classNamePrefix="custom-select"
-            label="기본 음료"
-            open={drinkDropdownOpen}
-            options={BASE_DRINK_OPTIONS}
-            placeholderClass={!selectedBaseDrink}
-            selectedOption={selectedDrinkOption}
-            onSelect={changeBaseDrink}
-            onToggle={() => setDrinkDropdownOpen((open) => !open)}
-          />
-          <button type="button" aria-label="음료 직접 입력 열기" onClick={() => setCustomInputOpen((open) => !open)}>
-            +
-          </button>
+        <div className="beverage-mode-toggle">
+          <button className={inputMode === 'menu' ? 'active' : ''} type="button" onClick={() => setInputMode('menu')}>메뉴에서</button>
+          <button className={inputMode === 'custom' ? 'active' : ''} type="button" onClick={() => setInputMode('custom')}>직접 입력</button>
         </div>
-        {customInputOpen && (
-          <div className="beverage-input-row beverage-custom-input-row">
+        {inputMode === 'menu' ? (
+          <div className="beverage-menu-row">
+            <Dropdown
+              classNamePrefix="custom-select"
+              label="음료 메뉴"
+              open={drinkDropdownOpen}
+              options={MENU_DRINK_OPTIONS}
+              placeholderClass
+              selectedOption={MENU_DRINK_OPTIONS[0]}
+              onSelect={selectMenuDrink}
+              onToggle={() => setDrinkDropdownOpen((open) => !open)}
+            />
+          </div>
+        ) : (
+          <div className="beverage-input-row">
             <input
-              aria-label="직접 입력 음료"
-              placeholder="예: 텀블러 아아"
+              aria-label="음료 입력"
+              placeholder="음료를 입력하세요"
               value={drinkInput}
               onChange={(event) => setDrinkInput(event.target.value)}
               onCompositionStart={() => setIsComposing(true)}
@@ -157,8 +154,8 @@ export function BeveragePanel() {
                 }
               }}
             />
-            <button className="beverage-custom-submit" type="button" onClick={addDrink}>
-              추가
+            <button type="button" aria-label="음료 추가" onClick={addDrink}>
+              +
             </button>
           </div>
         )}
@@ -188,11 +185,25 @@ export function BeveragePanel() {
           />
         </label>
         <button className="member-primary-action" type="button" disabled={loading} onClick={saveDrinks}>
-          {loading ? '저장 중' : '저장'}
+          {loading ? '저장 중' : '저장하기'}
+          <span aria-hidden="true">→</span>
         </button>
         {message && <p className="beverage-message">{message}</p>}
       </div>
     </div>
+  );
+}
+
+function BeverageTitleIcon() {
+  return (
+    <svg className="beverage-title-icon" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M9 3c-1.4 1.5-1.4 3 0 4.5s1.4 3 0 4.5" />
+      <path d="M16 3c-1.4 1.5-1.4 3 0 4.5s1.4 3 0 4.5" />
+      <path d="M23 3c-1.4 1.5-1.4 3 0 4.5s1.4 3 0 4.5" />
+      <path d="M7 15h15v6a6 6 0 0 1-6 6h-3a6 6 0 0 1-6-6v-6Z" />
+      <path d="M22 17h2.5a3 3 0 0 1 0 6H22" />
+      <path d="M8 29h17" />
+    </svg>
   );
 }
 
