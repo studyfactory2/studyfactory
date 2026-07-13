@@ -7,9 +7,10 @@ type LoginLayoutProps = {
 export function LoginLayout({ children }: LoginLayoutProps) {
   return (
     <main className="login-page">
-      <section className="brand-panel" aria-label="자격증공장">
-        <img className="brand-character" src="/studyfactory-character.png" alt="Study Factory 캐릭터" />
-        <p className="eyebrow">Study Factory</p>
+      <section className="brand-panel" aria-label="로그인 브랜드 이미지">
+        <video className="brand-character" autoPlay loop muted playsInline preload="auto" aria-label="로그인 캐릭터">
+          <source src="/studyfactory-character-walk.mp4" type="video/mp4" />
+        </video>
       </section>
       <section className="login-card">{children}</section>
     </main>
