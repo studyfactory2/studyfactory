@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiRequest } from '../../api/client';
-import type { MealType as ApiMealType, SideDishMealTotalResponse, SideDishResponse } from '../../types/domain';
+import type { MealType as ApiMealType, SideDishResponse } from '../../types/domain';
 
 const WEEKDAYS = [
   { label: '일', className: 'sunday' },
@@ -106,7 +106,6 @@ export function SideDishPanel() {
   const [selectedMeal, setSelectedMeal] = useState<MealType>('점심');
   const [items, setItems] = useState<SideDishItem[]>([]);
   const [sideDishes, setSideDishes] = useState<SideDishResponse[]>([]);
-  const [sideDishTotals, setSideDishTotals] = useState<SideDishMealTotalResponse[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [transferChecked, setTransferChecked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -123,7 +122,7 @@ export function SideDishPanel() {
   const deadlineExceeded = isDeadlineExceeded(selectedDateValue, selectedMeal, currentTime);
   const totalPrice = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const selectedMealSideDishes = sideDishes.filter((sideDish) => sideDish.mealType === selectedMealType);
-  const selectedMealOrderTotal = sideDishTotals.find((sideDishTotal) => sideDishTotal.mealType === selectedMealType)?.totalPrice ?? 0;
+  const selectedMealOrderTotal = selectedMealSideDishes.reduce((sum, sideDish) => sum + sideDish.totalPrice, 0);
   const latestOrderCreatedAt = selectedMealSideDishes[0] ? formatCreatedAt(selectedMealSideDishes[0].createdAt) : null;
 
   useEffect(() => {
@@ -143,12 +142,8 @@ export function SideDishPanel() {
   const loadSideDishes = async () => {
     setLoading(true);
     try {
-      const [responses, totals] = await Promise.all([
-        apiRequest<SideDishResponse[]>(`/api/side-dishes/me?date=${selectedDateValue}`),
-        apiRequest<SideDishMealTotalResponse[]>(`/api/side-dishes/totals?date=${selectedDateValue}`),
-      ]);
+      const responses = await apiRequest<SideDishResponse[]>(`/api/side-dishes/me?date=${selectedDateValue}`);
       setSideDishes(responses);
-      setSideDishTotals(totals);
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청목록을 불러오지 못했습니다.' });
     } finally {
@@ -373,11 +368,11 @@ export function SideDishPanel() {
             <strong>{selectedDateLabel} {selectedMeal} 신청목록</strong>
             {selectedMealSideDishes.length > 0 && <em>총 {selectedMealSideDishes.length}건</em>}
           </div>
-            {latestOrderCreatedAt && (
-              <span>
-                최근 신청 {latestOrderCreatedAt.date} {latestOrderCreatedAt.time}
-              </span>
-            )}
+          {latestOrderCreatedAt && (
+            <span>
+              {latestOrderCreatedAt.date} {latestOrderCreatedAt.time}
+            </span>
+          )}
         </div>
         {loading ? (
           <p>신청목록을 불러오는 중입니다.</p>
@@ -397,7 +392,7 @@ export function SideDishPanel() {
                       주문취소
                     </button>
                   </div>
-                  <span className="side-dish-order-created-at">신청일시 {createdAt.date} {createdAt.time}</span>
+                  <span className="side-dish-order-created-at">{createdAt.date} {createdAt.time}</span>
                   <div className="side-dish-order-content">
                     <ol>
                       {orderItems.map((item, index) => (
@@ -540,11 +535,14 @@ function SideDishConfirmModal({
         <section className="side-dish-modal-section">
           <h3><span aria-hidden="true">2</span><strong>2. 계좌 이체</strong></h3>
           <p>사장님 카카오페이 또는 신한은행 계좌로 송금해주세요</p>
-          <div className="side-dish-transfer-row side-dish-transfer-row-pay">
+          <div className="side-dish-transfer-row">
             <span>카카오페이</span>
             <strong>사장님 카카오페이</strong>
+            <button type="button" aria-label="카카오페이 복사" onClick={() => copyTransferValue('사장님 카카오페이')}>
+              <CopyIcon />
+            </button>
           </div>
-          <div className="side-dish-transfer-row side-dish-transfer-row-account">
+          <div className="side-dish-transfer-row">
             <span>계좌정보</span>
             <strong>신한 110-498-435650 김지원</strong>
             <button type="button" aria-label="계좌정보 복사" onClick={() => copyTransferValue('신한 110-498-435650 김지원')}>

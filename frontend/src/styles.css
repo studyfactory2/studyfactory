@@ -61,12 +61,12 @@ button {
 .brand-character-frame {
   --brand-character-scale: 1.85;
   display: block;
-  width: clamp(108px, 15vw, 176px);
-  height: clamp(108px, 15vw, 176px);
-  margin-bottom: 18px;
+  width: clamp(116px, 17vw, 192px);
+  height: clamp(116px, 17vw, 192px);
+  margin-bottom: 28px;
   overflow: hidden;
   background: #ffffff;
-  border: 3px solid #064d57;
+  border: 3px solid #111111;
   border-radius: 50%;
   box-shadow: 0 18px 48px rgba(38, 126, 130, 0.14);
 }
@@ -89,11 +89,6 @@ button {
   font-weight: 800;
   line-height: 1;
   text-transform: uppercase;
-}
-
-.brand-panel > .brand-character-frame,
-.brand-panel > .brand-title {
-  transform: translateY(clamp(14px, 3vh, 34px));
 }
 
 .eyebrow {
@@ -420,13 +415,10 @@ button {
 }
 
 .login-card .form {
-  --login-control-width: calc(100% - 28px);
   gap: 18px;
-  justify-items: center;
 }
 
 .login-card .field {
-  width: var(--login-control-width);
   gap: 0;
 }
 
@@ -440,7 +432,6 @@ button {
 }
 
 .login-card .field input {
-  width: 100%;
   min-height: 62px;
   padding: 0 28px;
   border: 1px solid rgba(105, 113, 116, 0.24);
@@ -465,24 +456,22 @@ button {
 .login-card .primary-button,
 .login-card .ghost-button,
 .login-card .install-button {
-  width: var(--login-control-width);
-  min-height: 54px;
-  align-self: center;
+  min-height: 62px;
   border-radius: 999px;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 950;
   letter-spacing: 0;
 }
 
 .login-card .primary-button {
   margin-top: 8px;
-  background: linear-gradient(180deg, #dfff54 0%, #cfff24 100%);
+  background: linear-gradient(180deg, #caff18 0%, #b9ff05 100%);
   color: #050505;
-  box-shadow: 0 16px 30px rgba(198, 255, 34, 0.24);
+  box-shadow: 0 16px 30px rgba(188, 255, 10, 0.28);
 }
 
 .login-card .primary-button:hover {
-  background: linear-gradient(180deg, #e6ff68 0%, #d5ff31 100%);
+  background: linear-gradient(180deg, #d3ff2a 0%, #b5f900 100%);
 }
 
 .login-card .ghost-button {
@@ -498,14 +487,11 @@ button {
 }
 
 .login-card .install-guide {
-  width: var(--login-control-width);
-  justify-self: center;
   gap: 14px;
 }
 
 .login-card .install-button {
   position: relative;
-  width: 100%;
   border: 1px solid rgba(105, 113, 116, 0.24);
   background: rgba(255, 255, 255, 0.84);
   color: #6e6e6e;
@@ -7874,15 +7860,6 @@ button.beverage-serving-cell:disabled {
   color: #050505;
 }
 
-.side-dish-transfer-row-pay {
-  grid-template-columns: minmax(82px, 0.42fr) minmax(0, 1fr);
-}
-
-.side-dish-transfer-row-account {
-  grid-template-columns: 70px minmax(0, 1fr) 28px;
-  gap: 8px;
-}
-
 .side-dish-transfer-row span {
   color: #717b82;
   font-size: clamp(14px, 3.2vw, 22px);
@@ -7892,18 +7869,12 @@ button.beverage-serving-cell:disabled {
 
 .side-dish-transfer-row strong {
   display: block;
-  min-width: 0;
   color: #050505;
   font-size: clamp(14px, 3.2vw, 21px);
   font-weight: 900;
   line-height: 1.3;
   text-align: right;
   white-space: nowrap;
-}
-
-.side-dish-transfer-row-account strong {
-  font-size: clamp(12px, 3vw, 18px);
-  text-align: left;
 }
 
 .side-dish-transfer-row button {
@@ -8496,8 +8467,8 @@ button.beverage-serving-cell:disabled {
   }
 
   .brand-panel {
-    min-height: 40svh;
-    padding: 48px 22px 10px;
+    min-height: 36svh;
+    padding: 48px 22px 26px;
     align-items: center;
     justify-content: flex-end;
     text-align: center;
@@ -8505,21 +8476,16 @@ button.beverage-serving-cell:disabled {
 
   .brand-character-frame {
     --brand-character-scale: 1.95;
-    width: clamp(104px, 23vw, 144px);
-    height: clamp(104px, 23vw, 144px);
+    width: clamp(112px, 25vw, 154px);
+    height: clamp(112px, 25vw, 154px);
     margin: 0;
     border-radius: 50%;
   }
 
   .brand-title {
     gap: 14px;
-    margin-top: 16px;
+    margin-top: 26px;
     font-size: 14px;
-  }
-
-  .brand-panel > .brand-character-frame,
-  .brand-panel > .brand-title {
-    transform: translateY(20px);
   }
 
   .login-card {
@@ -10024,21 +9990,8 @@ button.beverage-serving-cell:disabled {
     min-height: 48px;
   }
 
-  .side-dish-transfer-row-pay {
-    grid-template-columns: minmax(64px, 0.4fr) minmax(0, 1fr);
-  }
-
-  .side-dish-transfer-row-account {
-    grid-template-columns: 56px minmax(0, 1fr) 24px;
-    gap: 6px;
-  }
-
-  .side-dish-transfer-row-account strong {
-    font-size: 12px;
-  }
-
   .side-dish-transfer-row button {
-    width: 24px;
+    width: 28px;
     height: 28px;
     font-size: 22px;
   }
@@ -10646,7 +10599,7 @@ button.beverage-serving-cell:disabled {
 }
 
 .member-dashboard-shell .side-dish-calendar {
-  padding: 0 0 16px;
+  padding: 0 0 30px;
   overflow: hidden;
 }
 
@@ -10714,9 +10667,9 @@ button.beverage-serving-cell:disabled {
 .member-dashboard-shell .side-dish-own-total {
   padding: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: 10px;
+  gap: 16px;
 }
 
 .member-dashboard-shell .side-dish-own-total span {
@@ -10726,16 +10679,13 @@ button.beverage-serving-cell:disabled {
 }
 
 .member-dashboard-shell .side-dish-own-total strong {
-  min-width: 0;
-  max-width: 100%;
   justify-self: end;
   color: var(--member-lime);
-  font-size: clamp(32px, 8.6vw, 56px);
+  font-size: clamp(40px, 9vw, 64px);
   font-weight: 950;
   line-height: 0.9;
-  text-align: right;
   text-shadow: none;
-  -webkit-text-stroke: 1.1px #050505;
+  -webkit-text-stroke: 1.5px #050505;
   white-space: nowrap;
 }
 
@@ -11047,34 +10997,6 @@ button.beverage-serving-cell:disabled {
   background: rgba(255, 255, 255, 0.72);
   color: #172630;
   font-size: clamp(18px, 4.2vw, 28px);
-}
-
-.member-dashboard-shell .member-dashboard-main :where(strong, h1, h2, h3, p, span, small, em, button, label, input, textarea) {
-  font-weight: 700;
-}
-
-.member-dashboard-shell .member-dashboard-main :where(.member-section-title h2, .suggestion-hero h1, .suggestion-category-button strong, .beverage-intro strong) {
-  font-weight: 850;
-}
-
-.member-dashboard-shell .member-dashboard-main :where(.side-dish-own-total strong, .side-dish-history-total strong, .suggestion-recent-card strong) {
-  font-weight: 800;
-}
-
-.member-dashboard-shell .member-dashboard-main :where(.member-primary-action) {
-  font-weight: 700;
-}
-
-.member-dashboard-shell .member-dashboard-main :where(.member-calendar-header strong) {
-  font-weight: 700;
-}
-
-.member-dashboard-shell .member-dashboard-main :where(.member-calendar-grid button) {
-  font-weight: 600;
-}
-
-.member-dashboard-shell .member-dashboard-main :where(.calendar-weekday, .section-heading strong, .side-dish-live-total, .side-dish-live-total strong, .side-dish-own-total span, .member-section-title span, .member-section-title button) {
-  font-weight: 650;
 }
 
 @media (max-width: 520px) {
@@ -11545,7 +11467,7 @@ button.beverage-serving-cell:disabled {
   }
 
   .member-dashboard-shell .side-dish-own-total strong {
-    font-size: clamp(32px, 8.6vw, 42px);
+    font-size: 48px;
   }
 
   .member-dashboard-shell .side-dish-add-button {
@@ -11656,89 +11578,4 @@ button.beverage-serving-cell:disabled {
   .member-dashboard-shell .member-field span {
     font-size: 24px;
   }
-}
-
-.member-dashboard-shell .member-calendar-header strong {
-  font-weight: 600;
-}
-
-.member-dashboard-shell .member-calendar-grid button,
-.member-dashboard-shell .member-calendar-grid button .member-calendar-date-number {
-  font-weight: 500;
-}
-
-.member-dashboard-shell .member-calendar-grid button.selected,
-.member-dashboard-shell .member-calendar-grid button.selected .member-calendar-date-number {
-  font-weight: 600;
-}
-
-.member-dashboard-shell .member-panel > .member-calendar-grid,
-.member-dashboard-shell .member-dashboard-column-primary > .member-calendar-grid,
-.member-dashboard-shell .side-dish-calendar .member-calendar-grid {
-  padding-bottom: 24px;
-}
-
-.member-dashboard-shell .side-dish-calendar .member-calendar-grid {
-  padding-bottom: 10px;
-}
-
-.member-dashboard-shell .member-calendar-grid button {
-  position: relative;
-  display: grid;
-  place-items: center;
-  gap: 0;
-  padding: 0;
-}
-
-.member-dashboard-shell .member-calendar-date-number {
-  line-height: 1;
-}
-
-.member-dashboard-shell .member-calendar-leave-badges {
-  position: absolute;
-  left: 50%;
-  bottom: 3px;
-  display: flex;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.member-dashboard-shell .member-calendar-leave-badge {
-  min-width: 14px;
-  height: 4px;
-}
-
-.member-dashboard-shell .leave-history-card {
-  min-height: 58px;
-  padding: 10px 12px 10px 16px;
-  grid-template-columns: max-content minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
-}
-
-.member-dashboard-shell .leave-history-card strong {
-  font-size: clamp(17px, 4.5vw, 22px);
-  font-weight: 650;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.member-dashboard-shell .leave-history-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-}
-
-.member-dashboard-shell .leave-history-actions span {
-  padding: 6px 9px;
-  font-size: clamp(11px, 3.1vw, 13px);
-}
-
-.member-dashboard-shell .leave-history-actions button {
-  min-width: 54px;
-  min-height: 34px;
-  margin-left: auto;
-  padding: 0 8px;
-  font-size: clamp(11px, 3vw, 13px);
 }
