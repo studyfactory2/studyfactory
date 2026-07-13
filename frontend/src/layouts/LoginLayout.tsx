@@ -11,6 +11,7 @@ export function LoginLayout({ children }: LoginLayoutProps) {
         <video className="brand-character" autoPlay loop muted playsInline preload="auto" aria-label="로그인 캐릭터">
           <source src="/studyfactory-character-walk.mp4" type="video/mp4" />
         </video>
+        <h1 className="brand-heading">자격증공장</h1>
       </section>
       <section className="login-card">{children}</section>
     </main>

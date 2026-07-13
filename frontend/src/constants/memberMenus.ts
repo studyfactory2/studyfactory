@@ -1,4 +1,4 @@
-export type MemberMenuId = 'leave-plan' | 'side-dish' | 'suggestion' | 'beverage';
+export type MemberMenuId = 'leave-plan' | 'side-dish' | 'suggestion' | 'beverage' | 'weekly-plan';
 
 export type MemberMenu = {
   id: MemberMenuId;
@@ -6,10 +6,11 @@ export type MemberMenu = {
 };
 
 export const MEMBER_MENUS: MemberMenu[] = [
+  { id: 'weekly-plan', label: '작업계획' },
   { id: 'leave-plan', label: '휴무계획' },
   { id: 'side-dish', label: '반찬신청' },
   { id: 'suggestion', label: '건의' },
-  { id: 'beverage', label: '음료 신청/변경' },
+  { id: 'beverage', label: '음료' },
 ];
 
 export function resolveMemberMenuId(value: string | null): MemberMenuId {

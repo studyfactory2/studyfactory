@@ -13,6 +13,7 @@ import com.example.studyfactory.domain.sideDish.repository.SideDishRequestReposi
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
 import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
 import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
+import com.example.studyfactory.domain.weeklyPlan.service.WeeklyPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,7 @@ public class MemberDeletionCleanupService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final TodoItemRepository todoItemRepository;
     private final TodoReplyRepository todoReplyRepository;
+    private final WeeklyPlanService weeklyPlanService;
 
     public void cleanup(Long memberId) {
         beverageService.deleteAllByMemberId(memberId);
@@ -46,6 +48,7 @@ public class MemberDeletionCleanupService {
         todoReplyRepository.deleteByMemberId(memberId);
         todoItemRepository.deleteByTargetMemberId(memberId);
         todoItemRepository.deleteByCreatedByMemberId(memberId);
+        weeklyPlanService.deleteAllByMemberId(memberId);
         suggestionRepository.deleteByReferenceInformationMemberId(memberId);
         sideDishRequestRepository.deleteByReferenceInformationMemberId(memberId);
         seatRepository.clearMemberAssignment(memberId);
