@@ -254,8 +254,7 @@ export function SideDishPanel() {
   };
 
   return (
-    <div className="member-panel side-dish-layout">
-      <div className="member-dashboard-column member-dashboard-column-primary">
+    <div className="member-panel">
       <section className="member-notice-box">
         <span className="member-notice-icon" aria-hidden="true">
           <UtensilIcon />
@@ -310,8 +309,6 @@ export function SideDishPanel() {
           저녁
         </button>
       </div>
-      </div>
-      <div className="member-dashboard-column member-dashboard-column-secondary">
       <section className="member-list-box">
         <div className="section-heading">
           <div>
@@ -417,7 +414,6 @@ export function SideDishPanel() {
           </div>
         )}
       </section>
-      </div>
       {confirmOpen &&
         createPortal(
           <SideDishConfirmModal

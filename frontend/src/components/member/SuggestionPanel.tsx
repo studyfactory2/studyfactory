@@ -58,7 +58,6 @@ export function SuggestionPanel() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [successOpen, setSuccessOpen] = useState(false);
   const recentSuggestion = useMemo(() => suggestions[0] ?? null, [suggestions]);
 
   useEffect(() => {
@@ -116,8 +115,7 @@ export function SuggestionPanel() {
         method: 'POST',
         body: JSON.stringify(confirmTarget),
       });
-      setMessage(null);
-      setSuccessOpen(true);
+      setMessage('건의사항이 전송되었습니다.');
       setHistoryLoaded(false);
       setConfirmTarget(null);
     } catch (error) {
@@ -176,13 +174,6 @@ export function SuggestionPanel() {
             onConfirm={submitSuggestion}
           />
         )}
-        {successOpen && (
-          <SuggestionAlertModal
-            title="전송 완료"
-            description="건의 사항이 전송되었습니다."
-            onClose={() => setSuccessOpen(false)}
-          />
-        )}
       </div>
     );
   }
@@ -216,7 +207,7 @@ export function SuggestionPanel() {
           <p className="suggestion-empty">최근 문의를 불러오는 중입니다.</p>
         ) : recentSuggestion ? (
           <button className="suggestion-recent-card" type="button" onClick={openHistory}>
-            <span>{recentSuggestion.isResolved ? '처리완료' : '접수중'}</span>
+            <span>{recentSuggestion.isResolved ? '답변완료' : '접수중'}</span>
             <strong>{recentSuggestion.content}</strong>
             <small>{formatSuggestionDate(recentSuggestion.createdAt)} ›</small>
           </button>
@@ -249,24 +240,6 @@ function SuggestionPanelHeader({ title, onBack, onHistory, showHistoryButton = t
       ) : (
         <span aria-hidden="true" />
       )}
-    </div>
-  );
-}
-
-type SuggestionAlertModalProps = {
-  title: string;
-  description: string;
-  onClose: () => void;
-};
-
-function SuggestionAlertModal({ title, description, onClose }: SuggestionAlertModalProps) {
-  return (
-    <div className="side-dish-modal-backdrop" role="presentation">
-      <section className="side-dish-small-modal" role="alertdialog" aria-modal="true" aria-labelledby="suggestion-alert-title">
-        <h2 id="suggestion-alert-title">{title}</h2>
-        <p>{description}</p>
-        <button className="side-dish-alert-close" type="button" onClick={onClose}>확인</button>
-      </section>
     </div>
   );
 }
