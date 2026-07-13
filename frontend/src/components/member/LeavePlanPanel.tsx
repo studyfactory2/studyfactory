@@ -225,17 +225,23 @@ export function LeavePlanPanel() {
           <p>내역이 없습니다.</p>
         ) : (
           <div className="leave-history-list">
-            {leaves.map((leave) => (
-              <article className="leave-history-card" key={leave.id}>
-                <div>
-                  <strong>{formatCompactLeaveDate(leave.leaveDate)}</strong>
-                </div>
-                <div className="leave-history-actions">
-                  <span>{toLeaveTypeLabel(leave.leaveType)}</span>
-                  <button type="button" onClick={() => setDeleteTarget(leave)}>⊗ 취소</button>
-                </div>
-              </article>
-            ))}
+            {leaves.map((leave) => {
+              const canCancel = leave.leaveDate >= today;
+
+              return (
+                <article className="leave-history-card" key={leave.id}>
+                  <div>
+                    <strong>{formatCompactLeaveDate(leave.leaveDate)}</strong>
+                  </div>
+                  <div className="leave-history-actions">
+                    <span>{toLeaveTypeLabel(leave.leaveType)}</span>
+                    {canCancel && (
+                      <button type="button" onClick={() => setDeleteTarget(leave)}>⊗ 취소</button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
