@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type TouchEvent } from 'react';
 import { AdminGridPanel } from '../components/manager/AdminGridPanel';
 import { BeverageServingSheetPanel } from '../components/manager/BeverageServingSheetPanel';
 import { DailyLeaveStatusPanel } from '../components/manager/DailyLeaveStatusPanel';
@@ -28,6 +28,7 @@ export function ManagerDashboardScreen() {
   const staffExtraViews = ['daily_leave_status', 'beverage_making_sheet', 'beverage_serving_sheet', 'seat_management', 'beverage_management', 'new_beverage_request', 'staff_leave_request', 'staff_side_dish_request'];
   const [currentView, setCurrentView] = useState<AdminMenuId>(() => resolveManagerViewFromUrl(role, staffExtraViews));
   const [slideDirection, setSlideDirection] = useState<'next' | 'previous'>('next');
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const { branches, certifications } = useManagerOptions(role === 'ADMIN' || role === 'STAFF');
 
   useEffect(() => {
@@ -72,12 +73,54 @@ export function ManagerDashboardScreen() {
     window.history.pushState(null, '', `/managerdashboard?view=${resolvedView}`);
   };
 
+  const moveBySwipe = (direction: 'next' | 'previous') => {
+    const menus = role === 'STAFF' ? STAFF_MENUS : ADMIN_MENUS;
+    const visibleView = toVisibleView(currentView);
+    const currentIndex = menus.findIndex((menu) => menu.id === visibleView);
+    const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    const nextMenu = menus[nextIndex];
+    if (nextMenu) {
+      changeView(nextMenu.id);
+    }
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
+    if (shouldIgnoreDashboardSwipe(event.target)) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || shouldIgnoreDashboardSwipe(event.target)) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 54 || Math.abs(deltaY) > 72 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) {
+      return;
+    }
+
+    moveBySwipe(deltaX < 0 ? 'next' : 'previous');
+  };
+
   if (role === 'STAFF') {
     return (
       <ManagerLayout>
         <ManagerTopBar />
         <ManagerTabs currentView={currentView} menus={STAFF_MENUS} onViewChange={changeView} />
-        <section className={`manager-card manager-dashboard-main${currentView === 'attendance' ? ' staff-attendance-card' : ''}`}>
+        <section
+          className={`manager-card manager-dashboard-main${currentView === 'attendance' ? ' staff-attendance-card' : ''}`}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <div className={`manager-slide-panel slide-${slideDirection}`} key={currentView}>
             <ManagerPanel
               branches={branches}
@@ -112,7 +155,11 @@ export function ManagerDashboardScreen() {
     <ManagerLayout>
       <ManagerTopBar />
       <ManagerTabs currentView={currentView} onViewChange={changeView} />
-      <section className={`manager-card manager-dashboard-main${currentView === 'attendance' ? ' staff-attendance-card' : ''}`}>
+      <section
+        className={`manager-card manager-dashboard-main${currentView === 'attendance' ? ' staff-attendance-card' : ''}`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className={`manager-slide-panel slide-${slideDirection}`} key={currentView}>
           <ManagerPanel
             branches={branches}
@@ -246,4 +293,16 @@ function toVisibleView(view: AdminMenuId) {
     : view === 'daily_leave_status' || view === 'beverage_making_sheet' || view === 'beverage_serving_sheet' || view === 'seat_management' || view === 'beverage_management' || view === 'new_beverage_request' || view === 'staff_leave_request' || view === 'staff_side_dish_request'
       ? 'staff-page'
       : view;
+}
+
+function shouldIgnoreDashboardSwipe(target: EventTarget) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  if (target.closest('button, input, textarea, select, a, label, [role="button"], [contenteditable="true"]')) {
+    return true;
+  }
+
+  return Boolean(target.closest('.weekly-board-scroll, .staff-work-table-wrap, .attendance-table-wrap'));
 }

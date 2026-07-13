@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type TouchEvent } from 'react';
 import { BeveragePanel } from '../components/member/BeveragePanel';
 import { LeavePlanPanel } from '../components/member/LeavePlanPanel';
 import { MemberTabs } from '../components/member/MemberTabs';
@@ -15,6 +15,7 @@ export function MemberDashboardScreen() {
     return resolveMemberMenuId(searchParams.get('view'));
   });
   const [slideDirection, setSlideDirection] = useState<'next' | 'previous'>('next');
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const syncViewFromUrl = () => {
@@ -38,11 +39,47 @@ export function MemberDashboardScreen() {
     window.history.pushState(null, '', `/memberdashboard?view=${nextView}`);
   };
 
+  const moveBySwipe = (direction: 'next' | 'previous') => {
+    const currentIndex = MEMBER_MENUS.findIndex((menu) => menu.id === currentView);
+    const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    const nextMenu = MEMBER_MENUS[nextIndex];
+    if (nextMenu) {
+      changeView(nextMenu.id);
+    }
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
+    if (shouldIgnoreDashboardSwipe(event.target)) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || shouldIgnoreDashboardSwipe(event.target)) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 54 || Math.abs(deltaY) > 72 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) {
+      return;
+    }
+
+    moveBySwipe(deltaX < 0 ? 'next' : 'previous');
+  };
+
   return (
     <ManagerLayout>
       <ManagerTopBar />
       <MemberTabs currentView={currentView} onViewChange={changeView} />
-      <section className="manager-card member-dashboard-main">
+      <section className="manager-card member-dashboard-main" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div className={`member-slide-panel slide-${slideDirection}`} key={currentView}>
           <MemberPanel currentView={currentView} />
         </div>
@@ -74,4 +111,16 @@ function MemberPanel({ currentView }: { currentView: MemberMenuId }) {
   }
 
   return <LeavePlanPanel />;
+}
+
+function shouldIgnoreDashboardSwipe(target: EventTarget) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  if (target.closest('button, input, textarea, select, a, label, [role="button"], [contenteditable="true"]')) {
+    return true;
+  }
+
+  return Boolean(target.closest('.weekly-board-scroll, .staff-work-table-wrap, .attendance-table-wrap'));
 }

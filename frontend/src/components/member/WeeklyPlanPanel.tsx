@@ -50,6 +50,10 @@ const STUDY_PERIODS = [
   { label: '6교시', duration: '80분' },
   { label: '7교시', duration: '80분' },
 ];
+const BREAK_PERIODS = {
+  lunch: 100,
+  dinner: 101,
+} as const;
 
 function getMonday(date: Date) {
   const nextDate = new Date(date);
@@ -386,56 +390,117 @@ function WeeklyBoard({ drafts, onAddPlan, onChangeDraft, onRemovePlan, onToggleP
                   <strong>{period.label}</strong>
                   <span>{period.duration}</span>
                 </div>
-                {weekDays.map((day, dayIndex) => {
-                  const cellKey = `${periodIndex}-${dayIndex}`;
-                  const items = plan.plans[cellKey] || [];
-
-                  return (
-                    <div className="weekly-plan-cell" key={cellKey}>
-                      <ol>
-                        {items.map((item, itemIndex) => (
-                          <li className={item.done ? 'done' : ''} key={`${item.text}-${itemIndex}`}>
-                            <button
-                              className="weekly-plan-check"
-                              type="button"
-                              aria-label={`${item.text} 완료 표시`}
-                              aria-pressed={item.done}
-                              onClick={() => void onTogglePlanDone(cellKey, itemIndex)}
-                            />
-                            <span>{item.text}</span>
-                            <button type="button" aria-label={`${item.text} 삭제`} onClick={() => void onRemovePlan(cellKey, itemIndex)}>
-                              ×
-                            </button>
-                          </li>
-                        ))}
-                      </ol>
-                      <div className="weekly-plan-draft-row">
-                        <input
-                          aria-label={`${day.label} ${period.label} 할 일`}
-                          placeholder="+ 할 일"
-                          value={drafts[cellKey] || ''}
-                          onChange={(event) => onChangeDraft(cellKey, event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault();
-                              void onAddPlan(cellKey);
-                            }
-                          }}
-                        />
-                      </div>
-                      <button type="button" onClick={() => void onAddPlan(cellKey)}>
-                        + 추가
-                      </button>
-                    </div>
-                  );
-                })}
-                {periodIndex === 1 && <WeeklyBreakRow label="점심시간" duration="75분" />}
-                {periodIndex === 4 && <WeeklyBreakRow label="저녁시간" duration="75분" />}
+                {weekDays.map((day, dayIndex) => (
+                  <WeeklyPlanCell
+                    ariaLabel={`${day.label} ${period.label} 할 일`}
+                    cellKey={`${periodIndex}-${dayIndex}`}
+                    drafts={drafts}
+                    key={`${periodIndex}-${dayIndex}`}
+                    plan={plan}
+                    onAddPlan={onAddPlan}
+                    onChangeDraft={onChangeDraft}
+                    onRemovePlan={onRemovePlan}
+                    onTogglePlanDone={onTogglePlanDone}
+                  />
+                ))}
+                {periodIndex === 1 && (
+                  <WeeklyBreakRow
+                    duration="75분"
+                    label="점심시간"
+                    periodIndex={BREAK_PERIODS.lunch}
+                    drafts={drafts}
+                    plan={plan}
+                    weekDays={weekDays}
+                    onAddPlan={onAddPlan}
+                    onChangeDraft={onChangeDraft}
+                    onRemovePlan={onRemovePlan}
+                    onTogglePlanDone={onTogglePlanDone}
+                  />
+                )}
+                {periodIndex === 4 && (
+                  <WeeklyBreakRow
+                    duration="75분"
+                    label="저녁시간"
+                    periodIndex={BREAK_PERIODS.dinner}
+                    drafts={drafts}
+                    plan={plan}
+                    weekDays={weekDays}
+                    onAddPlan={onAddPlan}
+                    onChangeDraft={onChangeDraft}
+                    onRemovePlan={onRemovePlan}
+                    onTogglePlanDone={onTogglePlanDone}
+                  />
+                )}
               </Fragment>
             ))}
           </div>
         </div>
       </section>
+  );
+}
+
+type WeeklyPlanCellProps = {
+  ariaLabel: string;
+  cellKey: string;
+  className?: string;
+  drafts: Record<string, string>;
+  plan: StoredWeeklyPlan;
+  onAddPlan: (cellKey: string) => Promise<void>;
+  onChangeDraft: (cellKey: string, value: string) => void;
+  onRemovePlan: (cellKey: string, index: number) => Promise<void>;
+  onTogglePlanDone: (cellKey: string, index: number) => Promise<void>;
+};
+
+function WeeklyPlanCell({
+  ariaLabel,
+  cellKey,
+  className = '',
+  drafts,
+  onAddPlan,
+  onChangeDraft,
+  onRemovePlan,
+  onTogglePlanDone,
+  plan,
+}: WeeklyPlanCellProps) {
+  const items = plan.plans[cellKey] || [];
+
+  return (
+    <div className={`weekly-plan-cell${className ? ` ${className}` : ''}`}>
+      <ol>
+        {items.map((item, itemIndex) => (
+          <li className={item.done ? 'done' : ''} key={`${item.text}-${itemIndex}`}>
+            <button
+              className="weekly-plan-check"
+              type="button"
+              aria-label={`${item.text} 완료 표시`}
+              aria-pressed={item.done}
+              onClick={() => void onTogglePlanDone(cellKey, itemIndex)}
+            />
+            <span>{item.text}</span>
+            <button type="button" aria-label={`${item.text} 삭제`} onClick={() => void onRemovePlan(cellKey, itemIndex)}>
+              ×
+            </button>
+          </li>
+        ))}
+      </ol>
+      <div className="weekly-plan-draft-row">
+        <input
+          aria-label={ariaLabel}
+          placeholder="+ 할 일"
+          value={drafts[cellKey] || ''}
+          onChange={(event) => onChangeDraft(cellKey, event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              void onAddPlan(cellKey);
+            }
+          }}
+        />
+      </div>
+      <button type="button" onClick={() => void onAddPlan(cellKey)}>
+        + 추가
+      </button>
+    </div>
   );
 }
 
@@ -541,13 +606,50 @@ function WorkPlanView({
   );
 }
 
-function WeeklyBreakRow({ duration, label }: { duration: string; label: string }) {
+type WeeklyBreakRowProps = {
+  duration: string;
+  label: string;
+  periodIndex: number;
+  drafts: Record<string, string>;
+  plan: StoredWeeklyPlan;
+  weekDays: Array<{ label: string; date: Date }>;
+  onAddPlan: (cellKey: string) => Promise<void>;
+  onChangeDraft: (cellKey: string, value: string) => void;
+  onRemovePlan: (cellKey: string, index: number) => Promise<void>;
+  onTogglePlanDone: (cellKey: string, index: number) => Promise<void>;
+};
+
+function WeeklyBreakRow({
+  drafts,
+  duration,
+  label,
+  onAddPlan,
+  onChangeDraft,
+  onRemovePlan,
+  onTogglePlanDone,
+  periodIndex,
+  plan,
+  weekDays,
+}: WeeklyBreakRowProps) {
   return (
     <>
       <div className="weekly-break-label">
         {label} <span>{duration}</span>
       </div>
-      <div className="weekly-break-row" />
+      {weekDays.map((day, dayIndex) => (
+        <WeeklyPlanCell
+          ariaLabel={`${day.label} ${label} 할 일`}
+          cellKey={`${periodIndex}-${dayIndex}`}
+          className="weekly-break-cell"
+          drafts={drafts}
+          key={`${periodIndex}-${dayIndex}`}
+          plan={plan}
+          onAddPlan={onAddPlan}
+          onChangeDraft={onChangeDraft}
+          onRemovePlan={onRemovePlan}
+          onTogglePlanDone={onTogglePlanDone}
+        />
+      ))}
     </>
   );
 }
