@@ -68,9 +68,9 @@ button {
   height: auto;
   margin-bottom: 12px;
   border-radius: 28px;
-  background: #eef7f6;
-  mix-blend-mode: multiply;
-  filter: brightness(1.07) contrast(1.08);
+  background: transparent;
+  mix-blend-mode: normal;
+  filter: none;
   box-shadow: none;
 }
 
@@ -8758,8 +8758,8 @@ button.beverage-serving-cell:disabled {
     width: 184px;
     margin-bottom: -8px;
     border-radius: 20px;
-    background: #eef7f6;
-    filter: brightness(1.08) contrast(1.1);
+    background: transparent;
+    filter: none;
   }
 
   .brand-heading {
