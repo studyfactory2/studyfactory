@@ -152,6 +152,10 @@ export function SideDishPanel() {
   };
 
   const addItem = () => {
+    if (deadlineExceeded) {
+      setMessage({ type: 'error', text: `${selectedMeal} 반찬 신청 시간이 마감되었습니다.` });
+      return;
+    }
     setItems((current) => [...current, { id: Date.now(), menuName: '', price: '' }]);
   };
 
@@ -256,22 +260,16 @@ export function SideDishPanel() {
   return (
     <div className="member-panel">
       <section className="member-notice-box">
-        <span className="member-notice-icon" aria-hidden="true">
-          <UtensilIcon />
-        </span>
-        <div>
-          <p>현재 주문중</p>
-          <strong>손찬반찬백화점 센텀점</strong>
-        </div>
+        <strong>현재 주문중인 반찬집 : 손찬반찬백화점 센텀점</strong>
         <a href="https://web.coupangeats.com/share?storeId=636864&dishId&key=b29e27b7-ff7a-4d28-952a-ef42687665c0">
-          쿠팡이츠로 주문 <span aria-hidden="true">→</span>
+          쿠팡이츠 바로가기
         </a>
-        <p className="member-notice-caption">ⓘ 최소 주문 15,000원 미달시 취소됩니다</p>
+        <p>마감시간까지 최소주문금액 15,000원 미달시, 주문취소됩니다. 개별연락 드릴게요.</p>
       </section>
       <section className="side-dish-calendar">
         <div className="member-calendar-header">
-          <strong>{visibleMonth.getFullYear()}. {String(visibleMonth.getMonth() + 1).padStart(2, '0')}</strong>
           <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
+          <strong>{visibleMonth.getFullYear()}년 {visibleMonth.getMonth() + 1}월</strong>
           <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
         </div>
         <div className="member-calendar-grid" aria-label="반찬 신청 날짜 선택">
@@ -314,17 +312,14 @@ export function SideDishPanel() {
           <div>
             <strong>{selectedDateLabel} {selectedMeal} 반찬 신청</strong>
             <p>{deadlineText}</p>
-            <div className="side-dish-live-total">
-              <span>실시간 공장 반찬 주문 합계 금액</span>
-              <strong>{selectedMealOrderTotal.toLocaleString()}원</strong>
-            </div>
+            {deadlineExceeded && <p className="side-dish-deadline-message">{selectedMeal} 반찬 신청 시간이 마감되었습니다.</p>}
+            <p className="side-dish-live-total">실시간 공장반찬 주문합계 금액: {selectedMealOrderTotal.toLocaleString()}원</p>
           </div>
-          <div className="side-dish-own-total">
-            <span>합계</span>
-            <strong>{totalPrice.toLocaleString()}원</strong>
-          </div>
+          <span>합계: {totalPrice.toLocaleString()}원</span>
         </div>
-        {items.length > 0 && (
+        {items.length === 0 ? (
+          <p className="side-dish-empty-text">추가 버튼으로 반찬을 입력해주세요.</p>
+        ) : (
           <div className="side-dish-items">
             {items.map((item, index) => (
               <div className="side-dish-item" key={item.id}>
@@ -352,19 +347,15 @@ export function SideDishPanel() {
             ))}
           </div>
         )}
-        <button className="member-secondary-action side-dish-add-button" type="button" onClick={addItem}>+ 추가</button>
+        <button className="member-secondary-action side-dish-add-button" type="button" disabled={deadlineExceeded} onClick={addItem}>+ 추가</button>
       </section>
       <button className="member-primary-action" type="button" disabled={submitLoading || deadlineExceeded} onClick={openConfirm}>
-        {submitLoading ? '신청 중' : '반찬 신청하기'}
-        <span aria-hidden="true">→</span>
+        {submitLoading ? '신청 중' : '반찬신청'}
       </button>
       {message && <p className={`side-dish-message ${message.type}`}>{message.text}</p>}
       <section className="member-list-box">
         <div className="side-dish-list-header">
-          <div>
-            <strong>{selectedDateLabel} {selectedMeal} 신청목록</strong>
-            {selectedMealSideDishes.length > 0 && <em>총 {selectedMealSideDishes.length}건</em>}
-          </div>
+          <strong>{selectedDateLabel} {selectedMeal} 신청목록</strong>
           {latestOrderCreatedAt && (
             <span>
               {latestOrderCreatedAt.date} {latestOrderCreatedAt.time}
@@ -394,23 +385,16 @@ export function SideDishPanel() {
                     <ol>
                       {orderItems.map((item, index) => (
                         <li key={`${item.menuName}-${index}`}>
-                          <span>{item.menuName}</span>
-                          <strong>{item.price.toLocaleString()}원</strong>
+                          <span>{item.menuName} {item.price.toLocaleString()}원</span>
                         </li>
                       ))}
                     </ol>
-                    <div className="side-dish-order-set-total">
-                      <span>세트 합계</span>
-                      <strong>{sideDish.totalPrice.toLocaleString()}원</strong>
-                    </div>
+                    <span>세트 합계: {sideDish.totalPrice.toLocaleString()}원</span>
                   </div>
                 </article>
               );
             })}
-            <div className="side-dish-list-total">
-              <span>합계</span>
-              <strong>{selectedMealOrderTotal.toLocaleString()}원</strong>
-            </div>
+            <strong className="side-dish-list-total">합계: {selectedMealOrderTotal.toLocaleString()}원</strong>
           </div>
         )}
       </section>
@@ -450,21 +434,6 @@ export function SideDishPanel() {
   );
 }
 
-function UtensilIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <g className="utensil-fork">
-        <path d="M6 3v18" />
-        <path d="M3.5 3v6.2a2.5 2.5 0 0 0 5 0V3" />
-      </g>
-      <g className="utensil-spoon">
-        <ellipse cx="15.8" cy="7" rx="3.8" ry="4.8" />
-        <path d="M15.8 11.8V21" />
-      </g>
-    </svg>
-  );
-}
-
 type SideDishConfirmModalProps = {
   dateLabel: string;
   meal: MealType;
@@ -488,36 +457,17 @@ function SideDishConfirmModal({
   onClose,
   onSubmit,
 }: SideDishConfirmModalProps) {
-  const [copyToast, setCopyToast] = useState('');
   const totalPrice = items.reduce((sum, item) => sum + item.price, 0);
-  const copyTransferValue = (value: string) => {
-    if (navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(value);
-    } else {
-      const textarea = document.createElement('textarea');
-      textarea.value = value;
-      textarea.setAttribute('readonly', '');
-      textarea.style.position = 'fixed';
-      textarea.style.top = '-9999px';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
-
-    setCopyToast('복사되었습니다');
-    window.setTimeout(() => setCopyToast(''), 1600);
-  };
 
   return (
     <div className="side-dish-modal-backdrop" role="presentation">
       <section className="side-dish-modal" role="dialog" aria-modal="true" aria-labelledby="side-dish-modal-title">
         <div className="side-dish-modal-header">
           <h2 id="side-dish-modal-title">{dateLabel} {meal} 반찬 신청</h2>
-          <button type="button" aria-label="닫기" onClick={onClose}>닫기 ×</button>
+          <button type="button" onClick={onClose}>닫기</button>
         </div>
         <section className="side-dish-modal-section">
-          <h3><span aria-hidden="true">1</span><strong>1. 주문내용 확인</strong></h3>
+          <h3>1. 주문내용 확인</h3>
           <ol className="side-dish-modal-order-list">
             {items.map((item, index) => (
               <li key={`${item.menuName}-${index}`}>
@@ -526,50 +476,28 @@ function SideDishConfirmModal({
               </li>
             ))}
           </ol>
-          <p className="side-dish-modal-total"><span>총</span><strong>{totalPrice.toLocaleString()}원</strong></p>
+          <p className="side-dish-modal-total">총 {totalPrice.toLocaleString()}원</p>
         </section>
         <section className="side-dish-modal-section">
-          <h3><span aria-hidden="true">2</span><strong>2. 계좌 이체</strong></h3>
+          <h3>2. 계좌이체</h3>
           <p>사장님 카카오페이 또는 신한은행 계좌로 송금해주세요</p>
-          <div className="side-dish-transfer-row">
-            <span>카카오페이</span>
-            <strong>사장님 카카오페이</strong>
-            <button type="button" aria-label="카카오페이 복사" onClick={() => copyTransferValue('사장님 카카오페이')}>
-              <CopyIcon />
-            </button>
-          </div>
-          <div className="side-dish-transfer-row">
-            <span>계좌정보</span>
-            <strong>신한 110-498-435650 김지원</strong>
-            <button type="button" aria-label="계좌정보 복사" onClick={() => copyTransferValue('신한 110-498-435650 김지원')}>
-              <CopyIcon />
-            </button>
-          </div>
+          <strong>카카오페이: 사장님 카카오페이</strong>
+          <strong>계좌정보: 신한 110-498-435650 김지원</strong>
           <label className="side-dish-transfer-check">
             <input type="checkbox" checked={transferChecked} onChange={(event) => onTransferChange(event.target.checked)} />
             <span>송금완료</span>
           </label>
         </section>
         <section className="side-dish-modal-section">
-          <h3><span aria-hidden="true">3</span><strong>3. 신청하기</strong></h3>
+          <h3>3. 신청하기</h3>
           <p>주문내용 확인 및 송금을 완료하셨으면 아래 신청 버튼을 눌러서 신청을 완료해주세요</p>
           {deadlineExceeded && <p className="side-dish-deadline-message">{meal} 반찬 신청 시간이 마감되었습니다.</p>}
           <button className="side-dish-modal-submit" type="button" disabled={!transferChecked || submitLoading || deadlineExceeded} onClick={onSubmit}>
-            {submitLoading ? '신청 중' : '신청 완료하기'} <span aria-hidden="true">→</span>
+            {submitLoading ? '신청 중' : '신청하기'}
           </button>
         </section>
-        {copyToast && <div className="side-dish-copy-toast" role="status">{copyToast}</div>}
       </section>
     </div>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <rect x="8" y="8" width="11" height="11" rx="2" />
-      <path d="M5 15V6.8C5 5.8 5.8 5 6.8 5H15" />
-    </svg>
   );
 }
 
