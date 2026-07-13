@@ -14,9 +14,9 @@ export const MEMBER_MENUS: MemberMenu[] = [
 ];
 
 export function resolveMemberMenuId(value: string | null): MemberMenuId {
-  return MEMBER_MENUS.some((menu) => menu.id === value) ? (value as MemberMenuId) : 'leave-plan';
+  return MEMBER_MENUS.some((menu) => menu.id === value) ? (value as MemberMenuId) : 'weekly-plan';
 }
 
 export function getMemberMenuLabel(menuId: MemberMenuId): string {
-  return MEMBER_MENUS.find((menu) => menu.id === menuId)?.label || '휴무계획';
+  return MEMBER_MENUS.find((menu) => menu.id === menuId)?.label || '작업계획';
 }
