@@ -1,7 +1,6 @@
 package com.example.studyfactory.domain.sideDish.repository;
 
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
-import com.example.studyfactory.domain.sideDish.dto.SideDishMealTotalResponse;
 import com.example.studyfactory.domain.sideDish.entity.SideDishRequest;
 import java.time.LocalDate;
 import java.util.List;
@@ -39,19 +38,6 @@ public interface SideDishRequestRepository extends JpaRepository<SideDishRequest
             order by s.mealInformation.mealType asc, m.workInformation.seatNumber asc, s.createdAt asc
             """)
     List<DailySideDishResponse> findDailyByBranchAndDate(@Param("branchId") Long branchId, @Param("mealDate") LocalDate mealDate);
-
-    @Query("""
-            select new com.example.studyfactory.domain.sideDish.dto.SideDishMealTotalResponse(
-                s.mealInformation.mealType,
-                sum(s.orderInformation.totalPrice)
-            )
-            from SideDishRequest s
-            where s.referenceInformation.branchId = :branchId
-              and s.mealInformation.mealDate = :mealDate
-            group by s.mealInformation.mealType
-            order by s.mealInformation.mealType desc
-            """)
-    List<SideDishMealTotalResponse> findMealTotalsByBranchAndDate(@Param("branchId") Long branchId, @Param("mealDate") LocalDate mealDate);
 
     void deleteByReferenceInformationMemberId(Long memberId);
 }

@@ -148,84 +148,77 @@ export function LeavePlanPanel() {
   };
 
   return (
-    <div className="member-panel leave-plan-layout">
-      <div className="member-dashboard-column member-dashboard-column-primary">
-        <div className="member-calendar-header">
-          <strong>{visibleMonth.getFullYear()}. {String(visibleMonth.getMonth() + 1).padStart(2, '0')}</strong>
-          <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
-          <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
-        </div>
-        <div className="member-calendar-grid" aria-label="휴무 달력">
-          {WEEKDAYS.map((day) => (
-            <span className={`calendar-weekday ${day.className}`} key={day.label}>
-              {day.label}
-            </span>
-          ))}
-          {emptyDays.map((day) => (
-            <span className="calendar-empty" key={`empty-${day}`} />
-          ))}
-          {days.map((date) => {
-            const dateKey = toDateKey(date);
-            const past = dateKey < today;
-            const dayLeaves = leavesByDate.get(dateKey) || [];
-
-            return (
-              <button
-                className={getDateClassName(date, selectedDate, today)}
-                disabled={past}
-                type="button"
-                key={dateKey}
-                onClick={() => setSelectedDate(dateKey)}
-              >
-                <span className="member-calendar-date-number">{date.getDate()}</span>
-                {dayLeaves.length > 0 && (
-                  <span className="member-calendar-leave-badges">
-                    {dayLeaves.slice(0, 2).map((leave) => (
-                      <span className={`member-calendar-leave-badge ${toLeaveBadgeClassName(leave.leaveType)}`} key={leave.id}>
-                        {toCalendarLeaveLabel(leave.leaveType)}
-                      </span>
-                    ))}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <div className="leave-type-actions">
-          <button
-            className={selectedLeaveType === '월차' ? 'monthly active' : 'monthly'}
-            type="button"
-            onClick={() => setSelectedLeaveType('월차')}
-          >
-            월차
-          </button>
-          <button
-            className={selectedLeaveType === '오전반차' ? 'active' : ''}
-            type="button"
-            onClick={() => setSelectedLeaveType('오전반차')}
-          >
-            오전반차
-          </button>
-          <button
-            className={selectedLeaveType === '오후반차' ? 'active' : ''}
-            type="button"
-            onClick={() => setSelectedLeaveType('오후반차')}
-          >
-            오후반차
-          </button>
-        </div>
-        <button className="member-primary-action" type="button" disabled={submitting} onClick={openConfirm}>
-          {submitting ? '신청 중' : '휴가 신청하기'}
-          <span aria-hidden="true">→</span>
-        </button>
-        {message && <p className={`side-dish-message ${message.type}`}>{message.text}</p>}
+    <div className="member-panel">
+      <div className="member-calendar-header">
+        <button type="button" aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
+        <strong>{visibleMonth.getFullYear()}년 {visibleMonth.getMonth() + 1}월</strong>
+        <button type="button" aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
       </div>
-      <div className="member-dashboard-column member-dashboard-column-secondary">
-        <section className="member-list-box">
-        <div className="member-section-title">
-          <h2>신청 내역</h2>
-          <span>{leaves.length}건</span>
-        </div>
+      <div className="member-calendar-grid" aria-label="휴무 달력">
+        {WEEKDAYS.map((day) => (
+          <span className={`calendar-weekday ${day.className}`} key={day.label}>
+            {day.label}
+          </span>
+        ))}
+        {emptyDays.map((day) => (
+          <span className="calendar-empty" key={`empty-${day}`} />
+        ))}
+        {days.map((date) => {
+          const dateKey = toDateKey(date);
+          const past = dateKey < today;
+          const dayLeaves = leavesByDate.get(dateKey) || [];
+
+          return (
+            <button
+              className={getDateClassName(date, selectedDate, today)}
+              disabled={past}
+              type="button"
+              key={dateKey}
+              onClick={() => setSelectedDate(dateKey)}
+            >
+              <span className="member-calendar-date-number">{date.getDate()}</span>
+              {dayLeaves.length > 0 && (
+                <span className="member-calendar-leave-badges">
+                  {dayLeaves.slice(0, 2).map((leave) => (
+                    <span className={`member-calendar-leave-badge ${toLeaveBadgeClassName(leave.leaveType)}`} key={leave.id}>
+                      {toCalendarLeaveLabel(leave.leaveType)}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="leave-type-actions">
+        <button
+          className={selectedLeaveType === '월차' ? 'monthly active' : 'monthly'}
+          type="button"
+          onClick={() => setSelectedLeaveType('월차')}
+        >
+          월차
+        </button>
+        <button
+          className={selectedLeaveType === '오전반차' ? 'active' : ''}
+          type="button"
+          onClick={() => setSelectedLeaveType('오전반차')}
+        >
+          오전반차
+        </button>
+        <button
+          className={selectedLeaveType === '오후반차' ? 'active' : ''}
+          type="button"
+          onClick={() => setSelectedLeaveType('오후반차')}
+        >
+          오후반차
+        </button>
+      </div>
+      <button className="member-primary-action" type="button" disabled={submitting} onClick={openConfirm}>
+        <span className="check-icon" aria-hidden="true">✓</span>
+        {submitting ? '신청 중' : '신청하기'}
+      </button>
+      {message && <p className={`side-dish-message ${message.type}`}>{message.text}</p>}
+      <section className="member-list-box">
         {loading ? (
           <p>휴무 내역을 불러오는 중입니다.</p>
         ) : leaves.length === 0 ? (
@@ -245,8 +238,7 @@ export function LeavePlanPanel() {
             ))}
           </div>
         )}
-        </section>
-      </div>
+      </section>
       {confirmOpen &&
         createPortal(
           <LeaveConfirmModal

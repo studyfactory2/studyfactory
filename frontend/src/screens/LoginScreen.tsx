@@ -9,11 +9,9 @@ export function LoginScreen() {
 
   return (
     <LoginLayout>
-      {screen.mode !== 'login' && (
-        <div className="card-header">
-          <h2>사원등록</h2>
-        </div>
-      )}
+      <div className="card-header">
+        <h2>{screen.mode === 'login' ? '로그인' : '사원등록'}</h2>
+      </div>
       {screen.message && <p className={`message ${screen.message.type}`}>{screen.message.text}</p>}
       {screen.mode === 'login' && (
         <LoginForm

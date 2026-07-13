@@ -131,52 +131,6 @@ class SideDishControllerTest {
     }
 
     @Test
-    @DisplayName("인증된 사원이 날짜로 본인 지점의 점심 저녁 반찬 합계를 조회한다")
-    void findSideDishMealTotalsByDate() throws Exception {
-        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
-        Member member = memberRepository.save(createMember("kim", branch.getId()));
-        Member otherMember = memberRepository.save(createMember("lee", branch.getId()));
-        Branch otherBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
-        Member otherBranchMember = memberRepository.save(createMember("park", otherBranch.getId()));
-        sideDishRequestRepository.save(new SideDishRequest(
-                new SideDishReferenceInformation(member.getId(), branch.getId()),
-                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
-                new SideDishOrderInformation("제육볶음: 9000", 9000)
-        ));
-        sideDishRequestRepository.save(new SideDishRequest(
-                new SideDishReferenceInformation(otherMember.getId(), branch.getId()),
-                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
-                new SideDishOrderInformation("돈까스: 10000", 10000)
-        ));
-        sideDishRequestRepository.save(new SideDishRequest(
-                new SideDishReferenceInformation(member.getId(), branch.getId()),
-                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.DINNER),
-                new SideDishOrderInformation("김치찌개: 8000", 8000)
-        ));
-        sideDishRequestRepository.save(new SideDishRequest(
-                new SideDishReferenceInformation(otherBranchMember.getId(), otherBranch.getId()),
-                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
-                new SideDishOrderInformation("비빔밥: 7000", 7000)
-        ));
-        sideDishRequestRepository.save(new SideDishRequest(
-                new SideDishReferenceInformation(member.getId(), branch.getId()),
-                new SideDishMealInformation(LocalDate.of(2026, 6, 20), MealType.LUNCH),
-                new SideDishOrderInformation("다른날: 5000", 5000)
-        ));
-        String accessToken = jwtTokenProvider.createAccessToken(member);
-
-        mockMvc.perform(get("/api/side-dishes/totals")
-                        .param("date", "2026-06-19")
-                        .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].mealType").value("LUNCH"))
-                .andExpect(jsonPath("$[0].totalPrice").value(19000))
-                .andExpect(jsonPath("$[1].mealType").value("DINNER"))
-                .andExpect(jsonPath("$[1].totalPrice").value(8000))
-                .andExpect(jsonPath("$[2]").doesNotExist());
-    }
-
-    @Test
     @DisplayName("인증된 사원이 본인 반찬 신청을 삭제한다")
     void deleteSideDish() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
