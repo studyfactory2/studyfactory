@@ -68,8 +68,9 @@ button {
   height: auto;
   margin-bottom: 12px;
   border-radius: 28px;
-  background: transparent;
+  background: #eef7f6;
   mix-blend-mode: multiply;
+  filter: brightness(1.07) contrast(1.08);
   box-shadow: none;
 }
 
@@ -77,7 +78,7 @@ button {
   margin: 0;
   color: #187a77;
   font-size: clamp(24px, 3.2vw, 34px);
-  font-weight: 900;
+  font-weight: 760;
   line-height: 1.2;
   text-align: center;
 }
@@ -7758,6 +7759,15 @@ button.beverage-serving-cell:disabled {
   cursor: pointer;
 }
 
+.weekly-break-cell {
+  background: linear-gradient(90deg, rgba(192, 255, 0, 0.18), rgba(36, 125, 130, 0.07));
+}
+
+.weekly-break-cell .weekly-plan-draft-row input,
+.weekly-break-cell > button {
+  background: rgba(255, 255, 255, 0.78);
+}
+
 .weekly-break-label {
   position: sticky;
   left: 0;
@@ -8728,6 +8738,7 @@ button.beverage-serving-cell:disabled {
   .login-page {
     display: block;
     min-height: 100svh;
+    padding-top: 22px;
     padding-bottom: calc(22px + env(safe-area-inset-bottom));
     background:
       radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.82), transparent 26%),
@@ -8736,8 +8747,8 @@ button.beverage-serving-cell:disabled {
   }
 
   .brand-panel {
-    min-height: 32svh;
-    padding: 18px 22px 0;
+    min-height: 33svh;
+    padding: 28px 22px 0;
     align-items: center;
     justify-content: center;
     background: transparent;
@@ -8745,21 +8756,23 @@ button.beverage-serving-cell:disabled {
 
   .brand-character {
     width: 184px;
-    margin-bottom: 0;
+    margin-bottom: -8px;
     border-radius: 20px;
+    background: #eef7f6;
+    filter: brightness(1.08) contrast(1.1);
   }
 
   .brand-heading {
-    margin-top: -30px;
+    margin-top: -44px;
     font-size: 24px;
   }
 
   .login-card {
     width: calc(100% - 36px);
     min-height: auto;
-    padding: 28px 26px 24px;
+    padding: 26px 26px 22px;
     border-radius: 28px;
-    margin: 4px auto 0;
+    margin: 8px auto 0;
     position: relative;
     background: rgba(255, 255, 255, 0.92);
     box-shadow: 0 22px 48px rgba(37, 133, 130, 0.16);
@@ -8768,6 +8781,27 @@ button.beverage-serving-cell:disabled {
   .card-header h2,
   .form h2 {
     font-size: 26px;
+  }
+
+  .form {
+    gap: 12px;
+  }
+
+  .field {
+    gap: 8px;
+  }
+
+  .primary-button,
+  .ghost-button {
+    min-height: 54px;
+  }
+
+  .primary-button {
+    margin-top: 2px;
+  }
+
+  .install-button {
+    min-height: 46px;
   }
 
   .manager-page {
