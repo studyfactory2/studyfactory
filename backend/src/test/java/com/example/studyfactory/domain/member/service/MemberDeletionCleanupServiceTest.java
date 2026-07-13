@@ -15,6 +15,7 @@ import com.example.studyfactory.domain.sideDish.repository.SideDishRequestReposi
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
 import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
 import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
+import com.example.studyfactory.domain.weeklyPlan.service.WeeklyPlanService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,6 +69,9 @@ class MemberDeletionCleanupServiceTest {
     @Mock
     private TodoReplyRepository todoReplyRepository;
 
+    @Mock
+    private WeeklyPlanService weeklyPlanService;
+
     @Test
     @DisplayName("회원 삭제 시 회원이 가진 참조 데이터를 함께 정리한다")
     void cleanupMemberReferences() {
@@ -84,6 +88,7 @@ class MemberDeletionCleanupServiceTest {
         then(todoReplyRepository).should().deleteByMemberId(1L);
         then(todoItemRepository).should().deleteByTargetMemberId(1L);
         then(todoItemRepository).should().deleteByCreatedByMemberId(1L);
+        then(weeklyPlanService).should().deleteAllByMemberId(1L);
         then(suggestionRepository).should().deleteByReferenceInformationMemberId(1L);
         then(sideDishRequestRepository).should().deleteByReferenceInformationMemberId(1L);
         then(seatRepository).should().clearMemberAssignment(1L);

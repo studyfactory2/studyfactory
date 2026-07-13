@@ -70,6 +70,13 @@ export function InstallGuide() {
   return (
     <div className="install-guide">
       <button className="install-button" type="button" onClick={install}>
+        <span className="button-icon home-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M4 11.5 12 5l8 6.5" />
+            <path d="M6.5 10.5V20h11v-9.5" />
+            <path d="M10 20v-5h4v5" />
+          </svg>
+        </span>
         홈 화면에 추가하기
       </button>
       {message && <p>{message}</p>}

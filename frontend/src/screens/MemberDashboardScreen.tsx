@@ -4,6 +4,7 @@ import { LeavePlanPanel } from '../components/member/LeavePlanPanel';
 import { MemberTabs } from '../components/member/MemberTabs';
 import { SideDishPanel } from '../components/member/SideDishPanel';
 import { SuggestionPanel } from '../components/member/SuggestionPanel';
+import { WeeklyPlanPanel } from '../components/member/WeeklyPlanPanel';
 import { ManagerTopBar } from '../components/manager/ManagerTopBar';
 import { MEMBER_MENUS, resolveMemberMenuId, type MemberMenuId } from '../constants/memberMenus';
 import { ManagerLayout } from '../layouts/ManagerLayout';
@@ -66,6 +67,10 @@ function MemberPanel({ currentView }: { currentView: MemberMenuId }) {
 
   if (currentView === 'beverage') {
     return <BeveragePanel />;
+  }
+
+  if (currentView === 'weekly-plan') {
+    return <WeeklyPlanPanel />;
   }
 
   return <LeavePlanPanel />;
