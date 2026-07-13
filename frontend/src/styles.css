@@ -63,10 +63,25 @@ button {
   color: var(--color-text-main);
 }
 
+.brand-character-ring {
+  width: clamp(140px, 18.5vw, 212px);
+  aspect-ratio: 1;
+  margin-bottom: 10px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 5px solid #187a77;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #eef7f6 0%, #e4f2f1 100%);
+  box-shadow: 0 18px 34px rgba(24, 122, 119, 0.18);
+}
+
 .brand-character {
-  width: clamp(200px, 29vw, 328px);
-  height: auto;
-  margin-bottom: 12px;
+  width: 150%;
+  height: 150%;
+  object-fit: cover;
+  object-position: center 60%;
+  transform: translateY(-11%);
   border-radius: 28px;
   background: transparent;
   mix-blend-mode: normal;
@@ -8748,31 +8763,39 @@ button.beverage-serving-cell:disabled {
 
   .brand-panel {
     min-height: 33svh;
-    padding: 28px 22px 0;
+    padding: 58px 22px 0;
     align-items: center;
     justify-content: center;
     background: transparent;
   }
 
   .brand-character {
-    width: 184px;
-    margin-bottom: -8px;
-    border-radius: 20px;
+    width: 150%;
+    height: 150%;
+    object-position: center 60%;
+    transform: translateY(-11%);
+    border-radius: 0;
     background: transparent;
     filter: none;
   }
 
+  .brand-character-ring {
+    width: 132px;
+    margin-bottom: 4px;
+    border-width: 4px;
+  }
+
   .brand-heading {
-    margin-top: -44px;
+    margin-top: 0;
     font-size: 24px;
   }
 
   .login-card {
     width: calc(100% - 36px);
     min-height: auto;
-    padding: 26px 26px 22px;
+    padding: 18px 26px 22px;
     border-radius: 28px;
-    margin: 8px auto 0;
+    margin: 22px auto 0;
     position: relative;
     background: rgba(255, 255, 255, 0.92);
     box-shadow: 0 22px 48px rgba(37, 133, 130, 0.16);
