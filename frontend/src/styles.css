@@ -961,29 +961,47 @@ button {
   box-shadow: 0 7px 16px rgba(47, 79, 91, 0.16);
 }
 
-.admin-grid-button svg {
-  width: 36px;
-  height: 36px;
+.admin-grid-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #eaf7ff;
+  color: #3f9adb;
+}
+
+.admin-grid-icon svg {
+  width: 30px;
+  height: 30px;
   fill: none;
-  stroke: #247d82;
+  stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2.3;
+  stroke-width: 2.8;
 }
 
-.admin-grid-button:nth-child(2n) svg {
-  stroke: #667780;
+.admin-grid-icon-member {
+  background: #eef3f6;
+  color: #738392;
 }
 
-.admin-grid-section:nth-child(2) .admin-grid-button:first-child svg {
-  stroke: #c44949;
+.admin-grid-icon-calendar {
+  background: #fff1f0;
+  color: #cf3f3f;
 }
 
-.admin-grid-section:nth-child(2) .admin-grid-button:nth-child(3) svg {
-  stroke: #d0972b;
+.admin-grid-icon-person-check {
+  background: #e5fbf4;
+  color: #248b84;
 }
 
-.admin-grid-button span {
+.admin-grid-icon-pin {
+  background: #fff5df;
+  color: #dd7a1d;
+}
+
+.admin-grid-button > span:not(.admin-grid-icon) {
   display: grid;
   gap: 1px;
   color: #25313a;
