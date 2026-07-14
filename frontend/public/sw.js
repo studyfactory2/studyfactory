@@ -1,7 +1,7 @@
-const CACHE_NAME = 'studyfactory-pwa-v1';
+const CACHE_NAME = 'studyfactory-pwa-v2';
 const PRECACHE_URLS = [
   '/',
-  '/manifest.webmanifest',
+  '/login',
   '/studyfactory-character.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -38,6 +38,11 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  if (url.pathname === '/manifest.webmanifest' || url.pathname.startsWith('/icons/')) {
+    event.respondWith(fetch(request));
     return;
   }
 
