@@ -1,56 +1,33 @@
   @media (max-width: 820px) {
   .login-page {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
+    display: block;
     min-height: 100svh;
-    padding-top: 54px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
-    background:
-      radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.82), transparent 26%),
-      radial-gradient(circle at 50% 34%, rgba(38, 126, 130, 0.1), transparent 38%),
-      linear-gradient(180deg, #f7fbfb 0%, #eef7f6 48%, #e4f1ef 100%);
+    background: var(--color-background);
   }
 
   .brand-panel {
-    min-height: auto;
-    padding: 0 22px;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
+    min-height: 56svh;
+    padding: 30px 22px 38px;
+    justify-content: flex-end;
+    background:
+      radial-gradient(circle at 50% 78%, rgba(38, 126, 130, 0.1), transparent 34%),
+      linear-gradient(180deg, #f7fbfb 0%, #edf7f6 58%, #e4f1ef 100%);
   }
 
   .brand-character {
-    width: 150%;
-    height: 150%;
-    object-position: center 60%;
-    transform: translateY(-11%);
-    border-radius: 0;
-    background: transparent;
-    filter: none;
-  }
-
-  .brand-character-ring {
-    width: 132px;
-    margin-bottom: 4px;
-    border-width: 4px;
-  }
-
-  .brand-heading {
-    margin-top: 0;
-    font-size: 24px;
-    font-weight: 500;
+    width: 92px;
+    margin-bottom: 18px;
+    border-radius: 20px;
   }
 
   .login-card {
-    width: calc(100% - 36px);
-    min-height: auto;
-    padding: 18px 26px 22px;
-    border-radius: 28px;
-    margin: 14px auto 0;
+    width: 100%;
+    min-height: calc(44svh + 20px);
+    padding: 26px 20px calc(30px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 0 0;
+    margin-top: -20px;
     position: relative;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 22px 48px rgba(37, 133, 130, 0.16);
+    justify-content: flex-start;
   }
 
   .card-header h2,
@@ -58,25 +35,8 @@
     font-size: 26px;
   }
 
-  .form {
-    gap: 12px;
-  }
-
-  .field {
-    gap: 8px;
-  }
-
-  .primary-button,
-  .ghost-button {
-    min-height: 54px;
-  }
-
-  .primary-button {
-    margin-top: 2px;
-  }
-
-  .install-button {
-    min-height: 46px;
+  .login-card .form {
+    transform: none;
   }
 
   .manager-page {
@@ -300,15 +260,15 @@
 
   .staff-attendance-command-bar {
     right: 10px;
-    margin-right: 8px;
-    padding: 7px 8px 9px;
-    gap: 6px;
+    margin-right: 6px;
+    padding: 8px 9px 10px;
+    gap: 7px;
   }
 
   .staff-attendance-command-bar button {
-    min-width: 58px;
-    height: 36px;
-    font-size: 13px;
+    min-width: 66px;
+    height: 42px;
+    font-size: 14px;
   }
 
   .manager-card:has(.admin-grid-panel) {
