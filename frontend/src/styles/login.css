@@ -1,0 +1,355 @@
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 480px);
+  align-items: stretch;
+  background:
+    linear-gradient(120deg, rgba(38, 126, 130, 0.08), transparent 38%),
+    var(--color-background);
+}
+
+.brand-panel {
+  min-height: 100vh;
+  padding: clamp(32px, 6vw, 80px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(38, 126, 130, 0.1), transparent 30%),
+    linear-gradient(145deg, #ffffff 0%, #f7fbfb 46%, #edf5f6 100%);
+  color: var(--color-text-main);
+}
+
+.brand-character {
+  width: clamp(116px, 17vw, 192px);
+  height: auto;
+  margin-bottom: 28px;
+  border-radius: 28px;
+  box-shadow: 0 18px 48px rgba(38, 126, 130, 0.14);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.login-card {
+  width: 100%;
+  min-height: 100vh;
+  padding: clamp(30px, 5vw, 56px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 24px 54px rgba(37, 133, 130, 0.18);
+}
+
+.card-header {
+  margin-bottom: 34px;
+  text-align: center;
+}
+
+.card-header p {
+  margin: 10px 0 0;
+  color: #8d999d;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.card-header h2,
+.form h2 {
+  margin: 0;
+  color: #187a77;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.signup-candidate-list {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #dcecf1;
+  border-radius: var(--radius-md);
+  background: #f8fbfb;
+}
+
+.signup-candidate-list > strong {
+  color: var(--color-primary-dark);
+  font-size: 14px;
+}
+
+.signup-candidate-card {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #d7e5ea;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--color-text-main);
+  text-align: left;
+  cursor: pointer;
+}
+
+.signup-candidate-card:hover {
+  border-color: rgba(38, 126, 130, 0.5);
+  box-shadow: 0 8px 18px rgba(38, 126, 130, 0.12);
+}
+
+.signup-candidate-card span {
+  font-weight: 900;
+}
+
+.signup-candidate-card small {
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.field input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid #dce3e8;
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--color-text-main);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(38, 126, 130, 0.12);
+}
+
+.custom-select {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-button {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 44px 0 16px;
+  border: 1px solid #dce3e8;
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--color-text-main);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.custom-select-button::after {
+  content: "";
+  position: absolute;
+  right: 17px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--color-primary-dark);
+  border-bottom: 2px solid var(--color-primary-dark);
+  transform: translateY(-65%) rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.custom-select-button.open {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(38, 126, 130, 0.12);
+}
+
+.custom-select-button.open::after {
+  transform: translateY(-30%) rotate(225deg);
+}
+
+.custom-select-button.placeholder {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.custom-select-button:disabled {
+  cursor: not-allowed;
+  background: #f7fafb;
+  color: var(--color-text-secondary);
+}
+
+.custom-select-menu {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  padding: 6px;
+  border: 1px solid #dce3e8;
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(33, 33, 33, 0.12);
+}
+
+.custom-select-option {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-text-main);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.custom-select-option:hover,
+.custom-select-option.selected {
+  background: #eef5f6;
+  color: var(--color-primary-dark);
+}
+
+.primary-button,
+.ghost-button {
+  width: 100%;
+  min-height: 54px;
+  border-radius: var(--radius-md);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary-button {
+  margin-top: 6px;
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(38, 126, 130, 0.24);
+}
+
+.primary-button:hover {
+  background: var(--color-primary-light);
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+  transform: none;
+}
+
+.ghost-button {
+  background: #eef5f6;
+  color: var(--color-primary-dark);
+}
+
+.ghost-button:hover {
+  background: #dfecee;
+}
+
+.message {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.message.error {
+  background: #fff1f1;
+  color: var(--color-error);
+}
+
+.message.success {
+  background: #edf8ef;
+  color: var(--color-success);
+}
+
+.summary {
+  padding: 16px;
+  border: 1px solid #e4ecef;
+  border-radius: var(--radius-md);
+  background: #f8fbfb;
+}
+
+.summary strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--color-primary-dark);
+}
+
+.summary dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.summary dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.summary dt {
+  color: var(--color-text-secondary);
+}
+
+.summary dd {
+  margin: 0;
+  font-weight: 800;
+  text-align: right;
+}
+
+.install-guide {
+  margin-top: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.install-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 54px;
+  border: 1px solid #dce3e8;
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--color-primary-dark);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.install-button:hover {
+  border-color: rgba(38, 126, 130, 0.36);
+  box-shadow: 0 10px 20px rgba(38, 126, 130, 0.12);
+  transform: translateY(-1px);
+}
+
+.install-guide p {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: #f8fbfb;
+  color: #4a5568;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}

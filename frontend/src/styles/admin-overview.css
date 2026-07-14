@@ -1,0 +1,531 @@
+.admin-grid-panel {
+  display: grid;
+  gap: 28px;
+}
+
+.admin-grid-section {
+  padding-bottom: 28px;
+  border-bottom: 1px solid #edf1f3;
+}
+
+.admin-grid-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.admin-grid-section h3 {
+  margin: 0 0 22px;
+  color: #247d82;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.admin-grid-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 128px);
+  gap: 18px;
+}
+
+.admin-grid-button {
+  width: 128px;
+  min-height: 116px;
+  padding: 18px 10px 16px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  border: 1px solid #dbe8ec;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef7f9 100%);
+  color: #202931;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 10px 22px rgba(47, 79, 91, 0.14);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.admin-grid-button:hover {
+  transform: translateY(-2px);
+  border-color: #9bc9cf;
+  box-shadow: 0 14px 28px rgba(36, 125, 130, 0.2);
+}
+
+.admin-grid-button:active {
+  transform: translateY(0);
+  box-shadow: 0 7px 16px rgba(47, 79, 91, 0.16);
+}
+
+.admin-grid-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #eaf7ff;
+  color: #3f9adb;
+}
+
+.admin-grid-icon svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.8;
+}
+
+.admin-grid-icon-member {
+  background: #eef3f6;
+  color: #738392;
+}
+
+.admin-grid-icon-calendar {
+  background: #fff1f0;
+  color: #cf3f3f;
+}
+
+.admin-grid-icon-person-check {
+  background: #e5fbf4;
+  color: #248b84;
+}
+
+.admin-grid-icon-pin {
+  background: #fff5df;
+  color: #dd7a1d;
+}
+
+.admin-grid-button > span:not(.admin-grid-icon) {
+  display: grid;
+  gap: 1px;
+  color: #25313a;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.28;
+}
+
+.manager-card:has(.staff-page-panel) {
+  width: min(984px, 100%);
+  min-height: 560px;
+}
+
+.staff-page-panel {
+  display: grid;
+  gap: 28px;
+}
+
+.staff-page-section {
+  padding-bottom: 28px;
+  border-bottom: 1px solid #edf1f3;
+}
+
+.staff-page-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.staff-page-section h3 {
+  margin: 0 0 20px;
+  color: #247d82;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.staff-page-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.staff-page-button {
+  width: 92px;
+  min-height: 88px;
+  padding: 12px 8px 10px;
+  display: grid;
+  place-items: center;
+  gap: 7px;
+  border: 1px solid #eff4f6;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5fafb 100%);
+  color: #202931;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(47, 79, 91, 0.08);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.staff-page-button:hover {
+  transform: translateY(-2px);
+  border-color: #c7dfe3;
+  box-shadow: 0 12px 24px rgba(36, 125, 130, 0.14);
+}
+
+.staff-page-button svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: #247d82;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.staff-page-button span {
+  display: grid;
+  gap: 1px;
+  color: #25313a;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.staff-page-section:first-child .staff-page-button:first-child svg {
+  stroke: #ef4444;
+}
+
+.staff-page-section:first-child .staff-page-button:nth-child(2) svg,
+.staff-page-section:nth-child(2) .staff-page-button:nth-child(2) svg {
+  stroke: #18a999;
+}
+
+.staff-page-section:first-child .staff-page-button:nth-child(3) svg {
+  stroke: #d89422;
+}
+
+.staff-page-section:nth-child(2) .staff-page-button:first-child svg,
+.staff-page-section:nth-child(3) .staff-page-button:first-child svg {
+  stroke: #7c5ce6;
+}
+
+.staff-page-section:nth-child(2) .staff-page-button:nth-child(3) svg {
+  stroke: #2078cf;
+}
+
+.staff-page-section:nth-child(3) .staff-page-button:nth-child(2) svg {
+  stroke: #f07623;
+}
+
+.manager-card:has(.daily-leave-panel) {
+  width: min(984px, 100%);
+  min-height: 560px;
+}
+
+.daily-leave-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.daily-leave-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-leave-title a {
+  width: 28px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #25313a;
+}
+
+.daily-leave-title svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.daily-leave-title h2 {
+  margin: 0;
+  color: #202931;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.daily-leave-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(110px, 132px);
+  gap: 8px;
+}
+
+.daily-leave-search {
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dfe8ee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.daily-leave-search svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: #8090a3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.daily-leave-search input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+}
+
+.daily-leave-search input::placeholder {
+  color: #9aa8bb;
+}
+
+.daily-leave-controls .custom-select-button {
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.daily-leave-controls .custom-select-option {
+  min-height: 36px;
+  font-size: 13px;
+}
+
+.daily-leave-calendar-field {
+  position: relative;
+}
+
+.daily-leave-date {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  border: 1px solid #dfe8ee;
+  border-radius: 9px;
+  background: #fff;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+
+.daily-leave-date svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: #6f7f92;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.daily-leave-calendar-popover {
+  position: static;
+  z-index: 30;
+  margin-top: 8px;
+  padding: 12px 22px 20px;
+  border: 1px solid #dce6ee;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(31, 50, 62, 0.08);
+}
+
+.daily-leave-calendar-header {
+  display: grid;
+  grid-template-columns: 30px minmax(0, auto) 30px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.daily-leave-calendar-header button {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: transparent;
+  color: #526173;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.daily-leave-calendar-header strong {
+  color: #202931;
+  font-size: 16px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.daily-leave-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  row-gap: 8px;
+  column-gap: 10px;
+}
+
+.daily-leave-calendar-grid button {
+  width: 42px;
+  height: 34px;
+  min-width: 0;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #2b343b;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.daily-leave-calendar-grid .calendar-empty {
+  width: 42px;
+  height: 34px;
+  aspect-ratio: auto;
+  justify-self: center;
+}
+
+.daily-leave-calendar-grid button.sunday {
+  color: #d84b4b;
+}
+
+.daily-leave-calendar-grid button.saturday {
+  color: #2f74c0;
+}
+
+.daily-leave-calendar-grid button.selected {
+  border-color: #247d82;
+  background: #247d82;
+  color: #fff;
+  width: 42px;
+  height: 34px;
+  box-shadow: 0 8px 18px rgba(36, 125, 130, 0.22);
+}
+
+.daily-leave-filter-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.daily-leave-filter-buttons button {
+  min-height: 42px;
+  border: 2px solid #cfd9e4;
+  border-radius: 7px;
+  background: #f4f7fa;
+  color: #8a99aa;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.daily-leave-filter-buttons button:nth-child(1).active,
+.daily-leave-filter-buttons button:nth-child(2).active {
+  border-color: #ff3b3b;
+  background: #fffafa;
+  color: #e42f2f;
+}
+
+.daily-leave-filter-buttons button:nth-child(3).active {
+  border-color: #2285df;
+  background: #eff8ff;
+  color: #2368a6;
+}
+
+.daily-leave-filter-buttons button.active {
+  box-shadow: 0 6px 14px rgba(36, 125, 130, 0.1);
+}
+
+.daily-leave-list {
+  display: grid;
+  gap: 9px;
+}
+
+.daily-leave-card {
+  min-height: 70px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 8px;
+  background: #e8f7fd;
+}
+
+.daily-leave-card.morning {
+  background: #fff1f1;
+}
+
+.daily-leave-card.afternoon {
+  background: #e8f7fd;
+}
+
+.daily-leave-card div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.daily-leave-card div:last-child {
+  text-align: right;
+}
+
+.daily-leave-card strong {
+  color: #1e2f45;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.daily-leave-card div:last-child strong {
+  color: #255f9b;
+  font-size: 13px;
+}
+
+.daily-leave-card.morning div:last-child strong {
+  color: #e42f2f;
+}
+
+.daily-leave-card.afternoon div:last-child strong {
+  color: #255f9b;
+}
+
+.daily-leave-card span {
+  color: #86a0b5;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.daily-leave-empty {
+  margin: 8px 0 0;
+  padding: 26px 12px;
+  border-radius: 8px;
+  background: #f5fafc;
+  color: #8ba0b3;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.manager-card:has(.beverage-serving-panel) {
+  width: min(984px, calc(100vw - 96px));
+  min-height: 660px;
+  padding: 30px 34px 38px;
+}
+

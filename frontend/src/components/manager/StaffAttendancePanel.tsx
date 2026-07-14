@@ -12,7 +12,8 @@ const SHADED_NAME_SEATS = new Set([8, 9, 11, 14, 15, 16, 17]);
 const DARK_SHADED_NAME_SEATS = new Set([53, 54]);
 const ALERT_SHADED_NAME_SEATS = new Set([83]);
 type SelectedSlot = {
-  memberId: number;
+  memberId: number | null;
+  seatNumber: number | null;
   name: string;
   slot: number;
 };
@@ -317,6 +318,10 @@ export function StaffAttendancePanel() {
       setMessage('변경할 교시를 먼저 선택해주세요.');
       return;
     }
+    if (!selectedSlot.memberId) {
+      setMessage('공석은 출석 상태를 변경할 수 없습니다.');
+      return;
+    }
     if (!slot) {
       setMessage('변경할 교시를 선택해주세요.');
       return;
@@ -445,9 +450,9 @@ export function StaffAttendancePanel() {
     }
 
     const editableSlots = SLOT_LABELS.flatMap((slot) => filteredRows
-      .filter((row) => row.memberId && row.seatNumber != null && row.name !== '공석' && !isJoinDateRow(row))
-      .map((row) => ({ memberId: row.memberId as number, name: row.name, slot })));
-    const currentIndex = editableSlots.findIndex((slot) => slot.memberId === currentSlot.memberId && slot.slot === currentSlot.slot);
+      .filter((row) => row.seatNumber != null && !isJoinDateRow(row))
+      .map((row) => ({ memberId: row.memberId ?? null, seatNumber: row.seatNumber as number, name: row.name, slot })));
+    const currentIndex = editableSlots.findIndex((slot) => slot.seatNumber === currentSlot.seatNumber && slot.slot === currentSlot.slot);
     const nextSlot = editableSlots[currentIndex + 1];
 
     if (nextSlot) {
@@ -579,17 +584,17 @@ export function StaffAttendancePanel() {
                       </td>
                     ) : SLOT_LABELS.map((slot, index) => {
                       const status = row.slots[index] || 'X';
-                      const selected = selectedSlot?.memberId === row.memberId && selectedSlot?.slot === slot;
+                      const selected = selectedSlot?.seatNumber === row.seatNumber && selectedSlot?.slot === slot;
 
                       return (
                         <td
                           className={`${toStatusClassName(status, emptySeat)}${selected ? ' selected-slot' : ''}`}
                           key={slot}
                           onClick={() => {
-                            if (emptySeat || !row.memberId) {
+                            if (row.seatNumber == null) {
                               return;
                             }
-                            setSelectedSlot({ memberId: row.memberId, name: row.name, slot });
+                            setSelectedSlot({ memberId: row.memberId ?? null, seatNumber: row.seatNumber, name: row.name, slot });
                           }}
                         >
                           <span>{status}</span>
@@ -602,9 +607,9 @@ export function StaffAttendancePanel() {
             </tbody>
           </table>
           <div className="staff-attendance-command-bar">
-            <button className="command-present" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('PRESENT', undefined, selectedDate, selectedSlot?.slot)}>O 출석</button>
-            <button className="command-absent" type="button" disabled={!selectedSlot || submitting} onClick={() => updateSlotStatus('ABSENT', undefined, selectedDate, selectedSlot?.slot)}>X 결석</button>
-            <button className="command-other" type="button" disabled={!selectedSlot || submitting} onClick={openOtherModal}>기타</button>
+            <button className="command-present" type="button" disabled={!selectedSlot?.memberId || submitting} onClick={() => updateSlotStatus('PRESENT', undefined, selectedDate, selectedSlot?.slot)}>O 출석</button>
+            <button className="command-absent" type="button" disabled={!selectedSlot?.memberId || submitting} onClick={() => updateSlotStatus('ABSENT', undefined, selectedDate, selectedSlot?.slot)}>X 결석</button>
+            <button className="command-other" type="button" disabled={!selectedSlot?.memberId || submitting} onClick={openOtherModal}>기타</button>
             <button className="command-undo" type="button" disabled={!selectedSlot || submitting} onClick={() => moveToNextEditableSlot()}>↵</button>
           </div>
         </div>
