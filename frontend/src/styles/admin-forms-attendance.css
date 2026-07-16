@@ -90,6 +90,94 @@
   overflow-y: auto;
 }
 
+.nameplate-field {
+  position: relative;
+}
+
+.nameplate-field > input {
+  padding-right: 42px;
+  border-radius: 10px;
+}
+
+.nameplate-field.open > input {
+  border-color: #a9c7f5;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.09);
+}
+
+.nameplate-field > button {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  width: 42px;
+  height: 44px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nameplate-field > button::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #3182f6;
+  border-bottom: 2px solid #3182f6;
+  transform: rotate(45deg);
+  transition: transform 0.18s ease;
+}
+
+.nameplate-field.open > button::after {
+  top: 19px;
+  transform: rotate(225deg);
+}
+
+.nameplate-options {
+  position: absolute;
+  z-index: 35;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 248px;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid #dbe7f8;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(49, 130, 246, 0.14);
+  scrollbar-width: thin;
+  scrollbar-color: #c7d9f5 transparent;
+}
+
+.nameplate-options > button {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: #fff;
+  color: #333d4b;
+  font-size: 13px;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nameplate-options > button:hover,
+.nameplate-options > button.selected {
+  background: #edf5ff;
+  color: #1b64da;
+}
+
+.nameplate-options > p {
+  margin: 0;
+  padding: 12px;
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .join-date-field {
   position: relative;
 }
@@ -2248,4 +2336,3 @@
 .manager-pagination span.active {
   background: #3182f6;
 }
-

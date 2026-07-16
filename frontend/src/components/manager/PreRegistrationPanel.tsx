@@ -33,6 +33,54 @@ const DRINK_OPTIONS: DropdownOption[] = [
   { value: '해독쥬스', label: '해독쥬스' },
   { value: '없음', label: '없음' },
 ];
+const NAMEPLATE_OPTIONS = [
+  '2026공기업합격 합격자',
+  '5급공채',
+  '7급공무원',
+  '7급우정',
+  '9급고용노동',
+  '9급교육행정',
+  '9급교행',
+  '9급세무직',
+  '9급수산직',
+  '9급일반행정',
+  '9급일행',
+  '감정평가사',
+  '검찰직',
+  '경찰',
+  '공기업',
+  '공무원',
+  '관세사',
+  '국토교통부 항공교통관제사',
+  '노무사',
+  '로스쿨',
+  '변리사',
+  '변호사',
+  '보험계리사',
+  '부산교통공사',
+  '세무사',
+  '세무사2차',
+  '세무직',
+  '소방',
+  '손해사정사',
+  '수능',
+  '약대편입',
+  '역사임용',
+  '울산대 의예과',
+  '은행',
+  '일행',
+  '주택금융공사',
+  '중앙대 전자공학과',
+  '초등임용',
+  '취업',
+  '치의학전문대학원',
+  '토목직공무원',
+  '편입',
+  '한국은행',
+  '해양경찰',
+  '회계사',
+  '회계사2차',
+];
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const KOREAN_HOLIDAYS: Record<string, string[]> = {
   '2026': [
@@ -110,6 +158,8 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
   const [editJoinDateMonth, setEditJoinDateMonth] = useState(() => startOfMonth(new Date()));
   const [drinkOpen, setDrinkOpen] = useState(false);
   const [editDrinkOpen, setEditDrinkOpen] = useState(false);
+  const [nameplateOpen, setNameplateOpen] = useState(false);
+  const [editNameplateOpen, setEditNameplateOpen] = useState(false);
   const [showCustomDrink, setShowCustomDrink] = useState(false);
   const [showEditCustomDrink, setShowEditCustomDrink] = useState(false);
   const [membersByBranchId, setMembersByBranchId] = useState<Record<string, MemberResponse[]>>({});
@@ -154,6 +204,12 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
 
     return toAvailableSeatOptions(membersByBranchId[editDraft.branchId] || [], editingMemberId);
   }, [editDraft, editingMemberId, membersByBranchId]);
+  const nameplateOptions = useMemo(() => {
+    return Array.from(new Set([
+      ...NAMEPLATE_OPTIONS,
+      ...certifications.map((item) => item.content.trim()).filter(Boolean),
+    ]));
+  }, [certifications]);
 
   const loadBranchMembers = async (branchId: string) => {
     try {
@@ -312,6 +368,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setMemberNote('');
     setShowCustomDrink(false);
     setDrinkOpen(false);
+    setNameplateOpen(false);
     setJoinDateOpen(false);
   };
 
@@ -322,6 +379,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setEditRoleOpen(false);
     setEditSeatOpen(false);
     setEditDrinkOpen(false);
+    setEditNameplateOpen(false);
     setEditJoinDateOpen(false);
     setShowEditCustomDrink(false);
   };
@@ -426,21 +484,20 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
             }}
           />
         </label>
-        <label>
-          <span>자격증</span>
-          <input
-            list="certification-options"
-            type="text"
-            placeholder="자격증 입력 또는 선택"
+        <div className="form-field nameplate-form-field">
+          <span>명패 내용</span>
+          <NameplateField
             value={certification}
-            onChange={(event) => setCertification(event.target.value)}
+            open={nameplateOpen}
+            options={nameplateOptions}
+            onChange={setCertification}
+            onSelect={(value) => {
+              setCertification(value);
+              setNameplateOpen(false);
+            }}
+            onToggle={() => setNameplateOpen((current) => !current)}
           />
-          <datalist id="certification-options">
-            {certifications.map((certification) => (
-              <option key={certification.id} value={certification.content} />
-            ))}
-          </datalist>
-        </label>
+        </div>
         <label className="full-field">
           <span>음료 설정 (선택사항)</span>
           <DrinkSettingField
@@ -567,14 +624,20 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                         }}
                       />
                     </label>
-                    <label>
-                      <span>자격증</span>
-                      <input
-                        list="certification-options"
+                    <div className="form-field nameplate-form-field">
+                      <span>명패 내용</span>
+                      <NameplateField
                         value={editDraft.certification}
-                        onChange={(event) => changeEditDraft('certification', event.target.value)}
+                        open={editNameplateOpen}
+                        options={nameplateOptions}
+                        onChange={(value) => changeEditDraft('certification', value)}
+                        onSelect={(value) => {
+                          changeEditDraft('certification', value);
+                          setEditNameplateOpen(false);
+                        }}
+                        onToggle={() => setEditNameplateOpen((current) => !current)}
                       />
-                    </label>
+                    </div>
                     <label className="full-field">
                       <span>음료 설정 (선택사항)</span>
                       <DrinkSettingField
@@ -705,6 +768,56 @@ function SeatNumberField({ value, open, options, onChange, onSelect, onToggle }:
         onToggle={onToggle}
         onSelect={onSelect}
       />
+    </div>
+  );
+}
+
+type NameplateFieldProps = {
+  value: string;
+  open: boolean;
+  options: string[];
+  onChange: (value: string) => void;
+  onSelect: (value: string) => void;
+  onToggle: () => void;
+};
+
+function NameplateField({ value, open, options, onChange, onSelect, onToggle }: NameplateFieldProps) {
+  const normalizedValue = value.trim().toLocaleLowerCase('ko-KR');
+  const filteredOptions = normalizedValue
+    ? options.filter((option) => option.toLocaleLowerCase('ko-KR').includes(normalizedValue))
+    : options;
+
+  return (
+    <div className={`nameplate-field${open ? ' open' : ''}`}>
+      <input
+        type="text"
+        placeholder="명패 문구 입력 또는 선택"
+        value={value}
+        onFocus={() => {
+          if (!open) onToggle();
+        }}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <button type="button" aria-label="명패 내용 목록 열기" aria-expanded={open} onClick={onToggle} />
+      {open && (
+        <div className="nameplate-options" role="listbox" aria-label="명패 내용">
+          {filteredOptions.length > 0 ? filteredOptions.map((option) => (
+            <button
+              className={option === value ? 'selected' : ''}
+              type="button"
+              role="option"
+              aria-selected={option === value}
+              key={option}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onSelect(option)}
+            >
+              {option}
+            </button>
+          )) : (
+            <p>직접 입력한 문구로 등록할 수 있어요.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
