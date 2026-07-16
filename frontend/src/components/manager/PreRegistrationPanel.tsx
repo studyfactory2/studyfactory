@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { apiRequest } from '../../api/client';
 import { Dropdown, type DropdownOption } from '../common/Dropdown';
@@ -236,8 +236,8 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
   const submitPreRegistration = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!selectedBranchId || !name.trim() || !expectedJoinDate) {
-      setMessage({ type: 'error', text: '지점, 이름, 입사예정일을 입력해주세요.' });
+    if (!selectedBranchId || !name.trim()) {
+      setMessage({ type: 'error', text: '지점과 이름을 입력해주세요.' });
       return;
     }
 
@@ -296,8 +296,8 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
       return;
     }
 
-    if (!editDraft.branchId || !editDraft.name.trim() || !editDraft.expectedJoinDate) {
-      setMessage({ type: 'error', text: '지점, 이름, 입사예정일을 입력해주세요.' });
+    if (!editDraft.branchId || !editDraft.name.trim()) {
+      setMessage({ type: 'error', text: '지점과 이름을 입력해주세요.' });
       return;
     }
 
@@ -351,7 +351,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     name: formState.name.trim(),
     role: formState.role,
     seatNumber: formState.seatNumber ? Number(formState.seatNumber) : null,
-    expectedJoinDate: formState.expectedJoinDate,
+    expectedJoinDate: formState.expectedJoinDate || null,
     certification: formState.certification.trim() || null,
     drinkSetting: formState.drinkSetting.trim(),
     drinkNote: formState.drinkNote.trim(),
@@ -782,13 +782,25 @@ type NameplateFieldProps = {
 };
 
 function NameplateField({ value, open, options, onChange, onSelect, onToggle }: NameplateFieldProps) {
+  const fieldRef = useRef<HTMLDivElement>(null);
   const normalizedValue = value.trim().toLocaleLowerCase('ko-KR');
   const filteredOptions = normalizedValue
     ? options.filter((option) => option.toLocaleLowerCase('ko-KR').includes(normalizedValue))
     : options;
 
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!fieldRef.current?.contains(event.target as Node)) onToggle();
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
+  }, [open, onToggle]);
+
   return (
-    <div className={`nameplate-field${open ? ' open' : ''}`}>
+    <div className={`nameplate-field${open ? ' open' : ''}`} ref={fieldRef}>
       <input
         type="text"
         placeholder="명패 문구 입력 또는 선택"
@@ -832,8 +844,21 @@ type JoinDateFieldProps = {
 };
 
 function JoinDateField({ value, open, visibleMonth, onChange, onMoveMonth, onToggle }: JoinDateFieldProps) {
+  const fieldRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!fieldRef.current?.contains(event.target as Node)) onToggle();
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
+  }, [open, onToggle]);
+
   return (
-    <div className="join-date-field">
+    <div className="join-date-field" ref={fieldRef}>
       <button className={`join-date-button${open ? ' open' : ''}${value ? '' : ' empty'}`} type="button" onClick={onToggle}>
         <span>{value ? formatDateLabel(value) : '연도. 월. 일.'}</span>
         <CalendarIcon />
@@ -875,6 +900,7 @@ function JoinDateField({ value, open, visibleMonth, onChange, onMoveMonth, onTog
             })}
           </div>
           <footer>
+            <button type="button" onClick={() => onChange('')}>선택 안 함</button>
             <button type="button" onClick={() => onChange(toDateKey(new Date()))}>오늘</button>
           </footer>
         </div>
