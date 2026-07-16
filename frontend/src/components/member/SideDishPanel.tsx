@@ -30,7 +30,7 @@ type AlertState = {
   description: string;
 };
 
-function getDateClassName(date: Date, selectedDate: string, today: string) {
+function getDateClassName(date: Date, selectedDate: string, today: string, hasOrder: boolean) {
   const classNames = ['calendar-day'];
   const dateKey = toDateKey(date);
   const weekday = date.getDay();
@@ -41,6 +41,10 @@ function getDateClassName(date: Date, selectedDate: string, today: string) {
 
   if (dateKey === selectedDate) {
     classNames.push('selected');
+  }
+
+  if (hasOrder) {
+    classNames.push('has-side-dish-order');
   }
 
   if (weekday === 0) {
@@ -106,6 +110,7 @@ export function SideDishPanel() {
   const [selectedMeal, setSelectedMeal] = useState<MealType>('점심');
   const [items, setItems] = useState<SideDishItem[]>([]);
   const [sideDishes, setSideDishes] = useState<SideDishResponse[]>([]);
+  const [orderedDates, setOrderedDates] = useState<string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [transferChecked, setTransferChecked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -130,6 +135,10 @@ export function SideDishPanel() {
   }, [selectedDateValue]);
 
   useEffect(() => {
+    void loadOrderedDates();
+  }, [visibleMonth]);
+
+  useEffect(() => {
     const intervalId = window.setInterval(() => setCurrentTime(new Date()), 30_000);
 
     return () => window.clearInterval(intervalId);
@@ -148,6 +157,17 @@ export function SideDishPanel() {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청목록을 불러오지 못했습니다.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadOrderedDates = async () => {
+    const from = toDateKey(visibleMonth);
+    const to = toDateKey(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0));
+
+    try {
+      setOrderedDates(await apiRequest<string[]>(`/api/side-dishes/me/order-dates?from=${from}&to=${to}`));
+    } catch {
+      setOrderedDates([]);
     }
   };
 
@@ -229,6 +249,7 @@ export function SideDishPanel() {
         description: '반찬 신청이 완료되었습니다.',
       });
       await loadSideDishes();
+      await loadOrderedDates();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청에 실패했습니다.' });
     } finally {
@@ -252,6 +273,7 @@ export function SideDishPanel() {
         description: '반찬 신청이 정상적으로 취소되었습니다.',
       });
       await loadSideDishes();
+      await loadOrderedDates();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청 삭제에 실패했습니다.' });
     }
@@ -287,7 +309,7 @@ export function SideDishPanel() {
 
             return (
               <button
-                className={getDateClassName(date, selectedDate, today)}
+                className={getDateClassName(date, selectedDate, today, orderedDates.includes(dateKey))}
                 disabled={past}
                 type="button"
                 key={dateKey}

@@ -433,8 +433,13 @@
 }
 
 .staff-attendance-table tbody tr.second-room-row.empty-seat-row .staff-seat-cell span {
-  background: #e9edf1;
-  color: #8b95a1;
+  background: #b9d2fb;
+  color: #174fa6;
+}
+
+.staff-attendance-table tbody tr.empty-seat-row:not(.second-room-row) .staff-seat-cell span {
+  background: #edf5ff;
+  color: #286ee8;
 }
 
 .staff-attendance-table tbody tr.soft-divider-row td { border-top-color: #b0c9f0; }
@@ -997,6 +1002,7 @@
   .login-card {
     min-height: 100dvh;
     margin-top: 0;
+    border-radius: 0;
     padding: clamp(64px, 10svh, 96px) 24px max(24px, env(safe-area-inset-bottom));
     justify-content: flex-start;
     background:

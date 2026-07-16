@@ -39,6 +39,15 @@ public class SideDishController {
         return sideDishService.findMineByDate(memberId, date);
     }
 
+    @GetMapping("/me/order-dates")
+    public List<LocalDate> findMineOrderDates(
+            @CurrentMember Long memberId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return sideDishService.findMineOrderDates(memberId, from, to);
+    }
+
     @GetMapping("/daily")
     public List<DailySideDishResponse> findDaily(
             @CurrentMember Long memberId,

@@ -51,6 +51,11 @@ public class SideDishService {
     }
 
     @Transactional(readOnly = true)
+    public List<LocalDate> findMineOrderDates(Long memberId, LocalDate from, LocalDate to) {
+        return sideDishRequestRepository.findMineOrderDates(memberId, from, to);
+    }
+
+    @Transactional(readOnly = true)
     public List<DailySideDishResponse> findDaily(Long currentMemberId, LocalDate date, Long branchId) {
         Member currentMember = memberRepository.findById(currentMemberId).orElseThrow(MemberException::memberNotFound);
         validateAllPermissions(currentMember);
