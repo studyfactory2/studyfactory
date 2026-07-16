@@ -6,10 +6,12 @@ import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
+import com.example.studyfactory.domain.sideDish.dto.SideDishTotalResponse;
 import com.example.studyfactory.domain.sideDish.entity.SideDishMealInformation;
 import com.example.studyfactory.domain.sideDish.entity.SideDishOrderInformation;
 import com.example.studyfactory.domain.sideDish.entity.SideDishReferenceInformation;
 import com.example.studyfactory.domain.sideDish.entity.SideDishRequest;
+import com.example.studyfactory.domain.sideDish.entity.MealType;
 import com.example.studyfactory.domain.sideDish.exception.SideDishException;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
 import java.time.Clock;
@@ -53,6 +55,18 @@ public class SideDishService {
     @Transactional(readOnly = true)
     public List<LocalDate> findMineOrderDates(Long memberId, LocalDate from, LocalDate to) {
         return sideDishRequestRepository.findMineOrderDates(memberId, from, to);
+    }
+
+    @Transactional(readOnly = true)
+    public SideDishTotalResponse findBranchTotals(Long memberId, LocalDate date) {
+        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        LocalDate mealDate = resolveDate(date);
+        Long branchId = member.getBranchId();
+
+        return new SideDishTotalResponse(
+                sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(branchId, mealDate, MealType.LUNCH),
+                sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(branchId, mealDate, MealType.DINNER)
+        );
     }
 
     @Transactional(readOnly = true)

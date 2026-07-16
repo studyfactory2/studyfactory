@@ -97,6 +97,7 @@
   min-height: 0;
   padding: 2px 6px 10px 0;
   display: grid;
+  grid-auto-rows: max-content;
   align-content: start;
   gap: 14px;
   overflow-y: auto;
@@ -122,6 +123,14 @@
   border-radius: 15px;
   background: #fff;
   box-shadow: 0 8px 18px rgba(47, 79, 91, 0.08);
+}
+
+.member-status-card:has(.member-status-edit-form) {
+  height: max-content;
+  min-height: max-content;
+  align-items: start;
+  position: relative;
+  z-index: 2;
 }
 
 .member-status-info {
@@ -232,7 +241,7 @@
   display: grid;
   place-items: center;
   border-radius: 9px;
-  background: #34a26f;
+  background: #3182f6;
   color: #fff;
   cursor: pointer;
 }
@@ -593,4 +602,3 @@
   min-height: 560px;
   display: grid;
 }
-

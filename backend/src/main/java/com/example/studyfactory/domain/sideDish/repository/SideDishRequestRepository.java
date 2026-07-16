@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.sideDish.repository;
 
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
+import com.example.studyfactory.domain.sideDish.entity.MealType;
 import com.example.studyfactory.domain.sideDish.entity.SideDishRequest;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,6 +28,19 @@ public interface SideDishRequestRepository extends JpaRepository<SideDishRequest
             order by s.mealInformation.mealDate
             """)
     List<LocalDate> findMineOrderDates(@Param("memberId") Long memberId, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("""
+            select coalesce(sum(s.orderInformation.totalPrice), 0)
+            from SideDishRequest s
+            where s.referenceInformation.branchId = :branchId
+              and s.mealInformation.mealDate = :mealDate
+              and s.mealInformation.mealType = :mealType
+            """)
+    long sumTotalByBranchAndDateAndMealType(
+            @Param("branchId") Long branchId,
+            @Param("mealDate") LocalDate mealDate,
+            @Param("mealType") MealType mealType
+    );
 
     @Query("""
             select new com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse(

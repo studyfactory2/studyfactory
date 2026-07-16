@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiRequest } from '../../api/client';
-import type { MealType as ApiMealType, SideDishResponse } from '../../types/domain';
+import type { MealType as ApiMealType, SideDishResponse, SideDishTotalResponse } from '../../types/domain';
 
 const WEEKDAYS = [
   { label: '일', className: 'sunday' },
@@ -110,6 +110,7 @@ export function SideDishPanel() {
   const [selectedMeal, setSelectedMeal] = useState<MealType>('점심');
   const [items, setItems] = useState<SideDishItem[]>([]);
   const [sideDishes, setSideDishes] = useState<SideDishResponse[]>([]);
+  const [branchTotals, setBranchTotals] = useState<SideDishTotalResponse>({ lunchTotal: 0, dinnerTotal: 0 });
   const [orderedDates, setOrderedDates] = useState<string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [transferChecked, setTransferChecked] = useState(false);
@@ -128,10 +129,12 @@ export function SideDishPanel() {
   const totalPrice = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const selectedMealSideDishes = sideDishes.filter((sideDish) => sideDish.mealType === selectedMealType);
   const selectedMealOrderTotal = selectedMealSideDishes.reduce((sum, sideDish) => sum + sideDish.totalPrice, 0);
+  const selectedBranchOrderTotal = selectedMealType === 'LUNCH' ? branchTotals.lunchTotal : branchTotals.dinnerTotal;
   const latestOrderCreatedAt = selectedMealSideDishes[0] ? formatCreatedAt(selectedMealSideDishes[0].createdAt) : null;
 
   useEffect(() => {
     void loadSideDishes();
+    void loadBranchTotals();
   }, [selectedDateValue]);
 
   useEffect(() => {
@@ -157,6 +160,14 @@ export function SideDishPanel() {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청목록을 불러오지 못했습니다.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBranchTotals = async () => {
+    try {
+      setBranchTotals(await apiRequest<SideDishTotalResponse>(`/api/side-dishes/totals?date=${selectedDateValue}`));
+    } catch {
+      setBranchTotals({ lunchTotal: 0, dinnerTotal: 0 });
     }
   };
 
@@ -249,6 +260,7 @@ export function SideDishPanel() {
         description: '반찬 신청이 완료되었습니다.',
       });
       await loadSideDishes();
+      await loadBranchTotals();
       await loadOrderedDates();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청에 실패했습니다.' });
@@ -273,6 +285,7 @@ export function SideDishPanel() {
         description: '반찬 신청이 정상적으로 취소되었습니다.',
       });
       await loadSideDishes();
+      await loadBranchTotals();
       await loadOrderedDates();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '반찬 신청 삭제에 실패했습니다.' });
@@ -335,7 +348,7 @@ export function SideDishPanel() {
             <strong>{selectedDateLabel} {selectedMeal} 반찬 신청</strong>
             <p>{deadlineText}</p>
             {deadlineExceeded && <p className="side-dish-deadline-message">{selectedMeal} 반찬 신청 시간이 마감되었습니다.</p>}
-            <p className="side-dish-live-total">실시간 공장반찬 주문합계 금액: {selectedMealOrderTotal.toLocaleString()}원</p>
+            <p className="side-dish-live-total">실시간 공장반찬 주문합계 금액: {selectedBranchOrderTotal.toLocaleString()}원</p>
           </div>
           <span>합계: {totalPrice.toLocaleString()}원</span>
         </div>

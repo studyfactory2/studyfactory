@@ -143,6 +143,11 @@ export type SideDishResponse = {
   updatedAt: string;
 };
 
+export type SideDishTotalResponse = {
+  lunchTotal: number;
+  dinnerTotal: number;
+};
+
 export type DailySideDishResponse = {
   id: number;
   memberId: number;

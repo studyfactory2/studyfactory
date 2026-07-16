@@ -4,6 +4,7 @@ import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
+import com.example.studyfactory.domain.sideDish.dto.SideDishTotalResponse;
 import com.example.studyfactory.domain.sideDish.service.SideDishService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -46,6 +47,14 @@ public class SideDishController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
         return sideDishService.findMineOrderDates(memberId, from, to);
+    }
+
+    @GetMapping("/totals")
+    public SideDishTotalResponse findBranchTotals(
+            @CurrentMember Long memberId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return sideDishService.findBranchTotals(memberId, date);
     }
 
     @GetMapping("/daily")
