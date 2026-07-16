@@ -15,7 +15,7 @@ public class WorkInformation {
     @Column
     private Integer seatNumber;
 
-    @Column(nullable = false)
+    @Column
     private LocalDate joinDate;
 
     public WorkInformation(Integer seatNumber, LocalDate joinDate) {

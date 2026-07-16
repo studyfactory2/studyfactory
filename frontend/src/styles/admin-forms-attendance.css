@@ -317,19 +317,20 @@
 }
 
 .join-date-calendar-grid button:hover {
-  border-color: #b8d8da;
-  background: #f0f8f8;
+  border-color: #b9d5ff;
+  background: #edf5ff;
 }
 
 .join-date-calendar-grid button.selected {
   border-color: #3182f6;
-  background: #2f898b;
+  background: #3182f6;
   color: #fff;
 }
 
 .join-date-calendar footer {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-top: 10px;
 }
 

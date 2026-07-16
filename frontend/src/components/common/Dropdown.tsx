@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 export type DropdownOption = {
   value: string;
   label: string;
@@ -29,6 +31,21 @@ export function Dropdown({
   onSelect,
   onToggle,
 }: DropdownProps) {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) {
+        onToggle();
+      }
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
+  }, [open, onToggle]);
+
   const buttonClassName = [
     `${classNamePrefix}-button`,
     open ? 'open' : '',
@@ -38,7 +55,7 @@ export function Dropdown({
     .join(' ');
 
   return (
-    <div className={classNamePrefix}>
+    <div className={classNamePrefix} ref={dropdownRef}>
       <button
         className={buttonClassName}
         type="button"
