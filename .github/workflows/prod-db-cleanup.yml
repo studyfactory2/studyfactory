@@ -7,6 +7,10 @@ on:
     paths:
       - .github/workflows/prod-db-cleanup.yml
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   cleanup:
     runs-on: ubuntu-latest
