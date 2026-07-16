@@ -1,4 +1,4 @@
-const CACHE_NAME = 'studyfactory-pwa-v2';
+const CACHE_NAME = 'studyfactory-pwa-v3';
 const PRECACHE_URLS = [
   '/',
   '/login',
@@ -54,8 +54,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      return cachedResponse || fetch(request);
-    }),
+    fetch(request)
+      .then((networkResponse) => {
+        if (networkResponse.ok) {
+          const responseToCache = networkResponse.clone();
+          void caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(request)),
   );
 });

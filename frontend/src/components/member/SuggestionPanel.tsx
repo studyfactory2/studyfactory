@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiRequest } from '../../api/client';
 import type { SuggestionResponse } from '../../types/domain';
 
@@ -9,6 +9,7 @@ type SuggestionOption = {
   category: SuggestionCategory;
   icon: 'package' | 'book' | 'message' | 'heart';
   label: string;
+  description: string;
   examples: string[];
 };
 
@@ -22,24 +23,28 @@ const SUGGESTION_OPTIONS: SuggestionOption[] = [
     category: 'SUPPLIES',
     icon: 'package',
     label: '비품관련',
+    description: '사무용품 · 비품 요청',
     examples: ['A4 용지가 떨어졌어요', '남자화장실 휴지가 떨어졌어요', '여자화장실 휴지가 떨어졌어요', '이름스티커 더 필요해요'],
   },
   {
     category: 'STUDY',
     icon: 'book',
     label: '학습관련',
+    description: '교재 · 강의 문의',
     examples: ['강의실 온도가 너무 낮아요', '스터디룸이 너무 시끄러워요', '좌석 조명이 어두워요', '학습 자료 확인이 필요해요'],
   },
   {
     category: 'GENERAL',
     icon: 'message',
-    label: '기타건의',
+    label: '기타문의',
+    description: '자유 건의사항',
     examples: ['공용공간 정리가 필요해요', '와이파이 연결이 불안정해요', '출입 관련 확인이 필요해요', '기타 불편사항이 있어요'],
   },
   {
     category: 'COUNSELING',
     icon: 'heart',
     label: '상담요청',
+    description: '1:1 상담 신청',
     examples: ['학습 상담을 받고 싶어요', '생활 관리 상담이 필요해요', '스케줄 상담을 요청해요', '담당자와 상담하고 싶어요'],
   },
 ];
@@ -53,9 +58,29 @@ export function SuggestionPanel() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [customContent, setCustomContent] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    apiRequest<SuggestionResponse[]>('/api/suggestions/me')
+      .then((responses) => {
+        if (!active) return;
+        setSuggestions(responses);
+        setHistoryLoaded(true);
+      })
+      .catch(() => {
+        // 최근 문의 미리보기가 실패해도 카테고리 선택은 그대로 사용할 수 있다.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const selectOption = (option: SuggestionOption) => {
     setSelectedOption(option);
+    setCustomContent('');
     setMessage(null);
     setView('detail');
   };
@@ -84,6 +109,7 @@ export function SuggestionPanel() {
     setView('category');
     setSelectedOption(null);
     setMessage(null);
+    setCustomContent('');
   };
 
   const openConfirm = (category: SuggestionCategory, content: string) => {
@@ -105,6 +131,7 @@ export function SuggestionPanel() {
       setMessage('건의사항이 전송되었습니다.');
       setHistoryLoaded(false);
       setConfirmTarget(null);
+      setCustomContent('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '건의사항 전송에 실패했습니다.');
     } finally {
@@ -144,13 +171,36 @@ export function SuggestionPanel() {
       <div className="member-panel">
         <section className="member-list-box suggestion-detail">
           <SuggestionPanelHeader title={selectedOption.label} onBack={backToCategories} onHistory={openHistory} />
-          <div className="suggestion-example-grid">
-            {selectedOption.examples.map((example) => (
-              <button type="button" key={example} onClick={() => openConfirm(selectedOption.category, example)}>
-                {example}
-              </button>
-            ))}
-          </div>
+          {selectedOption.category === 'GENERAL' ? (
+            <div className="suggestion-custom-form">
+              <label htmlFor="suggestion-custom-content">문의 내용을 입력해 주세요</label>
+              <textarea
+                id="suggestion-custom-content"
+                value={customContent}
+                maxLength={500}
+                placeholder="불편한 점이나 건의사항을 자유롭게 작성해 주세요."
+                onChange={(event) => setCustomContent(event.target.value)}
+              />
+              <div>
+                <span>{customContent.length}/500</span>
+                <button
+                  type="button"
+                  disabled={!customContent.trim()}
+                  onClick={() => openConfirm(selectedOption.category, customContent.trim())}
+                >
+                  문의 보내기
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="suggestion-example-grid">
+              {selectedOption.examples.map((example) => (
+                <button type="button" key={example} onClick={() => openConfirm(selectedOption.category, example)}>
+                  {example}
+                </button>
+              ))}
+            </div>
+          )}
           {message && <p className="suggestion-message">{message}</p>}
         </section>
         {confirmTarget && (
@@ -166,18 +216,40 @@ export function SuggestionPanel() {
   }
 
   return (
-    <div className="member-panel">
-      <section className="member-list-box">
+    <div className="member-panel suggestion-home">
+      <section className="suggestion-hero">
+        <h2>무엇을<br />도와드릴까요?</h2>
+        <span>카테고리를 선택해 주세요</span>
+      </section>
+      <section>
         <div className="suggestion-category-grid">
           {SUGGESTION_OPTIONS.map((option) => (
-            <button className="suggestion-category-button" type="button" key={option.category} onClick={() => selectOption(option)}>
+            <button className={`suggestion-category-button ${option.category.toLowerCase()}`} type="button" key={option.category} onClick={() => selectOption(option)}>
               <span className="suggestion-category-icon" aria-hidden="true">
                 <SuggestionIcon type={option.icon} />
               </span>
-              <span>{option.label}</span>
+              <strong>{option.label}</strong>
+              <small>{option.description}</small>
+              <b aria-hidden="true">→</b>
             </button>
           ))}
         </div>
+      </section>
+      <section className="suggestion-recent">
+        <div className="suggestion-recent-header">
+          <h3>최근 문의</h3>
+          <button type="button" onClick={openHistory}>전체 보기 <span aria-hidden="true">›</span></button>
+        </div>
+        {suggestions.length > 0 ? (
+          <button className="suggestion-recent-item" type="button" onClick={openHistory}>
+            <span className={suggestions[0].isResolved ? 'resolved' : ''}>{suggestions[0].isResolved ? '처리완료' : '접수중'}</span>
+            <strong>{suggestions[0].content}</strong>
+            <time>{formatSuggestionDate(suggestions[0].createdAt)}</time>
+            <b aria-hidden="true">›</b>
+          </button>
+        ) : (
+          <button className="suggestion-recent-item empty" type="button" onClick={openHistory}>아직 등록된 문의가 없습니다.</button>
+        )}
       </section>
     </div>
   );
@@ -256,8 +328,7 @@ function SuggestionIcon({ type }: { type: SuggestionOption['icon'] }) {
   if (type === 'heart') {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 21s-7-4.4-9.4-8.6C.5 8.9 2.7 5 6.4 5c2 0 3.3 1.1 4.1 2.1C11.3 6.1 12.6 5 14.6 5c3.7 0 5.9 3.9 3.8 7.4C16 16.6 12 21 12 21Z" />
-        <path d="m15 13 2 2 4-4" />
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" />
       </svg>
     );
   }

@@ -80,7 +80,7 @@
 
 .member-status-search button {
   border-radius: 8px;
-  background: #247d82;
+  background: #3182f6;
   color: #fff;
   font-size: 13px;
   font-weight: 900;
@@ -156,7 +156,7 @@
 }
 
 .member-status-info b {
-  color: #247d82;
+  color: #3182f6;
 }
 
 .member-status-info small {

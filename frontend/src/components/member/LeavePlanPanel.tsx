@@ -229,7 +229,7 @@ export function LeavePlanPanel() {
               const canCancel = leave.leaveDate >= today;
 
               return (
-                <article className="leave-history-card" key={leave.id}>
+                <article className={`leave-history-card${canCancel ? '' : ' without-cancel'}`} key={leave.id}>
                   <div>
                     <strong>{formatCompactLeaveDate(leave.leaveDate)}</strong>
                   </div>

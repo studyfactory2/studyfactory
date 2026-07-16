@@ -7,7 +7,10 @@ const BASE_DRINK_OPTIONS = [
   { value: '', label: '음료를 선택해주세요' },
   { value: '선식', label: '선식' },
   { value: '해독쥬스', label: '해독쥬스' },
-  { value: '없음', label: '없음' },
+  { value: '아아', label: '아아' },
+  { value: '뜨아', label: '뜨아' },
+  { value: '텀아아', label: '텀아아' },
+  { value: '텀뜨아', label: '텀뜨아' },
 ];
 
 const BASE_DRINK_VALUES = new Set(BASE_DRINK_OPTIONS.map((option) => option.value).filter(Boolean));
@@ -41,12 +44,12 @@ function uniqueDrinks(drinks: string[]) {
 }
 
 export function BeveragePanel() {
+  const [inputMode, setInputMode] = useState<'menu' | 'custom'>('menu');
   const [drinkInput, setDrinkInput] = useState('');
   const [drinks, setDrinks] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [isComposing, setIsComposing] = useState(false);
   const [drinkDropdownOpen, setDrinkDropdownOpen] = useState(false);
-  const [customInputOpen, setCustomInputOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -86,7 +89,6 @@ export function BeveragePanel() {
 
     setDrinks((current) => uniqueDrinks([...current, ...nextDrinks]));
     setDrinkInput('');
-    setCustomInputOpen(false);
     setMessage(null);
   };
 
@@ -120,32 +122,35 @@ export function BeveragePanel() {
   const selectedDrinkOption = BASE_DRINK_OPTIONS.find((option) => option.value === selectedBaseDrink) ?? BASE_DRINK_OPTIONS[0];
 
   return (
-    <div className="member-panel">
-      <section className="beverage-intro">
-        <strong>음료</strong>
-        <p>아침에 서빙해드릴 음료를 자유롭게 입력해주세요. 언제든 변경할 수 있습니다.</p>
+    <div className="member-panel beverage-preference-panel">
+      <section className="beverage-intro beverage-hero">
+        <strong>오늘의 음료 <span aria-hidden="true"><CoffeeIcon /></span></strong>
+        <p>아침에 서빙해드릴 음료를 선택하세요.<br />언제든 변경 가능해요.</p>
       </section>
       <div className="beverage-form">
-        <div className="beverage-input-row">
-          <Dropdown
-            classNamePrefix="custom-select"
-            label="기본 음료"
-            open={drinkDropdownOpen}
-            options={BASE_DRINK_OPTIONS}
-            placeholderClass={!selectedBaseDrink}
-            selectedOption={selectedDrinkOption}
-            onSelect={changeBaseDrink}
-            onToggle={() => setDrinkDropdownOpen((open) => !open)}
-          />
-          <button type="button" aria-label="음료 직접 입력 열기" onClick={() => setCustomInputOpen((open) => !open)}>
-            +
-          </button>
+        <div className="beverage-mode-tabs" role="tablist" aria-label="음료 입력 방식">
+          <button className={inputMode === 'menu' ? 'active' : ''} type="button" role="tab" aria-selected={inputMode === 'menu'} onClick={() => setInputMode('menu')}>메뉴에서</button>
+          <button className={inputMode === 'custom' ? 'active' : ''} type="button" role="tab" aria-selected={inputMode === 'custom'} onClick={() => setInputMode('custom')}>직접 입력</button>
         </div>
-        {customInputOpen && (
+        {inputMode === 'menu' ? (
+          <div className="beverage-menu-picker">
+            <span className="beverage-picker-icon" aria-hidden="true"><CoffeeIcon /></span>
+            <Dropdown
+              classNamePrefix="custom-select"
+              label="기본 음료"
+              open={drinkDropdownOpen}
+              options={BASE_DRINK_OPTIONS}
+              placeholderClass={!selectedBaseDrink}
+              selectedOption={selectedDrinkOption}
+              onSelect={changeBaseDrink}
+              onToggle={() => setDrinkDropdownOpen((open) => !open)}
+            />
+          </div>
+        ) : (
           <div className="beverage-input-row beverage-custom-input-row">
             <input
               aria-label="직접 입력 음료"
-              placeholder="예: 텀블러 아아"
+              placeholder="예: 텀블러 아아 (얼음 적게)"
               value={drinkInput}
               onChange={(event) => setDrinkInput(event.target.value)}
               onCompositionStart={() => setIsComposing(true)}
@@ -158,7 +163,7 @@ export function BeveragePanel() {
               }}
             />
             <button className="beverage-custom-submit" type="button" onClick={addDrink}>
-              추가
+              +
             </button>
           </div>
         )}
@@ -181,18 +186,30 @@ export function BeveragePanel() {
         <label className="member-field">
           <span>참고사항</span>
           <textarea
-            placeholder="음료 관련 요청사항이 있을 경우 적어주세요"
+            placeholder="당도, 얼음, 시럽 등 요청사항을 자유롭게 적어주세요"
             rows={5}
             value={note}
             onChange={(event) => setNote(event.target.value)}
           />
         </label>
         <button className="member-primary-action" type="button" disabled={loading} onClick={saveDrinks}>
-          {loading ? '저장 중' : '저장'}
+          {loading ? '저장 중' : '저장하기 →'}
         </button>
         {message && <p className="beverage-message">{message}</p>}
       </div>
     </div>
+  );
+}
+
+function CoffeeIcon() {
+  return (
+    <svg className="coffee-line-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 8h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z" />
+      <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
+      <path d="M7 5c0-1 1-1.2 1-2.2" />
+      <path d="M11 5c0-1 1-1.2 1-2.2" />
+      <path d="M15 5c0-1 1-1.2 1-2.2" />
+    </svg>
   );
 }
 

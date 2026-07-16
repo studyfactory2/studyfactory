@@ -204,24 +204,39 @@ export function StaffLeaveRequestPanel() {
           visibleMonthLeaves.map((leave, index) => {
             const normalLeave = findNormalLeave(normalLeavesByDate.get(leave.leaveDate) || [], leave);
             const canDelete = leave.source === 'LEAVE' && normalLeave && leave.leaveDate >= today;
+            const showSlots = shouldShowSlots(leave);
+            const isCompact = !canDelete && !showSlots;
 
             return (
-            <article className={`staff-leave-history-card ${toMonthlyLeaveHistoryClassName(leave)}`} key={`${leave.leaveDate}-${leave.label}-${leave.source}-${index}`}>
+            <article
+              className={`staff-leave-history-card ${toMonthlyLeaveHistoryClassName(leave)}${isCompact ? ' without-cancel' : ''}`}
+              style={isCompact ? {
+                height: '30px',
+                minHeight: '30px',
+                maxHeight: '30px',
+                padding: '0 12px',
+                gridTemplateColumns: '1fr',
+                gap: 0,
+              } : undefined}
+              key={`${leave.leaveDate}-${leave.label}-${leave.source}-${index}`}
+            >
               <div>
                 <strong>{formatCompactDate(leave.leaveDate)}</strong>
                 <span className={`staff-leave-history-badge ${toMonthlyLeaveBadgeClassName(leave)}`}>
                   {toHistoryLeaveLabel(leave)}
                 </span>
               </div>
-              <div>
-                {shouldShowSlots(leave) && <span>1, 2, 3, 4, 5, 6, 7교시</span>}
-                {canDelete && (
-                  <button type="button" disabled={submitting} onClick={() => void deleteLeave(normalLeave)}>
-                    <TrashIcon />
-                    취소
-                  </button>
-                )}
-              </div>
+              {(showSlots || canDelete) && (
+                <div>
+                  {showSlots && <span>1, 2, 3, 4, 5, 6, 7교시</span>}
+                  {canDelete && (
+                    <button type="button" disabled={submitting} onClick={() => void deleteLeave(normalLeave)}>
+                      <TrashIcon />
+                      취소
+                    </button>
+                  )}
+                </div>
+              )}
             </article>
             );
           })
@@ -332,6 +347,9 @@ function toHistoryLeaveLabel(leave: MonthlyLeaveCalendarResponse) {
 function toLeaveBadgeClassName(leaveType: ApiLeaveType) {
   if (leaveType === 'AFTERNOON') {
     return 'afternoon';
+  }
+  if (leaveType === 'MORNING') {
+    return 'morning';
   }
   return 'leave';
 }
