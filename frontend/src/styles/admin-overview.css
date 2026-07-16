@@ -15,7 +15,7 @@
 
 .admin-grid-section h3 {
   margin: 0 0 22px;
-  color: #247d82;
+  color: #3182f6;
   font-size: 18px;
   font-weight: 900;
 }
@@ -47,7 +47,7 @@
 .admin-grid-button:hover {
   transform: translateY(-2px);
   border-color: #9bc9cf;
-  box-shadow: 0 14px 28px rgba(36, 125, 130, 0.2);
+  box-shadow: 0 14px 28px rgba(49, 130, 246, 0.2);
 }
 
 .admin-grid-button:active {
@@ -87,7 +87,7 @@
 
 .admin-grid-icon-person-check {
   background: #e5fbf4;
-  color: #248b84;
+  color: #00a878;
 }
 
 .admin-grid-icon-pin {
@@ -126,7 +126,7 @@
 
 .staff-page-section h3 {
   margin: 0 0 20px;
-  color: #247d82;
+  color: #3182f6;
   font-size: 17px;
   font-weight: 900;
 }
@@ -158,14 +158,14 @@
 .staff-page-button:hover {
   transform: translateY(-2px);
   border-color: #c7dfe3;
-  box-shadow: 0 12px 24px rgba(36, 125, 130, 0.14);
+  box-shadow: 0 12px 24px rgba(49, 130, 246, 0.14);
 }
 
 .staff-page-button svg {
   width: 28px;
   height: 28px;
   fill: none;
-  stroke: #247d82;
+  stroke: #3182f6;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.2;
@@ -186,7 +186,7 @@
 
 .staff-page-section:first-child .staff-page-button:nth-child(2) svg,
 .staff-page-section:nth-child(2) .staff-page-button:nth-child(2) svg {
-  stroke: #18a999;
+  stroke: #00a878;
 }
 
 .staff-page-section:first-child .staff-page-button:nth-child(3) svg {
@@ -411,12 +411,12 @@
 }
 
 .daily-leave-calendar-grid button.selected {
-  border-color: #247d82;
-  background: #247d82;
+  border-color: #3182f6;
+  background: #3182f6;
   color: #fff;
   width: 42px;
   height: 34px;
-  box-shadow: 0 8px 18px rgba(36, 125, 130, 0.22);
+  box-shadow: 0 8px 18px rgba(49, 130, 246, 0.22);
 }
 
 .daily-leave-filter-buttons {
@@ -450,7 +450,7 @@
 }
 
 .daily-leave-filter-buttons button.active {
-  box-shadow: 0 6px 14px rgba(36, 125, 130, 0.1);
+  box-shadow: 0 6px 14px rgba(49, 130, 246, 0.1);
 }
 
 .daily-leave-list {

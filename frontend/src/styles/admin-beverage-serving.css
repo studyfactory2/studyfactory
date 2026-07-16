@@ -41,7 +41,7 @@
   justify-self: end;
   padding: 7px 12px;
   border-radius: 999px;
-  background: #2f8d8b;
+  background: #3182f6;
   color: #fff;
   font-size: 12px;
   font-weight: 900;
@@ -66,9 +66,9 @@
 }
 
 .beverage-serving-room-tabs button.active {
-  border-color: #2f8d8b;
-  background: #e9fbf4;
-  color: #247d82;
+  border-color: #3182f6;
+  background: #edf5ff;
+  color: #3182f6;
 }
 
 .beverage-serving-room-viewport {
@@ -320,7 +320,7 @@ button.beverage-serving-cell:disabled {
 }
 
 .beverage-summary-column li span {
-  color: #0f766e;
+  color: #1b64da;
   font-size: 10px;
   font-weight: 900;
   white-space: nowrap;
@@ -466,14 +466,14 @@ button.beverage-serving-cell:disabled {
 
 .beverage-seat-modal-input-row input:focus,
 .beverage-seat-modal textarea:focus {
-  border-color: #2f8d8b;
-  box-shadow: 0 0 0 3px rgba(47, 141, 139, 0.12);
+  border-color: #3182f6;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.12);
 }
 
 .beverage-seat-modal-input-row button {
   border: 0;
   border-radius: 8px;
-  background: #2f8d8b;
+  background: #3182f6;
   color: #fff;
   font-size: 11px;
   font-weight: 900;
@@ -557,7 +557,7 @@ button.beverage-serving-cell:disabled {
 
 .beverage-seat-modal-save {
   border: 0;
-  background: #2f8d8b;
+  background: #3182f6;
   color: #fff;
 }
 

@@ -34,13 +34,15 @@ export function LoginForm({ form, loading, onChange, onSignupClick, onSubmit }: 
           autoComplete="current-password"
         />
       </LoginField>
-      <button className="primary-button" type="submit" disabled={loading}>
-        {loading ? '로그인 중...' : '로그인'}
-      </button>
-      <button className="ghost-button" type="button" onClick={onSignupClick}>
-        사원등록
-      </button>
-      <InstallGuide />
+      <div className="login-actions">
+        <button className="primary-button" type="submit" disabled={loading}>
+          {loading ? '로그인 중...' : '로그인'}
+        </button>
+        <button className="ghost-button" type="button" onClick={onSignupClick}>
+          사원등록
+        </button>
+        <InstallGuide />
+      </div>
     </form>
   );
 }

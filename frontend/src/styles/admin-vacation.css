@@ -293,7 +293,7 @@
 .vacation-leave-badge.special {
   border-color: #cfe8df;
   background: #eefaf5;
-  color: #247d82;
+  color: #3182f6;
 }
 
 .vacation-calendar-message {
@@ -619,9 +619,9 @@
 }
 
 .other-leave-calendar button.selected {
-  border-color: #247d82;
+  border-color: #3182f6;
   background: #e8f6f6;
-  color: #247d82;
+  color: #3182f6;
 }
 
 .other-leave-guide {
@@ -681,8 +681,8 @@
 
 .other-leave-slots button.selected,
 .other-leave-reasons button.selected {
-  border-color: #247d82;
-  background: #247d82;
+  border-color: #3182f6;
+  background: #3182f6;
   color: #fff;
 }
 
@@ -727,7 +727,7 @@
 .other-leave-submit-actions button {
   min-height: 44px;
   border-radius: 10px;
-  background: #247d82;
+  background: #3182f6;
   color: #fff;
   font-size: 14px;
   font-weight: 900;
@@ -736,7 +736,7 @@
 
 .other-leave-submit-actions button:last-child {
   background: #edf4f5;
-  color: #247d82;
+  color: #3182f6;
 }
 
 .other-leave-entries {
@@ -899,7 +899,7 @@
   }
 
   .other-leave-calendar button.selected {
-    border-color: #247d82;
+    border-color: #3182f6;
     background: #fff;
   }
 

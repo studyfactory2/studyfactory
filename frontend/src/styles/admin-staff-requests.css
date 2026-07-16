@@ -44,7 +44,7 @@
 .staff-seat-header > span {
   padding: 7px 13px;
   border-radius: 999px;
-  background: #2f8888;
+  background: #3182f6;
   color: #fff;
   font-size: 12px;
   font-weight: 900;
@@ -206,14 +206,14 @@
 }
 
 .staff-seat-modal-confirm {
-  background: #2f8f8e;
+  background: #3182f6;
   color: #fff;
 }
 
 .staff-seat-alert-close {
   width: 100%;
   margin-top: 18px;
-  background: #2f8f8e;
+  background: #3182f6;
   color: #fff;
 }
 
@@ -417,7 +417,7 @@
   justify-self: start;
   padding: 8px 13px;
   border-radius: 999px;
-  background: #2f8888;
+  background: #3182f6;
   color: #fff;
   font-size: 12px;
   font-weight: 900;
@@ -762,8 +762,8 @@
 }
 
 .new-beverage-sort button.active {
-  border-color: #2f8888;
-  background: #2f8888;
+  border-color: #3182f6;
+  background: #3182f6;
   color: #fff;
 }
 
@@ -1037,11 +1037,11 @@
   justify-content: center;
   gap: 8px;
   border-radius: 9px;
-  background: #2f8888;
+  background: #3182f6;
   color: #fff;
   font-size: 15px;
   font-weight: 900;
-  box-shadow: 0 10px 20px rgba(47, 136, 136, 0.2);
+  box-shadow: 0 10px 20px rgba(49, 130, 246, 0.2);
   cursor: pointer;
 }
 
@@ -1057,7 +1057,7 @@
 
 .staff-leave-message {
   margin: 0;
-  color: #2f8888;
+  color: #3182f6;
   font-size: 13px;
   font-weight: 900;
   text-align: center;
@@ -1222,12 +1222,12 @@
 }
 
 .staff-side-dish-panel .member-notice-box {
-  background: #e9fbf4;
-  border-color: #c8f1df;
+  background: #edf5ff;
+  border-color: #d6e5ff;
 }
 
 .staff-side-dish-panel .member-notice-box strong {
-  color: #207a76;
+  color: #3182f6;
   text-align: center;
 }
 
@@ -1237,7 +1237,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: #2f8d8b;
+  background: #3182f6;
   color: #fff;
 }
 

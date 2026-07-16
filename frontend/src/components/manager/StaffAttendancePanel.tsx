@@ -529,7 +529,7 @@ export function StaffAttendancePanel() {
           {sideDishes.length > 0 && <b>{sideDishes.length}</b>}
         </button>
         <button className={`todo-tag${todoCount > 0 ? ' has-content' : ''}`} type="button" onClick={() => setTodoModalOpen(true)}>
-          할일목록
+          출석참고
           {todoCount > 0 && <b>{todoCount}</b>}
         </button>
       </div>
@@ -564,6 +564,7 @@ export function StaffAttendancePanel() {
                   row.seatNumber == null ? 'unassigned-row' : emptySeat ? 'empty-seat-row' : '',
                   getDividerClassName(row.seatNumber),
                   getNameCellColorClassName(row.seatNumber),
+                  row.seatNumber != null && row.seatNumber >= 55 ? 'second-room-row' : '',
                   row.seatNumber && BOTTOM_DIVIDER_SEATS.has(row.seatNumber) ? 'bottom-divider-row' : '',
                 ].filter(Boolean);
                 const rowClassName = rowClasses.join(' ');

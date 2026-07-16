@@ -36,7 +36,7 @@
 }
 
 .pre-register-message.success {
-  color: #247d82;
+  color: #3182f6;
 }
 
 .pre-register-message.error {
@@ -116,8 +116,8 @@
 }
 
 .join-date-button.open {
-  border-color: #8fc5c8;
-  box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
+  border-color: #a9c7f5;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.09);
 }
 
 .join-date-button svg {
@@ -133,7 +133,7 @@
 }
 
 .join-date-button.open svg {
-  color: #247d82;
+  color: #3182f6;
 }
 
 .join-date-calendar {
@@ -234,7 +234,7 @@
 }
 
 .join-date-calendar-grid button.selected {
-  border-color: #247d82;
+  border-color: #3182f6;
   background: #2f898b;
   color: #fff;
 }
@@ -248,7 +248,7 @@
 .join-date-calendar footer button {
   border: 0;
   background: transparent;
-  color: #247d82;
+  color: #3182f6;
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
@@ -308,8 +308,8 @@
 }
 
 .form-dropdown-button.open {
-  border-color: #8fc5c8;
-  box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
+  border-color: #a9c7f5;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.09);
 }
 
 .form-dropdown-button.open::after {
@@ -343,8 +343,8 @@
 
 .form-dropdown-option:hover,
 .form-dropdown-option.selected {
-  background: #eef7fb;
-  color: #247d82;
+  background: #edf5ff;
+  color: #3182f6;
 }
 
 .pre-register-form textarea {
@@ -359,15 +359,15 @@
 
 .pre-register-form input:focus,
 .pre-register-form textarea:focus {
-  border-color: #8fc5c8;
-  box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
+  border-color: #a9c7f5;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.09);
 }
 
 .register-submit {
   min-height: 48px;
   margin-top: 2px;
   border-radius: 5px;
-  background: #247d82;
+  background: #3182f6;
   color: #fff;
   font-size: 16px;
   font-weight: 900;
@@ -510,8 +510,8 @@
 
 .waiting-edit-form input:focus,
 .waiting-edit-form textarea:focus {
-  border-color: #8fc5c8;
-  box-shadow: 0 0 0 3px rgba(36, 125, 130, 0.09);
+  border-color: #a9c7f5;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.09);
 }
 
 .waiting-edit-actions {
@@ -531,7 +531,7 @@
 }
 
 .waiting-edit-actions button:last-child {
-  background: #247d82;
+  background: #3182f6;
   color: #fff;
 }
 
@@ -578,7 +578,7 @@
   min-height: 40px;
   margin-top: 18px;
   border-radius: 10px;
-  background: #247d82;
+  background: #3182f6;
   color: #fff;
   font-weight: 900;
   cursor: pointer;
@@ -614,7 +614,7 @@
 }
 
 .placeholder-panel strong {
-  color: #247d82;
+  color: #3182f6;
   font-size: 24px;
 }
 
@@ -654,10 +654,10 @@
 .staff-attendance-search,
 .staff-attendance-actions button {
   min-height: 32px;
-  border: 1px solid #d7ebe8;
+  border: 1px solid #d6e5ff;
   border-radius: 16px;
   background: #fff;
-  color: #006f6c;
+  color: #1b64da;
   font-size: clamp(0.72rem, 2.5vw, 0.9rem);
   font-weight: 900;
   box-shadow: 0 2px 8px rgba(23, 82, 80, 0.04);
@@ -699,7 +699,7 @@
   gap: 6px;
   min-height: 42px;
   padding: 0 12px;
-  border: 1px solid #d7ebe8;
+  border: 1px solid #d6e5ff;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 2px 8px rgba(23, 82, 80, 0.04);
@@ -712,7 +712,7 @@
   padding: 4px;
   border: 0;
   background: none;
-  color: #006f6c;
+  color: #1b64da;
   font-size: 26px;
   line-height: 0.9;
   cursor: pointer;
@@ -720,7 +720,7 @@
 
 .staff-date-control strong {
   min-width: 138px;
-  color: #18343b;
+  color: #333d4b;
   font-size: clamp(0.98rem, 3.5vw, 1.18rem);
   font-weight: 900;
   text-align: center;
@@ -740,7 +740,7 @@
   width: 100%;
   min-width: 0;
   border: 0;
-  color: #18343b;
+  color: #333d4b;
   font-size: 0.85rem;
   outline: none;
   background: transparent;
@@ -761,14 +761,14 @@
   min-width: 0;
   min-height: 42px;
   padding: 0 8px;
-  border: 1px solid #d7ebe8;
-  background: #eef8f6;
+  border: 1px solid #d6e5ff;
+  background: #edf5ff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
   border-radius: 13px;
-  color: #006f6c;
+  color: #1b64da;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -778,22 +778,22 @@
 .staff-attendance-actions .suggestion-tag:not(:disabled),
 .staff-attendance-actions .meal-tag.has-content,
 .staff-attendance-actions .todo-tag.has-content {
-  border-color: #007a78;
-  background: linear-gradient(180deg, #008a87 0%, #006f6c 100%);
+  border-color: #286ee8;
+  background: linear-gradient(180deg, #4593fc 0%, #1b64da 100%);
   color: #fff;
 }
 
 .staff-attendance-actions .meal-tag:not(.has-content),
 .staff-attendance-actions .todo-tag:not(.has-content) {
-  border-color: #d7ebe8;
-  background: #eef8f6;
-  color: #006f6c;
+  border-color: #d6e5ff;
+  background: #edf5ff;
+  color: #1b64da;
 }
 
 .staff-attendance-actions .note-tag:not(:disabled) {
-  border-color: #d7ebe8;
-  background: #eef8f6;
-  color: #006f6c;
+  border-color: #d6e5ff;
+  background: #edf5ff;
+  color: #1b64da;
 }
 
 .staff-attendance-actions button:disabled {
@@ -810,19 +810,19 @@
   place-items: center;
   border-radius: 999px;
   background: #fff;
-  color: #006f6c;
+  color: #1b64da;
   font-size: 12px;
 }
 
 .staff-attendance-actions .meal-tag.has-content b,
 .staff-attendance-actions .todo-tag.has-content b {
   background: #fff;
-  color: #006f6c;
+  color: #1b64da;
 }
 
 .staff-attendance-actions .note-tag:not(:disabled) b {
   background: #fff;
-  color: #006f6c;
+  color: #1b64da;
 }
 
 .staff-attendance-actions button:disabled b {
@@ -845,7 +845,7 @@
   position: relative;
   touch-action: pan-x pan-y;
   display: block;
-  border: 1px solid #d7ebe8;
+  border: 1px solid #d6e5ff;
   border-radius: 2px 2px 18px 18px;
   background: #fff;
 }
@@ -878,8 +878,8 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #eef8f6;
-  color: #006f6c;
+  background: #edf5ff;
+  color: #1b64da;
   font-size: 12px;
   box-shadow: none;
 }
@@ -898,7 +898,7 @@
   left: 56px;
   z-index: 2;
   background: #f7fcfb;
-  box-shadow: 2px 0 5px -2px rgba(0, 111, 108, 0.16);
+  box-shadow: 2px 0 5px -2px rgba(49, 130, 246, 0.16);
 }
 
 .staff-attendance-table thead tr:first-child th:nth-child(1),
@@ -916,7 +916,7 @@
   min-width: 58px;
   height: 36px;
   padding: 1px 5px;
-  border-right: 1px solid #d7ebe8;
+  border-right: 1px solid #d6e5ff;
   border-bottom: 1px solid #e2efed;
 }
 
@@ -925,14 +925,14 @@
 }
 
 .staff-attendance-table thead tr:first-child th:nth-child(n + 3) {
-  color: #006f6c;
+  color: #1b64da;
   font-size: 11px;
 }
 
 .staff-attendance-table td:nth-child(2) {
   text-align: left;
   font-weight: 900;
-  color: #18343b;
+  color: #333d4b;
 }
 
 .staff-attendance-table .staff-seat-cell {
@@ -957,12 +957,12 @@
 }
 
 .staff-attendance-table tbody tr.room-end-divider-row td {
-  border-top: 6px solid #007a78;
+  border-top: 6px solid #286ee8;
 }
 
 .staff-attendance-table tbody tr.bottom-divider-row td,
 .staff-attendance-table tbody tr.bottom-divider-row:last-child td {
-  border-bottom: 6px solid #007a78;
+  border-bottom: 6px solid #286ee8;
 }
 
 .staff-attendance-table tbody tr.shaded-name-cell-row td:nth-child(1),
@@ -1004,8 +1004,8 @@
   min-width: 28px;
   min-height: 28px;
   border-radius: 999px;
-  background: #e9f6f4;
-  color: #007a78;
+  background: #edf5ff;
+  color: #286ee8;
   font-size: 13px;
   font-weight: 900;
 }
@@ -1018,7 +1018,7 @@
 
 .staff-attendance-table .status-absent {
   background: #fff;
-  color: #006f6c;
+  color: #1b64da;
   font-weight: 900;
 }
 
@@ -1070,12 +1070,12 @@
 }
 
 .staff-attendance-table .status-absent span {
-  background: #eef8f6;
-  color: #006f6c;
+  background: #edf5ff;
+  color: #1b64da;
 }
 
 .staff-attendance-table .status-present span {
-  background: linear-gradient(180deg, #0b8c88 0%, #006f6c 100%);
+  background: linear-gradient(180deg, #4593fc 0%, #1b64da 100%);
   color: #fff;
 }
 
@@ -1153,20 +1153,20 @@
 }
 
 .staff-attendance-command-bar .command-present {
-  background: linear-gradient(180deg, #008a87 0%, #006f6c 100%);
+  background: linear-gradient(180deg, #4593fc 0%, #1b64da 100%);
   color: #fff;
 }
 
 .staff-attendance-command-bar .command-absent {
-  background: #eef8f6;
-  color: #006f6c;
+  background: #edf5ff;
+  color: #1b64da;
 }
 
 .staff-attendance-command-bar .command-other,
 .staff-attendance-command-bar .command-undo {
-  border-color: #d7ebe8;
+  border-color: #d6e5ff;
   background: #fff;
-  color: #18343b;
+  color: #333d4b;
 }
 
 .attendance-modal-backdrop {
@@ -1847,7 +1847,7 @@
   position: absolute;
   top: 50%;
   right: 12px;
-  color: #247d82;
+  color: #3182f6;
   transform: translateY(-52%);
 }
 
@@ -1879,7 +1879,7 @@
 .attendance-todo-branch-menu button.selected,
 .attendance-todo-branch-menu button:hover {
   background: #e8f7f7;
-  color: #247d82;
+  color: #3182f6;
 }
 
 .attendance-todo-input {
@@ -1933,7 +1933,7 @@
 .attendance-todo-controls > button:last-child {
   min-height: 34px;
   border-radius: 8px;
-  background: #247d82;
+  background: #3182f6;
   color: #fff;
   font-size: 24px;
   font-weight: 700;
@@ -2094,7 +2094,7 @@
   padding: 0 7px;
   border-radius: 999px;
   background: #e8f7f7;
-  color: #247d82;
+  color: #3182f6;
   font-size: 10px;
   font-weight: 900;
 }
@@ -2128,7 +2128,7 @@
 }
 
 .attendance-todo-row.editing .attendance-todo-actions .save {
-  background: #247d82;
+  background: #3182f6;
   color: #fff;
 }
 
@@ -2207,7 +2207,7 @@
 }
 
 .attendance-todo-reply-form .save {
-  background: #247d82;
+  background: #3182f6;
   color: #fff;
 }
 
@@ -2246,6 +2246,6 @@
 }
 
 .manager-pagination span.active {
-  background: #247d82;
+  background: #3182f6;
 }
 
