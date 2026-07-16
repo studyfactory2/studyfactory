@@ -1179,6 +1179,11 @@
 
   .member-status-edit-form {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .member-status-card:has(.member-status-edit-form) {
+    padding: 16px 14px 18px;
   }
 
   .manager-card:has(.fixed-leave-panel) {
