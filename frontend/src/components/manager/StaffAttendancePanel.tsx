@@ -27,7 +27,7 @@ export function StaffAttendancePanel() {
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
   const [otherModalOpen, setOtherModalOpen] = useState(false);
   const [otherDate, setOtherDate] = useState(() => toDateKey(new Date()));
-  const [otherSlot, setOtherSlot] = useState<number | null>(null);
+  const [otherSlots, setOtherSlots] = useState<number[]>([]);
   const [selectedOtherReason, setSelectedOtherReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
   const [sideDishes, setSideDishes] = useState<DailySideDishResponse[]>([]);
@@ -373,7 +373,54 @@ export function StaffAttendancePanel() {
 
   const submitOtherReason = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await updateSlotStatus('OTHER', otherReason.trim() || selectedOtherReason || '기타', otherDate, otherSlot);
+    await updateOtherSlotStatuses('OTHER', otherReason.trim() || selectedOtherReason || '기타');
+  };
+
+  const updateOtherSlotStatuses = async (status: SlotStatusUpdateType, reason?: string) => {
+    if (!selectedSlot?.memberId) {
+      setMessage('변경할 사원을 먼저 선택해주세요.');
+      return;
+    }
+    if (otherSlots.length === 0) {
+      setMessage('변경할 교시를 선택해주세요.');
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage('');
+    const currentSlot = selectedSlot;
+    try {
+      await Promise.all(otherSlots.map((slot) => apiRequest<void>('/api/attendances/daily-board/slot', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          memberId: currentSlot.memberId,
+          date: otherDate,
+          slot,
+          status,
+          reason,
+        }),
+      })));
+      if (otherDate === selectedDate) {
+        setBoard((current) => current ? {
+          ...current,
+          rows: current.rows.map((row) => row.memberId === currentSlot.memberId ? {
+            ...row,
+            slots: row.slots.map((currentStatus, index) => otherSlots.includes(index + 1)
+              ? toAttendanceStatusLabel(status, reason)
+              : currentStatus),
+          } : row),
+        } : current);
+      }
+      setSelectedSlot(currentSlot);
+      setOtherModalOpen(false);
+      setOtherSlots([]);
+      setOtherReason('');
+      setSelectedOtherReason('');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '출석 상태 변경에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const createFixedLeave = async () => {
@@ -381,7 +428,7 @@ export function StaffAttendancePanel() {
       setMessage('고정신청할 사원을 먼저 선택해주세요.');
       return;
     }
-    if (!otherSlot) {
+    if (otherSlots.length === 0) {
       setMessage('고정신청할 교시를 선택해주세요.');
       return;
     }
@@ -394,7 +441,7 @@ export function StaffAttendancePanel() {
         body: JSON.stringify({
           memberId: selectedSlot.memberId,
           leaveDate: otherDate,
-          slots: [otherSlot],
+          slots: otherSlots,
           reason: otherReason.trim() || selectedOtherReason || '기타',
         }),
       });
@@ -468,7 +515,7 @@ export function StaffAttendancePanel() {
       return;
     }
     setOtherDate(selectedDate);
-    setOtherSlot(selectedSlot.slot);
+    setOtherSlots([selectedSlot.slot]);
     setSelectedOtherReason('');
     setOtherReason('');
     setOtherModalOpen(true);
@@ -665,16 +712,18 @@ export function StaffAttendancePanel() {
               <div className="attendance-period-grid">
                 {SLOT_LABELS.map((slot) => (
                   <button
-                    className={otherSlot === slot ? 'selected' : ''}
+                    className={otherSlots.includes(slot) ? 'selected' : ''}
                     key={slot}
                     type="button"
-                    onClick={() => setOtherSlot(slot)}
+                    onClick={() => setOtherSlots((current) => current.includes(slot)
+                      ? current.filter((selected) => selected !== slot)
+                      : [...current, slot].sort((first, second) => first - second))}
                   >
                     {slot}
                   </button>
                 ))}
               </div>
-              <button className="attendance-full-select" type="button" disabled>전체 선택</button>
+              <button className="attendance-full-select" type="button" onClick={() => setOtherSlots([...SLOT_LABELS])}>전체 선택</button>
             </section>
 
             <section className="attendance-modal-section">
@@ -721,7 +770,7 @@ export function StaffAttendancePanel() {
                   </button>
                 ))}
               </div>
-              <button className="attendance-clear-leave" type="button" disabled={submitting} onClick={() => updateSlotStatus('ABSENT', undefined, otherDate, otherSlot)}>
+              <button className="attendance-clear-leave" type="button" disabled={submitting} onClick={() => updateOtherSlotStatuses('ABSENT')}>
                 휴가취소
               </button>
             </section>

@@ -13,21 +13,11 @@ const BASE_DRINK_OPTIONS = [
   { value: '텀뜨아', label: '텀뜨아' },
 ];
 
-const BASE_DRINK_VALUES = new Set(BASE_DRINK_OPTIONS.map((option) => option.value).filter(Boolean));
-
 function parseDrinks(value: string) {
   return value
     .split(/[,\n]/)
     .map((drink) => drink.trim())
     .filter(Boolean);
-}
-
-function getBaseDrink(drinks: string[]) {
-  return drinks.find((drink) => BASE_DRINK_VALUES.has(drink)) || '';
-}
-
-function withoutBaseDrink(drinks: string[]) {
-  return drinks.filter((drink) => !BASE_DRINK_VALUES.has(drink));
 }
 
 function uniqueDrinks(drinks: string[]) {
@@ -72,10 +62,12 @@ export function BeveragePanel() {
   };
 
   const changeBaseDrink = (value: string) => {
-    setDrinks((current) => {
-      const customDrinks = withoutBaseDrink(current);
-      return uniqueDrinks([...(value ? [value] : []), ...customDrinks]);
-    });
+    if (!value) {
+      setDrinkDropdownOpen(false);
+      return;
+    }
+
+    setDrinks((current) => uniqueDrinks([...current, value]));
     setDrinkDropdownOpen(false);
     setMessage(null);
   };
@@ -118,8 +110,7 @@ export function BeveragePanel() {
     }
   };
 
-  const selectedBaseDrink = getBaseDrink(drinks);
-  const selectedDrinkOption = BASE_DRINK_OPTIONS.find((option) => option.value === selectedBaseDrink) ?? BASE_DRINK_OPTIONS[0];
+  const selectedDrinkOption = BASE_DRINK_OPTIONS[0];
 
   return (
     <div className="member-panel beverage-preference-panel">
@@ -140,7 +131,7 @@ export function BeveragePanel() {
               label="기본 음료"
               open={drinkDropdownOpen}
               options={BASE_DRINK_OPTIONS}
-              placeholderClass={!selectedBaseDrink}
+              placeholderClass
               selectedOption={selectedDrinkOption}
               onSelect={changeBaseDrink}
               onToggle={() => setDrinkDropdownOpen((open) => !open)}
