@@ -1418,8 +1418,24 @@
 
 /* Beverage making: keep each work category as a vertical list column. */
 .beverage-making-panel .beverage-summary-board {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns:
+    minmax(142px, 0.9fr)
+    minmax(126px, 0.8fr)
+    minmax(172px, 1.25fr)
+    minmax(172px, 1.25fr);
   align-items: start;
+}
+
+.beverage-making-panel .beverage-summary-board.has-empty-changes {
+  grid-template-columns:
+    minmax(112px, 0.62fr)
+    minmax(120px, 0.72fr)
+    minmax(172px, 1.35fr)
+    minmax(172px, 1.35fr);
+}
+
+.beverage-making-panel .beverage-summary-column.summary-changes.is-empty p {
+  white-space: nowrap;
 }
 
 .beverage-making-panel .beverage-summary-column {

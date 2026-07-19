@@ -233,11 +233,15 @@ type SummaryCount = {
 
 function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
   return (
-    <section className="beverage-summary-board" aria-label="음료 제조 요약">
+    <section
+      className={`beverage-summary-board${summary.changedMembers.length === 0 ? ' has-empty-changes' : ''}`}
+      aria-label="음료 제조 요약"
+    >
       <BeverageSummaryColumn
         title="음료 수정"
-        emptyText="금일 신청 및 수정 내역 없음"
+        emptyText="내역 없음"
         columns={4}
+        layout="changes"
         items={summary.changedMembers.map((member) => ({
           key: member.id,
           left: member.label,
@@ -248,6 +252,7 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
         title="8시 이후 신청휴무"
         emptyText="8시 이후 신청휴무 없음"
         columns={4}
+        layout="late-leave"
         items={summary.afterEightLeaveMembers.map((member) => ({
           key: member.id,
           left: member.label,
@@ -258,6 +263,7 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
         title="텀블러 수량"
         emptyText="텀블러 음료 없음"
         columns={3}
+        layout="tumbler"
         items={summary.tumblerCounts.map((count) => ({
           key: count.name,
           left: count.name,
@@ -271,6 +277,7 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
         title="컵 수량"
         emptyText="컵 음료 없음"
         columns={4}
+        layout="cup"
         items={summary.cupCounts.map((count) => ({
           key: count.name,
           left: count.name,
@@ -286,6 +293,7 @@ type BeverageSummaryColumnProps = {
   title: string;
   emptyText: string;
   columns: 2 | 3 | 4;
+  layout: 'changes' | 'late-leave' | 'tumbler' | 'cup';
   items: Array<{
     key: string | number;
     left: string;
@@ -296,9 +304,9 @@ type BeverageSummaryColumnProps = {
   }>;
 };
 
-function BeverageSummaryColumn({ title, emptyText, columns, items }: BeverageSummaryColumnProps) {
+function BeverageSummaryColumn({ title, emptyText, columns, layout, items }: BeverageSummaryColumnProps) {
   return (
-    <article className={`beverage-summary-column cols-${columns}`}>
+    <article className={`beverage-summary-column summary-${layout} cols-${columns}${items.length === 0 ? ' is-empty' : ''}`}>
       <h3>{title}</h3>
       {items.length === 0 ? (
         <p>{emptyText}</p>
@@ -571,7 +579,7 @@ function createBeverageSummary(
     changedMembers,
     afterEightLeaveMembers,
     tumblerCounts: toSortedCounts(tumblerCounts, tumblerDeductions, tumblerMemberNames),
-    cupCounts: toSortedCounts(cupCounts, cupDeductions),
+    cupCounts: toSortedCounts(cupCounts, cupDeductions, new Map(), 'cup'),
   };
 }
 
@@ -644,7 +652,8 @@ function isExcludedDrinkName(drink: string) {
 function toSortedCounts(
   counts: Map<string, number>,
   deductions: Map<string, number>,
-  memberNames = new Map<string, string[]>()
+  memberNames = new Map<string, string[]>(),
+  order: 'default' | 'cup' = 'default'
 ) {
   return Array.from(counts.entries())
     .map(([name, count]) => ({
@@ -654,6 +663,13 @@ function toSortedCounts(
       memberNames: memberNames.get(name) || [],
     }))
     .sort((first, second) => {
+      if (order === 'cup') {
+        const cupOrder = compareCupDrinkNames(first.name, second.name);
+        if (cupOrder !== 0) {
+          return cupOrder;
+        }
+      }
+
       if (second.count !== first.count) {
         return second.count - first.count;
       }
@@ -662,8 +678,39 @@ function toSortedCounts(
     });
 }
 
+const CUP_DRINK_PRIORITY = ['아아', '선식', '해독쥬스'];
+
+function compareCupDrinkNames(first: string, second: string) {
+  const firstFamily = getCupDrinkFamily(first);
+  const secondFamily = getCupDrinkFamily(second);
+
+  if (firstFamily !== secondFamily) {
+    return firstFamily - secondFamily;
+  }
+
+  if (firstFamily === CUP_DRINK_PRIORITY.length) {
+    return 0;
+  }
+
+  const familyName = CUP_DRINK_PRIORITY[firstFamily];
+  const firstIsBase = first === familyName;
+  const secondIsBase = second === familyName;
+
+  if (firstIsBase !== secondIsBase) {
+    return firstIsBase ? -1 : 1;
+  }
+
+  return first.localeCompare(second, 'ko');
+}
+
+function getCupDrinkFamily(drink: string) {
+  const familyIndex = CUP_DRINK_PRIORITY.findIndex((family) => drink.includes(family));
+
+  return familyIndex < 0 ? CUP_DRINK_PRIORITY.length : familyIndex;
+}
+
 function formatCountLabel(count: SummaryCount) {
-  return String(count.count - count.deduction);
+  return String(count.count);
 }
 
 function compareSummaryMembers(first: SummaryMember, second: SummaryMember) {
