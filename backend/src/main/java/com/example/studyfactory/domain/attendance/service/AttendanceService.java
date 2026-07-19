@@ -47,6 +47,7 @@ public class AttendanceService {
     private static final String EMPTY_STATUS = "X";
     private static final String PRESENT_STATUS = "O";
     private static final String PRESENT_STATUS_TYPE_NAME = "출석";
+    private static final String FIXED_LEAVE_CANCELLATION_MARKER = "FIXED_LEAVE_CANCELLED";
 
     private final AttendanceRepository attendanceRepository;
     private final AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
@@ -67,10 +68,12 @@ public class AttendanceService {
         Map<Integer, Member> membersBySeat = toMembersBySeat(members);
         Map<Long, List<String>> statusesByMemberId = initializeStatuses(members);
 
-        applyAttendances(statusesByMemberId, targetBranchId, targetDate);
+        List<Attendance> dailyAttendances = attendanceRepository.findDailyBoardAttendances(targetBranchId, targetDate);
+        applyAttendances(statusesByMemberId, dailyAttendances);
         applyLeaveRequests(statusesByMemberId, targetBranchId, targetDate);
         applyFixedLeaves(statusesByMemberId, targetBranchId, targetDate);
         applySpecialLeaves(statusesByMemberId, targetBranchId, targetDate);
+        applyFixedLeaveCancellations(statusesByMemberId, dailyAttendances);
         Set<Long> initializedMemberIds = findInitializedMemberIds(targetBranchId, targetDate);
 
         return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId, initializedMemberIds));
@@ -85,12 +88,17 @@ public class AttendanceService {
             throw MemberException.forbidden();
         }
 
+        boolean cancelsFixedLeave = request.status() == AttendanceSlotStatusUpdateType.ABSENT
+                && hasFixedLeaveAt(member.getId(), request.date(), request.slot());
         clearSlotStatus(member.getId(), request.date(), request.slot());
         if (request.status() == AttendanceSlotStatusUpdateType.PRESENT) {
             createPresentAttendance(currentMember, member, request);
         }
         if (request.status() == AttendanceSlotStatusUpdateType.OTHER) {
             createSpecialLeave(currentMember, member, request);
+        }
+        if (cancelsFixedLeave) {
+            createFixedLeaveCancellation(currentMember, member, request);
         }
     }
 
@@ -150,12 +158,23 @@ public class AttendanceService {
     }
 
     private void createPresentAttendance(Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request) {
-        AttendanceStatusType statusType = attendanceStatusTypeRepository.findByName(PRESENT_STATUS_TYPE_NAME)
-                .orElseGet(() -> attendanceStatusTypeRepository.save(new AttendanceStatusType(PRESENT_STATUS_TYPE_NAME, false)));
         attendanceRepository.save(new Attendance(
-                new AttendanceReferenceInformation(member.getId(), member.getBranchId(), statusType.getId(), currentMember.getId()),
+                new AttendanceReferenceInformation(member.getId(), member.getBranchId(), findPresentStatusType().getId(), currentMember.getId()),
                 new AttendanceSlotInformation(request.date(), request.slot(), null)
         ));
+    }
+
+    private void createFixedLeaveCancellation(Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request) {
+        attendanceRepository.save(new Attendance(
+                new AttendanceReferenceInformation(member.getId(), member.getBranchId(), findPresentStatusType().getId(), currentMember.getId()),
+                new AttendanceSlotInformation(request.date(), request.slot(), FIXED_LEAVE_CANCELLATION_MARKER)
+        ));
+    }
+
+    private AttendanceStatusType findPresentStatusType() {
+        AttendanceStatusType statusType = attendanceStatusTypeRepository.findByName(PRESENT_STATUS_TYPE_NAME)
+                .orElseGet(() -> attendanceStatusTypeRepository.save(new AttendanceStatusType(PRESENT_STATUS_TYPE_NAME, false)));
+        return statusType;
     }
 
     private void createSpecialLeave(Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request) {
@@ -221,14 +240,32 @@ public class AttendanceService {
         return slots;
     }
 
-    private void applyAttendances(Map<Long, List<String>> statusesByMemberId, Long branchId, LocalDate date) {
-        for (Attendance attendance : attendanceRepository.findDailyBoardAttendances(branchId, date)) {
+    private void applyAttendances(Map<Long, List<String>> statusesByMemberId, List<Attendance> attendances) {
+        for (Attendance attendance : attendances) {
             List<String> statuses = statusesByMemberId.get(attendance.getMemberId());
             if (statuses == null) {
                 continue;
             }
             setStatus(statuses, attendance.getSlot(), PRESENT_STATUS);
         }
+    }
+
+    private void applyFixedLeaveCancellations(Map<Long, List<String>> statusesByMemberId, List<Attendance> attendances) {
+        for (Attendance attendance : attendances) {
+            if (!FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText())) {
+                continue;
+            }
+            List<String> statuses = statusesByMemberId.get(attendance.getMemberId());
+            if (statuses != null) {
+                setStatus(statuses, attendance.getSlot(), EMPTY_STATUS);
+            }
+        }
+    }
+
+    private boolean hasFixedLeaveAt(Long memberId, LocalDate date, Integer slot) {
+        return fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(memberId).stream()
+                .anyMatch(fixedLeave -> fixedLeave.getDayOfWeek() == date.getDayOfWeek()
+                        && parseSlots(fixedLeave.getSlots()).contains(slot));
     }
 
     private void applyLeaveRequests(Map<Long, List<String>> statusesByMemberId, Long branchId, LocalDate date) {

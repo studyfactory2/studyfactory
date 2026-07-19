@@ -33,6 +33,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -142,6 +143,31 @@ class AttendanceServiceTest {
 
         verify(attendanceRepository).deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(2L, date, 3);
         verify(attendanceRepository).save(org.mockito.ArgumentMatchers.any(Attendance.class));
+    }
+
+    @Test
+    @DisplayName("고정 기타 휴무를 취소하면 해당 날짜와 교시에만 취소 기록을 남긴다")
+    void cancelFixedLeaveForOneDay() {
+        LocalDate date = LocalDate.of(2026, 6, 24);
+        Member staff = createMember(1L, "최민지", MemberRole.STAFF, 1);
+        Member member = createMember(2L, "구자람", MemberRole.MEMBER, 7);
+        AttendanceStatusType statusType = new AttendanceStatusType("출석", false);
+        FixedLeave fixedLeave = new FixedLeave(2L, 1L, DayOfWeek.WEDNESDAY, "1", "지각", true);
+        ReflectionTestUtils.setField(statusType, "id", 1L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(member));
+        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of(fixedLeave));
+        given(attendanceStatusTypeRepository.findByName("출석")).willReturn(Optional.of(statusType));
+        given(leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
+        given(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
+
+        attendanceService.updateSlotStatus(1L, new AttendanceSlotStatusUpdateRequest(
+                2L, date, 1, AttendanceSlotStatusUpdateType.ABSENT, null
+        ));
+
+        ArgumentCaptor<Attendance> captor = ArgumentCaptor.forClass(Attendance.class);
+        verify(attendanceRepository).save(captor.capture());
+        assertThat(captor.getValue().getCustomStatusText()).isEqualTo("FIXED_LEAVE_CANCELLED");
     }
 
     private Member createMember(Long id, String name, MemberRole role, Integer seatNumber) {
