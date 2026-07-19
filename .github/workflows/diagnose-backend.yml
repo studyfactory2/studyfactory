@@ -1,0 +1,19 @@
+name: Diagnose backend
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect backend containers and logs
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USER }}/studyfactory/backend
+            docker compose --env-file .env -f compose.prod.yml ps
+            docker compose --env-file .env -f compose.prod.yml logs --tail 200 backend
