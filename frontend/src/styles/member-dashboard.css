@@ -630,17 +630,48 @@
   font-weight: 760;
 }
 
+.weekly-plan-cell:not(.weekly-break-cell) li {
+  border: 1px solid #9fded3;
+  background: #fff;
+}
+
 .weekly-plan-cell li span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .weekly-plan-cell li.done span {
   color: #8b9aa1;
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
+}
+
+.weekly-plan-cell li.editing {
+  grid-template-columns: minmax(0, 1fr) 20px;
+}
+
+.weekly-plan-cell li.editing input {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 7px;
+  border: 1px solid #b8d5ff;
+  border-radius: 7px;
+  background: #fff;
+  color: #333d4b;
+  font: inherit;
+  line-height: 1.35;
+  outline: none;
+}
+
+.weekly-plan-cell li.editing input:focus {
+  border-color: #3182f6;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1);
 }
 
 .weekly-plan-check {
@@ -704,7 +735,8 @@
   border-color: #3182f6;
 }
 
-.weekly-plan-cell > button {
+.weekly-plan-cell > button,
+.weekly-plan-cell-actions button {
   min-height: 32px;
   border: 1px dashed rgba(49, 130, 246, 0.45);
   border-radius: 9px;
@@ -715,13 +747,35 @@
   cursor: pointer;
 }
 
+.weekly-plan-cell-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.weekly-plan-cell-actions button {
+  min-width: 0;
+}
+
+.weekly-plan-cell.is-editing .weekly-plan-cell-actions button:first-child {
+  border-style: solid;
+  border-color: #3182f6;
+  background: #3182f6;
+  color: #fff;
+}
+
 .weekly-break-cell {
   background: linear-gradient(90deg, rgba(192, 255, 0, 0.18), rgba(49, 130, 246, 0.07));
 }
 
 .weekly-break-cell .weekly-plan-draft-row input,
-.weekly-break-cell > button {
+.weekly-break-cell > button,
+.weekly-break-cell .weekly-plan-cell-actions button {
   background: rgba(255, 255, 255, 0.78);
+}
+
+.weekly-break-cell.is-editing .weekly-plan-cell-actions button:first-child {
+  background: #3182f6;
 }
 
 .weekly-break-label {
