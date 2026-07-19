@@ -228,6 +228,7 @@ type SummaryCount = {
   name: string;
   count: number;
   deduction: number;
+  memberNames: string[];
 };
 
 function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
@@ -256,12 +257,14 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
       <BeverageSummaryColumn
         title="텀블러 수량"
         emptyText="텀블러 음료 없음"
-        columns={4}
+        columns={3}
         items={summary.tumblerCounts.map((count) => ({
           key: count.name,
           left: count.name,
           right: formatCountLabel(count),
           deduction: count.deduction > 0 ? `(-${count.deduction})` : undefined,
+          detail: count.memberNames.join('\n'),
+          variant: 'tumbler',
         }))}
       />
       <BeverageSummaryColumn
@@ -289,6 +292,7 @@ type BeverageSummaryColumnProps = {
     right?: string;
     deduction?: string;
     detail?: string;
+    variant?: 'tumbler';
   }>;
 };
 
@@ -301,7 +305,7 @@ function BeverageSummaryColumn({ title, emptyText, columns, items }: BeverageSum
       ) : (
         <ul>
           {items.map((item) => (
-            <li key={item.key}>
+            <li className={item.variant ? `is-${item.variant}` : undefined} key={item.key}>
               <div>
                 <strong>{item.left}</strong>
                 {item.detail && <small>{item.detail}</small>}
@@ -545,6 +549,7 @@ function createBeverageSummary(
   const cupCounts = new Map<string, number>();
   const tumblerDeductions = new Map<string, number>();
   const cupDeductions = new Map<string, number>();
+  const tumblerMemberNames = new Map<string, string[]>();
 
   beverages.forEach((beverage) => {
     parseDrinks(beverage.drinks).forEach((drink) => {
@@ -554,6 +559,10 @@ function createBeverageSummary(
       targetCounts.set(normalizedDrink, (targetCounts.get(normalizedDrink) || 0) + 1);
       if (afterEightLeaveMemberIds.has(beverage.memberId)) {
         targetDeductions.set(normalizedDrink, (targetDeductions.get(normalizedDrink) || 0) + 1);
+      } else if (isTumblerDrink(drink)) {
+        const names = tumblerMemberNames.get(normalizedDrink) || [];
+        names.push(beverage.memberName);
+        tumblerMemberNames.set(normalizedDrink, names);
       }
     });
   });
@@ -561,7 +570,7 @@ function createBeverageSummary(
   return {
     changedMembers,
     afterEightLeaveMembers,
-    tumblerCounts: toSortedCounts(tumblerCounts, tumblerDeductions),
+    tumblerCounts: toSortedCounts(tumblerCounts, tumblerDeductions, tumblerMemberNames),
     cupCounts: toSortedCounts(cupCounts, cupDeductions),
   };
 }
@@ -632,9 +641,18 @@ function isExcludedDrinkName(drink: string) {
   return normalizedDrink === '없음' || normalizedDrink === 'x' || normalizedDrink === '안먹음';
 }
 
-function toSortedCounts(counts: Map<string, number>, deductions: Map<string, number>) {
+function toSortedCounts(
+  counts: Map<string, number>,
+  deductions: Map<string, number>,
+  memberNames = new Map<string, string[]>()
+) {
   return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count, deduction: deductions.get(name) || 0 }))
+    .map(([name, count]) => ({
+      name,
+      count,
+      deduction: deductions.get(name) || 0,
+      memberNames: memberNames.get(name) || [],
+    }))
     .sort((first, second) => {
       if (second.count !== first.count) {
         return second.count - first.count;

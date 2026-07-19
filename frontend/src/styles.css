@@ -721,6 +721,30 @@
   color: var(--color-primary);
 }
 
+/* Tumbler drinks need an owner label: each tumbler is personally owned. */
+.beverage-making-panel .beverage-summary-column li.is-tumbler {
+  min-height: 48px;
+  align-items: flex-start;
+}
+
+.beverage-making-panel .beverage-summary-column li.is-tumbler div {
+  display: grid;
+  gap: 3px;
+}
+
+.beverage-making-panel .beverage-summary-column li.is-tumbler small {
+  display: block;
+  font-size: 12px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-line;
+  line-height: 1.3;
+}
+
+.beverage-making-panel .beverage-summary-column li.is-tumbler span {
+  padding-top: 2px;
+}
+
 /* Beverage serving board */
 .manager-card:has(.beverage-serving-panel:not(.beverage-making-panel)) {
   background: linear-gradient(180deg, #f7faff 0, #fff 210px);
@@ -1389,5 +1413,32 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Beverage making: keep each work category as a vertical list column. */
+.beverage-making-panel .beverage-summary-board {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+}
+
+.beverage-making-panel .beverage-summary-column {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.beverage-making-panel .beverage-summary-column.cols-2,
+.beverage-making-panel .beverage-summary-column.cols-3,
+.beverage-making-panel .beverage-summary-column.cols-4 {
+  --summary-columns: 1;
+}
+
+.beverage-making-panel .beverage-summary-column ul {
+  align-content: start;
+}
+
+@media (max-width: 600px) {
+  .beverage-making-panel .beverage-summary-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
