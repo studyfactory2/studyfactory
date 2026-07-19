@@ -288,6 +288,19 @@ export function WeeklyPlanPanel() {
     await savePlan(nextPlan, '');
   };
 
+  const saveCellItems = async (cellKey: string, items: WeeklyPlanItem[]) => {
+    const nextPlans = { ...storedPlan.plans };
+    if (items.length === 0) {
+      delete nextPlans[cellKey];
+    } else {
+      nextPlans[cellKey] = items;
+    }
+
+    const nextPlan = { ...storedPlan, plans: nextPlans };
+    setStoredPlan(nextPlan);
+    await savePlan(nextPlan, '할 일을 수정했습니다.');
+  };
+
   return (
     <div className="member-panel weekly-plan-panel">
       <div className="weekly-plan-mode-tabs" aria-label="작업계획 보기 전환">
@@ -326,6 +339,7 @@ export function WeeklyPlanPanel() {
             onAddPlan={addPlan}
             onChangeDraft={changeDraft}
             onRemovePlan={removePlan}
+            onSaveCellItems={saveCellItems}
             onTogglePlanDone={togglePlanDone}
           />
           <div className="weekly-plan-actions">
@@ -368,10 +382,11 @@ type WeeklyBoardProps = {
   onAddPlan: (cellKey: string) => Promise<void>;
   onChangeDraft: (cellKey: string, value: string) => void;
   onRemovePlan: (cellKey: string, index: number) => Promise<void>;
+  onSaveCellItems: (cellKey: string, items: WeeklyPlanItem[]) => Promise<void>;
   onTogglePlanDone: (cellKey: string, index: number) => Promise<void>;
 };
 
-function WeeklyBoard({ drafts, onAddPlan, onChangeDraft, onRemovePlan, onTogglePlanDone, plan, weekDays }: WeeklyBoardProps) {
+function WeeklyBoard({ drafts, onAddPlan, onChangeDraft, onRemovePlan, onSaveCellItems, onTogglePlanDone, plan, weekDays }: WeeklyBoardProps) {
   return (
     <section className="weekly-board-card" aria-label="주간 학습 계획표">
         <div className="weekly-board-scroll">
@@ -400,6 +415,7 @@ function WeeklyBoard({ drafts, onAddPlan, onChangeDraft, onRemovePlan, onToggleP
                     onAddPlan={onAddPlan}
                     onChangeDraft={onChangeDraft}
                     onRemovePlan={onRemovePlan}
+                    onSaveCellItems={onSaveCellItems}
                     onTogglePlanDone={onTogglePlanDone}
                   />
                 ))}
@@ -414,6 +430,7 @@ function WeeklyBoard({ drafts, onAddPlan, onChangeDraft, onRemovePlan, onToggleP
                     onAddPlan={onAddPlan}
                     onChangeDraft={onChangeDraft}
                     onRemovePlan={onRemovePlan}
+                    onSaveCellItems={onSaveCellItems}
                     onTogglePlanDone={onTogglePlanDone}
                   />
                 )}
@@ -428,6 +445,7 @@ function WeeklyBoard({ drafts, onAddPlan, onChangeDraft, onRemovePlan, onToggleP
                     onAddPlan={onAddPlan}
                     onChangeDraft={onChangeDraft}
                     onRemovePlan={onRemovePlan}
+                    onSaveCellItems={onSaveCellItems}
                     onTogglePlanDone={onTogglePlanDone}
                   />
                 )}
@@ -448,6 +466,7 @@ type WeeklyPlanCellProps = {
   onAddPlan: (cellKey: string) => Promise<void>;
   onChangeDraft: (cellKey: string, value: string) => void;
   onRemovePlan: (cellKey: string, index: number) => Promise<void>;
+  onSaveCellItems: (cellKey: string, items: WeeklyPlanItem[]) => Promise<void>;
   onTogglePlanDone: (cellKey: string, index: number) => Promise<void>;
 };
 
@@ -459,15 +478,63 @@ function WeeklyPlanCell({
   onAddPlan,
   onChangeDraft,
   onRemovePlan,
+  onSaveCellItems,
   onTogglePlanDone,
   plan,
 }: WeeklyPlanCellProps) {
   const items = plan.plans[cellKey] || [];
+  const [editing, setEditing] = useState(false);
+  const [editingItems, setEditingItems] = useState<WeeklyPlanItem[]>(items);
+
+  useEffect(() => {
+    if (!editing) {
+      setEditingItems(items);
+    }
+  }, [editing, items]);
+
+  const startEditing = () => {
+    setEditingItems(items.map((item) => ({ ...item })));
+    setEditing(true);
+  };
+
+  const updateEditingItem = (index: number, text: string) => {
+    setEditingItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, text } : item));
+  };
+
+  const removeEditingItem = (index: number) => {
+    setEditingItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const addEditingItem = () => {
+    const value = (drafts[cellKey] || '').trim();
+    if (!value) {
+      return;
+    }
+    setEditingItems((current) => [...current, { text: value, done: false }]);
+    onChangeDraft(cellKey, '');
+  };
+
+  const saveEditing = async () => {
+    const cleanedItems = editingItems
+      .map((item) => ({ ...item, text: item.text.trim() }))
+      .filter((item) => item.text);
+    await onSaveCellItems(cellKey, cleanedItems);
+    setEditing(false);
+  };
 
   return (
-    <div className={`weekly-plan-cell${className ? ` ${className}` : ''}`}>
+    <div className={`weekly-plan-cell${editing ? ' is-editing' : ''}${className ? ` ${className}` : ''}`}>
       <ol>
-        {items.map((item, itemIndex) => (
+        {(editing ? editingItems : items).map((item, itemIndex) => editing ? (
+          <li className="editing" key={`${item.text}-${itemIndex}`}>
+            <input
+              aria-label={`${itemIndex + 1}번째 할 일 수정`}
+              value={item.text}
+              onChange={(event) => updateEditingItem(itemIndex, event.target.value)}
+            />
+            <button type="button" aria-label={`${item.text} 삭제`} onClick={() => removeEditingItem(itemIndex)}>×</button>
+          </li>
+        ) : (
           <li className={item.done ? 'done' : ''} key={`${item.text}-${itemIndex}`}>
             <button
               className="weekly-plan-check"
@@ -492,14 +559,23 @@ function WeeklyPlanCell({
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault();
-              void onAddPlan(cellKey);
+              if (editing) {
+                addEditingItem();
+              } else {
+                void onAddPlan(cellKey);
+              }
             }
           }}
         />
       </div>
-      <button type="button" onClick={() => void onAddPlan(cellKey)}>
-        + 추가
-      </button>
+      <div className="weekly-plan-cell-actions">
+        <button type="button" onClick={() => editing ? void saveEditing() : startEditing()}>
+          {editing ? '저장' : '수정'}
+        </button>
+        <button type="button" onClick={() => editing ? addEditingItem() : void onAddPlan(cellKey)}>
+          {editing ? '+ 할 일 추가' : '+ 추가'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -616,6 +692,7 @@ type WeeklyBreakRowProps = {
   onAddPlan: (cellKey: string) => Promise<void>;
   onChangeDraft: (cellKey: string, value: string) => void;
   onRemovePlan: (cellKey: string, index: number) => Promise<void>;
+  onSaveCellItems: (cellKey: string, items: WeeklyPlanItem[]) => Promise<void>;
   onTogglePlanDone: (cellKey: string, index: number) => Promise<void>;
 };
 
@@ -626,6 +703,7 @@ function WeeklyBreakRow({
   onAddPlan,
   onChangeDraft,
   onRemovePlan,
+  onSaveCellItems,
   onTogglePlanDone,
   periodIndex,
   plan,
@@ -647,6 +725,7 @@ function WeeklyBreakRow({
           onAddPlan={onAddPlan}
           onChangeDraft={onChangeDraft}
           onRemovePlan={onRemovePlan}
+          onSaveCellItems={onSaveCellItems}
           onTogglePlanDone={onTogglePlanDone}
         />
       ))}
