@@ -531,6 +531,16 @@ function isTumblerDrink(drink: string) {
   return drink.includes('텀') || drink.includes('텀블러');
 }
 
+function formatTumblerRequester(beverage: MemberBeverageResponse) {
+  const note = beverage.notes?.trim();
+
+  if (!note || note === '입력 없음') {
+    return beverage.memberName;
+  }
+
+  return `${beverage.memberName} [${note.replace(/\s+/g, ' ')}]`;
+}
+
 function createBeverageSummary(
   beverages: MemberBeverageResponse[],
   dailyLeaveStatuses: DailyLeaveStatusResponse[],
@@ -569,7 +579,7 @@ function createBeverageSummary(
         targetDeductions.set(normalizedDrink, (targetDeductions.get(normalizedDrink) || 0) + 1);
       } else if (isTumblerDrink(drink)) {
         const names = tumblerMemberNames.get(normalizedDrink) || [];
-        names.push(beverage.memberName);
+        names.push(formatTumblerRequester(beverage));
         tumblerMemberNames.set(normalizedDrink, names);
       }
     });
