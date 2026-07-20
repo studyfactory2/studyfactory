@@ -304,14 +304,21 @@
     grid-template-columns: 24px minmax(0, auto) 1fr;
   }
 
-  .beverage-serving-title h2 {
+  .beverage-serving-title h2,
+  .beverage-serving-shortcut {
     font-size: 16px;
   }
 
-  .beverage-serving-title span {
+  .beverage-serving-branch {
     padding: 6px 11px;
     font-size: 11px;
   }
+
+  .beverage-serving-shortcut {
+    padding: 0;
+    white-space: nowrap;
+  }
+
 
   .beverage-serving-room {
     min-height: 526px;
