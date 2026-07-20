@@ -2253,3 +2253,276 @@
   font-size: 14px;
   font-weight: 900;
 }
+
+/* Weekly study plan: wider desktop board and a dedicated print layout. */
+.weekly-plan-print-heading,
+.weekly-goal-print-content,
+.weekly-print-board {
+  display: none;
+}
+
+.weekly-plan-print-button {
+  grid-column: 1 / -1;
+  min-height: 42px;
+  border: 1px solid #c8ddff;
+  border-radius: 12px;
+  background: #edf5ff;
+  color: #3182f6;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+@media (min-width: 1100px) {
+  .manager-card:has(.weekly-plan-panel) {
+    width: min(1440px, calc(100vw - 64px));
+  }
+
+  .weekly-board-grid {
+    min-width: 1280px;
+    grid-template-columns: 76px repeat(7, minmax(164px, 1fr));
+    gap: 10px;
+  }
+
+  .weekly-plan-cell {
+    min-height: 118px;
+  }
+
+  .weekly-plan-cell li {
+    font-size: 13px;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 7mm;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .member-dashboard-main,
+  .member-dashboard-main * {
+    visibility: visible !important;
+  }
+
+  .manager-page {
+    display: block !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .manager-page > :not(.member-dashboard-main) {
+    display: none !important;
+  }
+
+  .member-dashboard-main {
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  .member-dashboard-main .member-slide-panel,
+  .weekly-plan-panel {
+    animation: none !important;
+    overflow: visible !important;
+  }
+
+  .weekly-plan-panel {
+    gap: 4mm !important;
+  }
+
+  .weekly-plan-mode-tabs,
+  .weekly-plan-actions,
+  .weekly-plan-panel > .member-primary-action,
+  .weekly-plan-message,
+  .weekly-goal-field textarea,
+  .weekly-plan-draft-row,
+  .weekly-plan-cell-actions,
+  .weekly-plan-cell li > button,
+  .weekly-plan-print-button {
+    display: none !important;
+  }
+
+  .weekly-plan-print-heading {
+    display: flex !important;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12mm;
+    padding-bottom: 3mm;
+    border-bottom: 1px solid #cddff7;
+  }
+
+  .weekly-plan-print-heading p {
+    margin: 0 0 1mm !important;
+    color: #3182f6 !important;
+    font-size: 9pt !important;
+    font-weight: 800 !important;
+  }
+
+  .weekly-plan-print-heading h1 {
+    margin: 0 !important;
+    color: #191f28 !important;
+    font-size: 20pt !important;
+    line-height: 1.1 !important;
+  }
+
+  .weekly-plan-print-heading strong {
+    color: #4b5965 !important;
+    font-size: 10pt !important;
+  }
+
+  .weekly-goal-field {
+    min-height: 0 !important;
+    padding: 3mm 4mm !important;
+    gap: 1mm !important;
+    border-color: #dce7eb !important;
+    border-radius: 3mm !important;
+    background: #fff !important;
+  }
+
+  .weekly-goal-field > span {
+    color: #3182f6 !important;
+    font-size: 9pt !important;
+  }
+
+  .weekly-goal-print-content {
+    display: block !important;
+    min-height: 1.2em;
+    margin: 0 !important;
+    color: #25313a !important;
+    font-size: 10pt !important;
+    font-weight: 650 !important;
+    line-height: 1.45 !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .weekly-board-card {
+    display: none !important;
+  }
+
+  .weekly-print-board {
+    display: block !important;
+  }
+
+  .weekly-print-board table {
+    width: 100% !important;
+    border-spacing: 1mm;
+    border-collapse: separate;
+    table-layout: fixed;
+  }
+
+  /* Keep the column header on the first sheet only. */
+  .weekly-print-board thead {
+    display: table-row-group;
+  }
+
+  .weekly-print-board th,
+  .weekly-print-board td {
+    padding: 1.2mm;
+    border-color: #dce7eb !important;
+    border: 1px solid #dce7eb;
+    border-radius: 2.5mm;
+    vertical-align: top;
+  }
+
+  .weekly-print-board thead th {
+    height: 8mm;
+    padding: 0.8mm 1.2mm;
+    color: #25313a;
+    font-size: 7pt;
+    line-height: 1.05;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .weekly-print-board thead th:first-child {
+    width: 12mm;
+    color: #3182f6;
+  }
+
+  .weekly-print-board thead span,
+  .weekly-print-board thead strong,
+  .weekly-print-board tbody th span,
+  .weekly-print-board tbody th small {
+    display: block;
+  }
+
+  .weekly-print-board thead strong {
+    color: #7c8a91;
+    font-size: 6.5pt;
+  }
+
+  .weekly-print-board tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .weekly-print-board tbody th {
+    width: 12mm;
+    color: #25313a;
+    font-size: 7pt;
+    line-height: 1.1;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .weekly-print-board tbody th small {
+    margin-top: 0.4mm;
+    color: #7c8a91;
+    font-size: 5.8pt;
+  }
+
+  .weekly-print-board td {
+    height: 16mm;
+    background: #fff;
+  }
+
+  .weekly-print-board .break-row th,
+  .weekly-print-board .break-row td {
+    background: #f6f8fa;
+  }
+
+  .weekly-print-board ul {
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.8mm;
+    list-style: none;
+  }
+
+  .weekly-print-board li {
+    padding: 1mm;
+    border-left: 1mm solid #8fc2ff;
+    border-radius: 1.5mm;
+    background: #f6faff;
+    color: #25313a;
+    font-size: 7pt;
+    font-weight: 650;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .weekly-print-board li.done {
+    color: #6f7f87;
+    text-decoration: none;
+  }
+}
