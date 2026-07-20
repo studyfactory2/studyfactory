@@ -142,6 +142,9 @@ public class LeaveService {
         validateAllPermissions(currentMember);
         Member targetMember = findMember(request.memberId());
         validateFixedLeaveRequest(request);
+        if (hasFixedLeaveSlotConflict(targetMember.getId(), request.leaveDate().getDayOfWeek(), request.slots())) {
+            throw LeaveException.fixedLeaveSlotAlreadyExists();
+        }
         FixedLeave fixedLeave = new FixedLeave(
                 targetMember.getId(),
                 targetMember.getBranchId(),
@@ -315,6 +318,16 @@ public class LeaveService {
         if (request.slots().stream().anyMatch(slot -> slot < 1 || slot > 7)) {
             throw LeaveException.invalidSpecialLeaveRequest();
         }
+    }
+
+    private boolean hasFixedLeaveSlotConflict(Long memberId, DayOfWeek dayOfWeek, List<Integer> requestedSlots) {
+        return fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(memberId)
+                .stream()
+                .filter(fixedLeave -> fixedLeave.getDayOfWeek() == dayOfWeek)
+                .flatMap(fixedLeave -> List.of(fixedLeave.getSlots().split(",")).stream())
+                .map(String::trim)
+                .map(Integer::parseInt)
+                .anyMatch(requestedSlots::contains);
     }
 
     private void validateSlot(Integer slot) {

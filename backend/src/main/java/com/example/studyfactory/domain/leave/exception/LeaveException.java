@@ -24,4 +24,8 @@ public class LeaveException extends BaseException {
     public static LeaveException invalidSpecialLeaveRequest() {
         return new LeaveException(HttpStatus.BAD_REQUEST, "기타 휴무 신청 정보를 확인해주세요.");
     }
+
+    public static LeaveException fixedLeaveSlotAlreadyExists() {
+        return new LeaveException(HttpStatus.CONFLICT, "이미 고정휴무가 있는 교시입니다.");
+    }
 }

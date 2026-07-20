@@ -3,6 +3,11 @@ import { apiRequest } from '../../api/client';
 import type { Branch, DailyAttendanceBoardResponse, DailySideDishResponse, MealType, SuggestionResponse, TodoResponse } from '../../types/domain';
 
 const SLOT_LABELS = [1, 2, 3, 4, 5, 6, 7];
+const LEAVE_REASON_SLOTS: Record<string, number[]> = {
+  월차: SLOT_LABELS,
+  오전반차: [1, 2, 3, 4],
+  오후반차: [4, 5, 6, 7],
+};
 const OTHER_REASON_OPTIONS = ['지각', '조회', '외출', '이동', '시험', '컨디션'];
 const STRONG_DIVIDER_SEATS = new Set([8, 18, 23, 28, 33, 38, 43, 48, 53, 59, 63, 67, 71, 75, 80, 83, 84, 88, 91, 94, 97, 100]);
 const SOFT_DIVIDER_SEATS = new Set([10, 12, 14, 16, 51]);
@@ -26,7 +31,9 @@ export function StaffAttendancePanel() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
   const [otherModalOpen, setOtherModalOpen] = useState(false);
-  const [otherDate, setOtherDate] = useState(() => toDateKey(new Date()));
+  const [fixedLeaveConflictOpen, setFixedLeaveConflictOpen] = useState(false);
+  const [otherCalendarDate, setOtherCalendarDate] = useState(() => toDateKey(new Date()));
+  const [otherDates, setOtherDates] = useState<string[]>([]);
   const [otherSlots, setOtherSlots] = useState<number[]>([]);
   const [selectedOtherReason, setSelectedOtherReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
@@ -77,7 +84,8 @@ export function StaffAttendancePanel() {
     return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
   }), [suggestions]);
   const unresolvedSuggestionCount = useMemo(() => suggestionItems.filter((suggestion) => !suggestion.isResolved).length, [suggestionItems]);
-  const otherCalendar = useMemo(() => createMonthCalendar(otherDate), [otherDate]);
+  const otherCalendar = useMemo(() => createMonthCalendar(otherCalendarDate), [otherCalendarDate]);
+  const allOtherSlotsSelected = SLOT_LABELS.every((slot) => otherSlots.includes(slot));
   const lunchSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'LUNCH'), [sideDishes]);
   const dinnerSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'DINNER'), [sideDishes]);
   const selectedTodoBranch = useMemo(() => {
@@ -373,16 +381,21 @@ export function StaffAttendancePanel() {
 
   const submitOtherReason = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await updateOtherSlotStatuses('OTHER', otherReason.trim() || selectedOtherReason || '기타');
+    const reason = otherReason.trim() || selectedOtherReason || '기타';
+    await updateOtherSlotStatuses('OTHER', reason, getSlotsForReason(reason));
   };
 
-  const updateOtherSlotStatuses = async (status: SlotStatusUpdateType, reason?: string) => {
+  const updateOtherSlotStatuses = async (status: SlotStatusUpdateType, reason?: string, targetSlots = otherSlots) => {
     if (!selectedSlot?.memberId) {
       setMessage('변경할 사원을 먼저 선택해주세요.');
       return;
     }
-    if (otherSlots.length === 0) {
+    if (targetSlots.length === 0) {
       setMessage('변경할 교시를 선택해주세요.');
+      return;
+    }
+    if (otherDates.length === 0) {
+      setMessage('변경할 날짜를 선택해주세요.');
       return;
     }
 
@@ -390,22 +403,22 @@ export function StaffAttendancePanel() {
     setMessage('');
     const currentSlot = selectedSlot;
     try {
-      await Promise.all(otherSlots.map((slot) => apiRequest<void>('/api/attendances/daily-board/slot', {
+      await Promise.all(otherDates.flatMap((date) => targetSlots.map((slot) => apiRequest<void>('/api/attendances/daily-board/slot', {
         method: 'PATCH',
         body: JSON.stringify({
           memberId: currentSlot.memberId,
-          date: otherDate,
+          date,
           slot,
           status,
           reason,
         }),
-      })));
-      if (otherDate === selectedDate) {
+      }))));
+      if (otherDates.includes(selectedDate)) {
         setBoard((current) => current ? {
           ...current,
           rows: current.rows.map((row) => row.memberId === currentSlot.memberId ? {
             ...row,
-            slots: row.slots.map((currentStatus, index) => otherSlots.includes(index + 1)
+            slots: row.slots.map((currentStatus, index) => targetSlots.includes(index + 1)
               ? toAttendanceStatusLabel(status, reason)
               : currentStatus),
           } : row),
@@ -414,6 +427,7 @@ export function StaffAttendancePanel() {
       setSelectedSlot(currentSlot);
       setOtherModalOpen(false);
       setOtherSlots([]);
+      setOtherDates([]);
       setOtherReason('');
       setSelectedOtherReason('');
     } catch (error) {
@@ -422,6 +436,8 @@ export function StaffAttendancePanel() {
       setSubmitting(false);
     }
   };
+
+  const getSlotsForReason = (reason: string) => LEAVE_REASON_SLOTS[reason] || otherSlots;
 
   const createFixedLeave = async () => {
     if (!selectedSlot) {
@@ -432,25 +448,35 @@ export function StaffAttendancePanel() {
       setMessage('고정신청할 교시를 선택해주세요.');
       return;
     }
+    if (otherDates.length === 0) {
+      setMessage('고정신청할 날짜를 선택해주세요.');
+      return;
+    }
 
     setSubmitting(true);
     setMessage('');
     try {
-      await apiRequest<void>('/api/leaves/fixed', {
+      await Promise.all(otherDates.map((leaveDate) => apiRequest<void>('/api/leaves/fixed', {
         method: 'POST',
         body: JSON.stringify({
           memberId: selectedSlot.memberId,
-          leaveDate: otherDate,
+          leaveDate,
           slots: otherSlots,
           reason: otherReason.trim() || selectedOtherReason || '기타',
         }),
-      });
+      })));
       await loadBoard(selectedDate);
       setOtherModalOpen(false);
+      setOtherDates([]);
       setOtherReason('');
       setSelectedOtherReason('');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '고정 휴무 신청에 실패했습니다.');
+      const errorMessage = error instanceof Error ? error.message : '고정 휴무 신청에 실패했습니다.';
+      if (errorMessage.includes('이미 고정휴무가 있는 교시입니다.')) {
+        setFixedLeaveConflictOpen(true);
+      } else {
+        setMessage(errorMessage);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -514,7 +540,8 @@ export function StaffAttendancePanel() {
     if (!selectedSlot) {
       return;
     }
-    setOtherDate(selectedDate);
+    setOtherCalendarDate(selectedDate);
+    setOtherDates([selectedDate]);
     setOtherSlots([selectedSlot.slot]);
     setSelectedOtherReason('');
     setOtherReason('');
@@ -522,9 +549,9 @@ export function StaffAttendancePanel() {
   };
 
   const moveOtherMonth = (amount: number) => {
-    const date = new Date(`${otherDate}T00:00:00`);
+    const date = new Date(`${otherCalendarDate}T00:00:00`);
     date.setMonth(date.getMonth() + amount);
-    setOtherDate(toDateKey(date));
+    setOtherCalendarDate(toDateKey(date));
   };
 
   return (
@@ -687,14 +714,16 @@ export function StaffAttendancePanel() {
                 <div className="attendance-calendar-grid">
                   {otherCalendar.days.map((day, index) => {
                     const dateKey = day ? toDateKey(new Date(otherCalendar.year, otherCalendar.month - 1, day)) : '';
-                    const selected = dateKey === otherDate;
+                    const selected = otherDates.includes(dateKey);
 
                     return day ? (
                       <button
                         className={selected ? 'selected' : ''}
                         key={`${day}-${index}`}
                         type="button"
-                        onClick={() => setOtherDate(dateKey)}
+                        onClick={() => setOtherDates((current) => current.includes(dateKey)
+                          ? current.filter((date) => date !== dateKey)
+                          : [...current, dateKey].sort())}
                       >
                         {day}
                       </button>
@@ -704,7 +733,7 @@ export function StaffAttendancePanel() {
                   })}
                 </div>
               </div>
-              <span className="attendance-selected-count">1일 선택됨</span>
+              <span className="attendance-selected-count">{otherDates.length}일 선택됨</span>
             </section>
 
             <section className="attendance-modal-section">
@@ -723,7 +752,16 @@ export function StaffAttendancePanel() {
                   </button>
                 ))}
               </div>
-              <button className="attendance-full-select" type="button" onClick={() => setOtherSlots([...SLOT_LABELS])}>전체 선택</button>
+              <button
+                className={`attendance-full-select${allOtherSlotsSelected ? ' selected' : ''}`}
+                type="button"
+                onClick={() => setOtherSlots((current) => SLOT_LABELS.every((slot) => current.includes(slot))
+                  ? selectedSlot ? [selectedSlot.slot] : []
+                  : [...SLOT_LABELS])}
+              >
+                {allOtherSlotsSelected ? '전체 선택 해제' : '전체 선택'}
+              </button>
+              <span className="attendance-selected-count">{otherSlots.length}교시 선택됨</span>
             </section>
 
             <section className="attendance-modal-section">
@@ -758,12 +796,13 @@ export function StaffAttendancePanel() {
               <div className="attendance-leave-grid">
                 {['월차', '오전반차', '오후반차'].map((reason) => (
                   <button
-                    className={reason === '오후반차' ? 'leave-afternoon' : 'leave-red'}
+                    className={`${reason === '오후반차' ? 'leave-afternoon' : 'leave-red'}${selectedOtherReason === reason ? ' selected' : ''}`}
                     key={reason}
                     type="button"
                     onClick={() => {
                       setSelectedOtherReason(reason);
                       setOtherReason('');
+                      setOtherSlots([...LEAVE_REASON_SLOTS[reason]]);
                     }}
                   >
                     {reason}
@@ -783,6 +822,16 @@ export function StaffAttendancePanel() {
             </div>
             <button className="attendance-modal-close" type="button" onClick={() => setOtherModalOpen(false)}>닫기</button>
           </form>
+        </div>
+      )}
+      {fixedLeaveConflictOpen && (
+        <div className="attendance-modal-backdrop attendance-conflict-backdrop" role="presentation">
+          <section className="attendance-fixed-conflict-alert" role="alertdialog" aria-modal="true" aria-labelledby="fixed-leave-conflict-title">
+            <span className="attendance-fixed-conflict-icon" aria-hidden="true">!</span>
+            <h2 id="fixed-leave-conflict-title">고정 휴무를 신청할 수 없어요</h2>
+            <p>이미 고정휴무가 있는 교시입니다.</p>
+            <button type="button" onClick={() => setFixedLeaveConflictOpen(false)}>확인</button>
+          </section>
         </div>
       )}
       {sideDishModalOpen && (

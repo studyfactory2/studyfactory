@@ -285,6 +285,7 @@ class LeaveServiceTest {
         );
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
         given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of());
         given(fixedLeaveRepository.save(any(FixedLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         FixedLeaveResponse response = leaveService.createFixed(1L, request);
@@ -295,6 +296,28 @@ class LeaveServiceTest {
         assertThat(response.slots()).isEqualTo("2,4");
         assertThat(response.reason()).isEqualTo("알바");
         assertThat(response.active()).isTrue();
+    }
+
+    @Test
+    @DisplayName("같은 요일에 이미 고정 휴무가 설정된 교시는 다시 신청할 수 없다")
+    void throwExceptionWhenFixedLeaveSlotAlreadyExists() {
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        Member target = createMemberWithId(2L, MemberRole.MEMBER);
+        FixedLeave existing = new FixedLeave(2L, 2L, DayOfWeek.MONDAY, "6,7", "시험", true);
+        FixedLeaveCreateRequest request = new FixedLeaveCreateRequest(
+                2L,
+                LocalDate.of(2026, 6, 22),
+                List.of(7),
+                "알바"
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of(existing));
+
+        assertThatThrownBy(() -> leaveService.createFixed(1L, request))
+                .isInstanceOf(LeaveException.class)
+                .hasMessageContaining("이미 고정휴무가 있는 교시입니다.");
+        then(fixedLeaveRepository).should(never()).save(any(FixedLeave.class));
     }
 
     @Test
