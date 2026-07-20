@@ -313,7 +313,7 @@
   color: var(--color-primary);
 }
 
-.staff-attendance-actions .suggestion-tag:not(:disabled),
+.staff-attendance-actions .suggestion-tag.has-content,
 .staff-attendance-actions .meal-tag.has-content,
 .staff-attendance-actions .todo-tag.has-content {
   border-color: var(--color-primary);
