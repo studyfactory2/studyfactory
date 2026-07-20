@@ -1,0 +1,83 @@
+name: Seed weekly study plan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Seed Kim member weekly plan
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USER }}/studyfactory/backend
+            set -a
+            . ./.env
+            set +a
+            docker exec -i studyfactory-postgres psql -v ON_ERROR_STOP=1 -U "$DB_USERNAME" -d "$DB_NAME" <<'SQL'
+            DO $$
+            DECLARE
+              target_member_id bigint;
+              target_branch_id bigint;
+              target_week date := date_trunc('week', current_date)::date;
+            BEGIN
+              SELECT id, branch_id
+                INTO target_member_id, target_branch_id
+                FROM members
+               WHERE name = '김회원'
+               ORDER BY id
+               LIMIT 1;
+
+              IF target_member_id IS NULL THEN
+                RAISE EXCEPTION '김회원 계정을 찾을 수 없습니다.';
+              END IF;
+
+              DELETE FROM weekly_plan_items
+               WHERE member_id = target_member_id
+                 AND week_start_date = target_week;
+
+              UPDATE weekly_plan_goals
+                 SET goal = '이번 주는 헌법·행정법 기출을 1회독하고, 매일 오답을 당일에 정리한다. 주말에는 전 범위 모의고사와 약점 보완에 집중하기.',
+                     updated_at = now()
+               WHERE member_id = target_member_id
+                 AND week_start_date = target_week;
+
+              IF NOT FOUND THEN
+                INSERT INTO weekly_plan_goals (member_id, branch_id, week_start_date, goal, created_at, updated_at)
+                VALUES (
+                  target_member_id,
+                  target_branch_id,
+                  target_week,
+                  '이번 주는 헌법·행정법 기출을 1회독하고, 매일 오답을 당일에 정리한다. 주말에는 전 범위 모의고사와 약점 보완에 집중하기.',
+                  now(), now()
+                );
+              END IF;
+
+              INSERT INTO weekly_plan_items (member_id, branch_id, week_start_date, period_index, day_index, content, done, sort_order, created_at, updated_at)
+              VALUES
+                (target_member_id, target_branch_id, target_week, 0, 0, '헌법 기본권 기출 30문제 풀기', true, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 1, 0, '행정법 총론 기출 25문제 + 오답 정리', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 3, 0, '한국사 근현대사 연표 복습', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 0, 1, '행정법 행정행위 파트 1회독', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 2, 1, '헌법 판례 키워드 20개 암기', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 5, 1, '영어 독해 2지문 + 단어 Day 12', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 0, 2, '민법 총칙 기출 25문제', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 1, 2, '행정법 오답노트 재풀이', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 4, 2, '국어 문법 개념 복습 및 문제 15개', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 0, 3, '헌법 통치구조 기출 30문제', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 2, 3, '행정학 기출 50문제 풀이', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 5, 3, '오늘 틀린 문제 오답 정리', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 0, 4, '행정법 최신 판례 정리', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 3, 4, '영어 독해 3지문 + 해석 점검', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 6, 4, '주간 오답노트 핵심 지문 복습', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 0, 5, '주간 모의고사 1회분 실전 풀이', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 2, 5, '모의고사 오답 분석 및 약점 정리', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 1, 6, '이번 주 오답노트 전체 복습', false, 0, now(), now()),
+                (target_member_id, target_branch_id, target_week, 4, 6, '다음 주 학습계획 및 목표 작성', false, 0, now(), now());
+            END $$;
+            SQL
