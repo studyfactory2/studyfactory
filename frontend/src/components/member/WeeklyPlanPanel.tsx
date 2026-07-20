@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiRequest } from '../../api/client';
 
 type WeeklyPlanItem = {
@@ -133,6 +134,7 @@ export function WeeklyPlanPanel() {
   const [storedPlan, setStoredPlan] = useState<StoredWeeklyPlan>({ goal: '', plans: {} });
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
+  const [saveCompleteAlertOpen, setSaveCompleteAlertOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const weekDays = useMemo(() => WEEKDAYS.map((label, index) => ({ label, date: addDays(weekStart, index) })), [weekStart]);
   const monthKey = toMonthKey(visibleMonth);
@@ -240,13 +242,13 @@ export function WeeklyPlanPanel() {
       nextPlans[cellKey] = [...(nextPlans[cellKey] || []), { text: value, done: false }];
     });
 
-    const saved = await savePlan(
-      { ...storedPlan, plans: nextPlans },
-      pendingDrafts.length > 0 ? '입력한 할 일까지 함께 저장되었습니다.' : '이번 주 계획이 저장되었습니다.',
-    );
+    const saved = await savePlan({ ...storedPlan, plans: nextPlans }, '');
 
-    if (saved && pendingDrafts.length > 0) {
-      setDrafts({});
+    if (saved) {
+      if (pendingDrafts.length > 0) {
+        setDrafts({});
+      }
+      setSaveCompleteAlertOpen(true);
     }
   };
 
@@ -389,6 +391,16 @@ export function WeeklyPlanPanel() {
         </>
       )}
       {message && <p className="weekly-plan-message">{message}</p>}
+      {saveCompleteAlertOpen && createPortal(
+        <div className="side-dish-modal-backdrop" role="presentation">
+          <section className="side-dish-small-modal" role="alertdialog" aria-modal="true" aria-labelledby="weekly-plan-save-complete-title">
+            <h2 id="weekly-plan-save-complete-title">저장 완료</h2>
+            <p>주간 학습장이 저장되었습니다.</p>
+            <button className="side-dish-alert-close" type="button" onClick={() => setSaveCompleteAlertOpen(false)}>확인</button>
+          </section>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
