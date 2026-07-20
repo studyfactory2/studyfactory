@@ -32,6 +32,7 @@ export function Dropdown({
   onToggle,
 }: DropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const toggledByPointerRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -64,7 +65,18 @@ export function Dropdown({
         aria-expanded={open}
         aria-haspopup="listbox"
         data-testid={testId}
-        onClick={onToggle}
+        onPointerDown={() => {
+          toggledByPointerRef.current = true;
+          onToggle();
+        }}
+        onClick={() => {
+          // 키보드로 활성화된 버튼은 pointerdown을 거치지 않으므로 click에서 연다.
+          if (toggledByPointerRef.current) {
+            toggledByPointerRef.current = false;
+            return;
+          }
+          onToggle();
+        }}
       >
         <span>{selectedOption.label}</span>
       </button>
