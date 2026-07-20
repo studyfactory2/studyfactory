@@ -158,7 +158,7 @@
   background: #fff;
   color: #333d4b;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   text-align: left;
   cursor: pointer;
 }
@@ -174,7 +174,7 @@
   padding: 12px;
   color: #8b95a1;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   text-align: center;
 }
 
@@ -811,7 +811,7 @@
   min-width: 138px;
   color: #333d4b;
   font-size: clamp(0.98rem, 3.5vw, 1.18rem);
-  font-weight: 900;
+  font-weight: 750;
   text-align: center;
   white-space: nowrap;
 }
@@ -1028,7 +1028,7 @@
 
 .staff-attendance-table td:nth-child(2) {
   text-align: left;
-  font-weight: 900;
+  font-weight: 700;
   color: #333d4b;
 }
 

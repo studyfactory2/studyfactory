@@ -705,8 +705,12 @@ function createBeverageSummary(
       status: toLeaveTypeLabel(beverage.leaveType),
     }))
     .sort(compareSummaryMembers);
-  const afterEightLeaveMemberIds = new Set(
-    afterEightTodayLeaves.map((status) => status.memberId)
+  // 오전에 제공하는 음료이므로, 당일 월차·오전반차는 신청 시각과 관계없이
+  // 제조 수량에서는 제외한다. 오후반차는 오전 음료를 받으므로 제외하지 않는다.
+  const beverageLeaveMemberIds = new Set(
+    dailyLeaveStatuses
+      .filter((status) => isTodayBeverageLeave(status, now))
+      .map((status) => status.memberId)
   );
   const tumblerCounts = new Map<string, number>();
   const cupCounts = new Map<string, number>();
@@ -720,7 +724,7 @@ function createBeverageSummary(
       const targetCounts = isTumblerDrink(drink) ? tumblerCounts : cupCounts;
       const targetDeductions = isTumblerDrink(drink) ? tumblerDeductions : cupDeductions;
       targetCounts.set(normalizedDrink, (targetCounts.get(normalizedDrink) || 0) + 1);
-      if (afterEightLeaveMemberIds.has(beverage.memberId)) {
+      if (beverageLeaveMemberIds.has(beverage.memberId)) {
         targetDeductions.set(normalizedDrink, (targetDeductions.get(normalizedDrink) || 0) + 1);
       } else if (isTumblerDrink(drink)) {
         const names = tumblerMemberNames.get(normalizedDrink) || [];
@@ -893,6 +897,12 @@ function isTodayLeaveRequestedAfterEight(status: DailyLeaveStatusResponse, now: 
   eight.setHours(8, 0, 0, 0);
 
   return status.leaveType !== 'AFTERNOON' && isSameDate(leaveDate, now) && isSameDate(requestedAt, now) && requestedAt >= eight;
+}
+
+function isTodayBeverageLeave(status: DailyLeaveStatusResponse, now: Date) {
+  const leaveDate = new Date(`${status.leaveDate}T00:00:00`);
+
+  return status.leaveType !== 'AFTERNOON' && isSameDate(leaveDate, now);
 }
 
 function toDateKey(date: Date) {
