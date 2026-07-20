@@ -389,19 +389,20 @@
   color: #fff;
 }
 
+.staff-attendance-table .status-member-leave span {
+  background: linear-gradient(135deg, #4593fc, #3182f6);
+  color: #fff;
+}
+
 .staff-attendance-table .status-half-leave span {
   background: #edf5ff;
-  color: var(--color-primary);
+  color: #d64d59;
 }
 
-.staff-attendance-table .status-leave span {
-  background: #f2edff;
-  color: #7c4dff;
-}
-
+.staff-attendance-table .status-leave span,
 .staff-attendance-table .status-special span {
-  background: #fff5e6;
-  color: #e88900;
+  background: #edf5ff;
+  color: #d64d59;
 }
 
 .staff-attendance-table tbody tr.second-room-row td,

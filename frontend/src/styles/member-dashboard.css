@@ -207,6 +207,12 @@
   color: #2477bd;
 }
 
+.member-calendar-leave-badge.manager {
+  border: 1px solid #cfd7df;
+  background: #eef1f4;
+  color: #65717d;
+}
+
 .member-calendar-grid button.past .member-calendar-leave-badge {
   opacity: 0.62;
 }
@@ -866,6 +872,19 @@
 
 .leave-history-card.without-cancel .leave-history-actions {
   align-self: center;
+}
+
+.leave-history-card.manager-leave {
+  border-color: #d9e0e6;
+  border-left-color: #9ca8b4;
+  background: #f5f7f9;
+  box-shadow: none;
+}
+
+.leave-history-card.manager-leave .leave-history-actions span {
+  border: 1px solid #d4dbe2;
+  background: #e9edf1;
+  color: #5f6b76;
 }
 
 .leave-history-card strong {

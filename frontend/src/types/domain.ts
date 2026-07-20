@@ -183,6 +183,14 @@ export type LeaveResponse = {
   updatedAt: string;
 };
 
+export type MemberLeavePlanResponse = {
+  id?: number | null;
+  leaveDate: string;
+  leaveType?: LeaveType | null;
+  label: string;
+  source: 'LEAVE' | 'SPECIAL_LEAVE';
+};
+
 export type MonthlyLeaveCalendarResponse = {
   leaveDate: string;
   label: string;
@@ -197,6 +205,7 @@ export type AttendanceBoardRowResponse = {
   createdAt?: string | null;
   certificationContent?: string | null;
   slots: string[];
+  slotSources?: string[];
 };
 
 export type DailyAttendanceBoardResponse = {

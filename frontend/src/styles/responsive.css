@@ -244,10 +244,12 @@
 
   .staff-attendance-table .status-absent span,
   .staff-attendance-table .status-present span,
+  .staff-attendance-table .status-member-leave span,
   .staff-attendance-table .status-half-leave span,
   .staff-attendance-table .status-leave span,
   .staff-attendance-table .status-special span,
   .staff-attendance-table .status-empty-seat span {
+    height: 27px;
     min-height: 27px;
     border-radius: 7px;
   }

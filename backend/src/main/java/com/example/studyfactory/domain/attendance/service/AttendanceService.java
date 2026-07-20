@@ -67,16 +67,17 @@ public class AttendanceService {
         List<Member> members = memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(targetBranchId);
         Map<Integer, Member> membersBySeat = toMembersBySeat(members);
         Map<Long, List<String>> statusesByMemberId = initializeStatuses(members);
+        Map<Long, List<String>> statusSourcesByMemberId = initializeStatusSources(members);
 
         List<Attendance> dailyAttendances = attendanceRepository.findDailyBoardAttendances(targetBranchId, targetDate);
-        applyAttendances(statusesByMemberId, dailyAttendances);
-        applyLeaveRequests(statusesByMemberId, targetBranchId, targetDate);
-        applyFixedLeaves(statusesByMemberId, targetBranchId, targetDate);
-        applySpecialLeaves(statusesByMemberId, targetBranchId, targetDate);
-        applyFixedLeaveCancellations(statusesByMemberId, dailyAttendances);
+        applyAttendances(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
+        applyLeaveRequests(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
+        applyFixedLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
+        applySpecialLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
+        applyFixedLeaveCancellations(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
         Set<Long> initializedMemberIds = findInitializedMemberIds(targetBranchId, targetDate);
 
-        return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId, initializedMemberIds));
+        return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId, statusSourcesByMemberId, initializedMemberIds));
     }
 
     @Transactional
@@ -231,6 +232,15 @@ public class AttendanceService {
         return statusesByMemberId;
     }
 
+    private Map<Long, List<String>> initializeStatusSources(List<Member> members) {
+        Map<Long, List<String>> sourcesByMemberId = new HashMap<>();
+        for (Member member : members) {
+            sourcesByMemberId.put(member.getId(), emptySlotSources());
+        }
+
+        return sourcesByMemberId;
+    }
+
     private List<String> emptySlots() {
         List<String> slots = new ArrayList<>();
         for (int slot = 0; slot < SLOT_COUNT; slot++) {
@@ -240,24 +250,43 @@ public class AttendanceService {
         return slots;
     }
 
-    private void applyAttendances(Map<Long, List<String>> statusesByMemberId, List<Attendance> attendances) {
+    private List<String> emptySlotSources() {
+        List<String> sources = new ArrayList<>();
+        for (int slot = 0; slot < SLOT_COUNT; slot++) {
+            sources.add("NONE");
+        }
+
+        return sources;
+    }
+
+    private void applyAttendances(
+            Map<Long, List<String>> statusesByMemberId,
+            Map<Long, List<String>> statusSourcesByMemberId,
+            List<Attendance> attendances
+    ) {
         for (Attendance attendance : attendances) {
             List<String> statuses = statusesByMemberId.get(attendance.getMemberId());
-            if (statuses == null) {
+            List<String> sources = statusSourcesByMemberId.get(attendance.getMemberId());
+            if (statuses == null || sources == null) {
                 continue;
             }
-            setStatus(statuses, attendance.getSlot(), PRESENT_STATUS);
+            setStatus(statuses, sources, attendance.getSlot(), PRESENT_STATUS, "NONE");
         }
     }
 
-    private void applyFixedLeaveCancellations(Map<Long, List<String>> statusesByMemberId, List<Attendance> attendances) {
+    private void applyFixedLeaveCancellations(
+            Map<Long, List<String>> statusesByMemberId,
+            Map<Long, List<String>> statusSourcesByMemberId,
+            List<Attendance> attendances
+    ) {
         for (Attendance attendance : attendances) {
             if (!FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText())) {
                 continue;
             }
             List<String> statuses = statusesByMemberId.get(attendance.getMemberId());
-            if (statuses != null) {
-                setStatus(statuses, attendance.getSlot(), EMPTY_STATUS);
+            List<String> sources = statusSourcesByMemberId.get(attendance.getMemberId());
+            if (statuses != null && sources != null) {
+                setStatus(statuses, sources, attendance.getSlot(), EMPTY_STATUS, "NONE");
             }
         }
     }
@@ -268,41 +297,59 @@ public class AttendanceService {
                         && parseSlots(fixedLeave.getSlots()).contains(slot));
     }
 
-    private void applyLeaveRequests(Map<Long, List<String>> statusesByMemberId, Long branchId, LocalDate date) {
+    private void applyLeaveRequests(
+            Map<Long, List<String>> statusesByMemberId,
+            Map<Long, List<String>> statusSourcesByMemberId,
+            Long branchId,
+            LocalDate date
+    ) {
         for (LeaveRequest leaveRequest : leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(branchId, date)) {
             List<String> statuses = statusesByMemberId.get(leaveRequest.getMemberId());
-            if (statuses == null) {
+            List<String> sources = statusSourcesByMemberId.get(leaveRequest.getMemberId());
+            if (statuses == null || sources == null) {
                 continue;
             }
             for (Integer slot : toLeaveSlots(leaveRequest.getLeaveType())) {
-                setStatus(statuses, slot, toLeaveTypeLabel(leaveRequest.getLeaveType()));
+                setStatus(statuses, sources, slot, toLeaveTypeLabel(leaveRequest.getLeaveType()), "MEMBER_LEAVE");
             }
         }
     }
 
-    private void applyFixedLeaves(Map<Long, List<String>> statusesByMemberId, Long branchId, LocalDate date) {
+    private void applyFixedLeaves(
+            Map<Long, List<String>> statusesByMemberId,
+            Map<Long, List<String>> statusSourcesByMemberId,
+            Long branchId,
+            LocalDate date
+    ) {
         for (FixedLeave fixedLeave : fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(branchId)) {
             if (fixedLeave.getDayOfWeek() != date.getDayOfWeek()) {
                 continue;
             }
             List<String> statuses = statusesByMemberId.get(fixedLeave.getMemberId());
-            if (statuses == null) {
+            List<String> sources = statusSourcesByMemberId.get(fixedLeave.getMemberId());
+            if (statuses == null || sources == null) {
                 continue;
             }
             for (Integer slot : parseSlots(fixedLeave.getSlots())) {
-                setStatus(statuses, slot, fixedLeave.getReason());
+                setStatus(statuses, sources, slot, toAttendanceLeaveLabel(fixedLeave.getReason()), "MANAGER_LEAVE");
             }
         }
     }
 
-    private void applySpecialLeaves(Map<Long, List<String>> statusesByMemberId, Long branchId, LocalDate date) {
+    private void applySpecialLeaves(
+            Map<Long, List<String>> statusesByMemberId,
+            Map<Long, List<String>> statusSourcesByMemberId,
+            Long branchId,
+            LocalDate date
+    ) {
         for (SpecialLeave specialLeave : specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(branchId, date)) {
             List<String> statuses = statusesByMemberId.get(specialLeave.getMemberId());
-            if (statuses == null) {
+            List<String> sources = statusSourcesByMemberId.get(specialLeave.getMemberId());
+            if (statuses == null || sources == null) {
                 continue;
             }
             for (Integer slot : parseSlots(specialLeave.getSlots())) {
-                setStatus(statuses, slot, toSpecialLeaveLabel(specialLeave));
+                setStatus(statuses, sources, slot, toAttendanceLeaveLabel(toSpecialLeaveLabel(specialLeave)), "MANAGER_LEAVE");
             }
         }
     }
@@ -313,11 +360,12 @@ public class AttendanceService {
                 .collect(Collectors.toSet());
     }
 
-    private void setStatus(List<String> statuses, Integer slot, String status) {
+    private void setStatus(List<String> statuses, List<String> sources, Integer slot, String status, String source) {
         if (slot < 1 || slot > SLOT_COUNT) {
             return;
         }
         statuses.set(slot - 1, status);
+        sources.set(slot - 1, source);
     }
 
     private List<Integer> toLeaveSlots(LeaveType leaveType) {
@@ -350,6 +398,17 @@ public class AttendanceService {
         return "오후";
     }
 
+    private String toAttendanceLeaveLabel(String reason) {
+        if ("오전반차".equals(reason)) {
+            return "오전";
+        }
+        if ("오후반차".equals(reason)) {
+            return "오후";
+        }
+
+        return reason;
+    }
+
     private String toSpecialLeaveLabel(SpecialLeave specialLeave) {
         if ("기타".equals(specialLeave.getReason()) && specialLeave.getCustomReason() != null) {
             return specialLeave.getCustomReason();
@@ -362,6 +421,7 @@ public class AttendanceService {
             List<Member> members,
             Map<Integer, Member> membersBySeat,
             Map<Long, List<String>> statusesByMemberId,
+            Map<Long, List<String>> statusSourcesByMemberId,
             Set<Long> initializedMemberIds
     ) {
         List<AttendanceBoardRowResponse> rows = new ArrayList<>();
@@ -369,7 +429,7 @@ public class AttendanceService {
         for (int seatNumber = 1; seatNumber <= lastSeatNumber; seatNumber++) {
             Member member = membersBySeat.get(seatNumber);
             if (member == null) {
-                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", null, null, null, emptySlots()));
+                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", null, null, null, emptySlots(), emptySlotSources()));
                 continue;
             }
             rows.add(new AttendanceBoardRowResponse(
@@ -379,7 +439,8 @@ public class AttendanceService {
                     initializedMemberIds.contains(member.getId()) ? null : member.getJoinDate(),
                     member.getCreatedAt(),
                     getCertificationContent(member),
-                    statusesByMemberId.get(member.getId())
+                    statusesByMemberId.get(member.getId()),
+                    statusSourcesByMemberId.get(member.getId())
             ));
         }
         members.stream()
@@ -391,7 +452,8 @@ public class AttendanceService {
                         initializedMemberIds.contains(member.getId()) ? null : member.getJoinDate(),
                         member.getCreatedAt(),
                         getCertificationContent(member),
-                        statusesByMemberId.get(member.getId())
+                        statusesByMemberId.get(member.getId()),
+                        statusSourcesByMemberId.get(member.getId())
                 )));
 
         return rows;

@@ -7,6 +7,7 @@ import com.example.studyfactory.domain.leave.dto.FixedLeaveManagementResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
+import com.example.studyfactory.domain.leave.dto.MemberLeavePlanResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
@@ -28,6 +29,8 @@ import java.time.YearMonth;
 import java.time.DayOfWeek;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,6 +68,31 @@ public class LeaveService {
         return leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
                 .stream()
                 .map(LeaveResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MemberLeavePlanResponse> findMyLeavePlan(Long memberId) {
+        List<MemberLeavePlanResponse> responses = new ArrayList<>();
+        Map<String, MemberLeavePlanResponse> managerLeavesByDateAndReason = new LinkedHashMap<>();
+
+        leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
+                .forEach(leaveRequest -> responses.add(MemberLeavePlanResponse.fromLeaveRequest(
+                        leaveRequest,
+                        toLeaveHistoryLabel(leaveRequest.getLeaveType())
+                )));
+        specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
+                .forEach(specialLeave -> {
+                    String label = toSpecialLeaveLabel(specialLeave);
+                    managerLeavesByDateAndReason.putIfAbsent(
+                            specialLeave.getLeaveDate() + "|" + label,
+                            MemberLeavePlanResponse.fromSpecialLeave(specialLeave, label)
+                    );
+                });
+        responses.addAll(managerLeavesByDateAndReason.values());
+
+        return responses.stream()
+                .sorted(Comparator.comparing(MemberLeavePlanResponse::leaveDate).reversed())
                 .toList();
     }
 
@@ -373,6 +401,17 @@ public class LeaveService {
         }
 
         return "오후";
+    }
+
+    private String toLeaveHistoryLabel(LeaveType leaveType) {
+        if (leaveType == LeaveType.FULL) {
+            return "월차";
+        }
+        if (leaveType == LeaveType.MORNING) {
+            return "오전반차";
+        }
+
+        return "오후반차";
     }
 
     private String toSpecialLeaveLabel(SpecialLeave specialLeave) {

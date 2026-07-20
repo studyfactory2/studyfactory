@@ -8,6 +8,7 @@ import com.example.studyfactory.domain.leave.dto.FixedLeaveManagementResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
+import com.example.studyfactory.domain.leave.dto.MemberLeavePlanResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
@@ -45,6 +46,11 @@ public class LeaveController {
     @GetMapping("/me")
     public List<LeaveResponse> findMine(@CurrentMember Long memberId) {
         return leaveService.findMine(memberId);
+    }
+
+    @GetMapping("/me/plan")
+    public List<MemberLeavePlanResponse> findMyLeavePlan(@CurrentMember Long memberId) {
+        return leaveService.findMyLeavePlan(memberId);
     }
 
     @DeleteMapping("/{leaveId}")
