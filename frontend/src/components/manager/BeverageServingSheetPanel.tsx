@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { apiRequest } from '../../api/client';
+import { Dropdown, type DropdownOption } from '../common/Dropdown';
 import type {
   BeveragePreferenceResponse,
   Branch,
@@ -32,6 +33,22 @@ const TIMETABLE = [
   { label: '7교시', startTime: '20:40', endTime: '22:00', isBreak: false },
 ];
 
+const CUSTOM_DRINK_VALUE = '__custom__';
+
+const BASE_DRINK_OPTIONS: DropdownOption[] = [
+  { value: '', label: '음료를 선택해주세요' },
+  { value: '선식', label: '선식' },
+  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '아아', label: '아아' },
+  { value: '뜨아', label: '뜨아' },
+  { value: '텀아아', label: '텀아아' },
+  { value: '텀뜨아', label: '텀뜨아' },
+];
+const EDIT_DRINK_OPTIONS: DropdownOption[] = [
+  ...BASE_DRINK_OPTIONS,
+  { value: CUSTOM_DRINK_VALUE, label: '직접 입력' },
+];
+
 export function BeverageServingSheetPanel({ branches, mode = 'serving' }: BeverageServingSheetPanelProps) {
   const isMakingMode = mode === 'making';
   const branch = branches[0] || { id: 1, name: '망미점' };
@@ -43,6 +60,7 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
   const [editingSeat, setEditingSeat] = useState<EditingSeat | null>(null);
   const [emptySeatNumber, setEmptySeatNumber] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const makingTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const selectedRoom = rooms.find((room) => room.id === selectedRoomId) || rooms[0] || null;
   const selectedRoomIndex = Math.max(0, rooms.findIndex((room) => room.id === selectedRoom?.id));
   const beveragesBySeat = useMemo(() => {
@@ -131,14 +149,50 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
     );
   };
 
+  const goToServingSheet = () => {
+    window.location.assign('/managerdashboard?view=beverage_serving_sheet');
+  };
+
+  const handleMakingTouchStart = (event: TouchEvent<HTMLElement>) => {
+    event.stopPropagation();
+    const touch = event.touches[0];
+    makingTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleMakingTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    event.stopPropagation();
+    const start = makingTouchStartRef.current;
+    makingTouchStartRef.current = null;
+    if (!start) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (deltaX < -54 && Math.abs(deltaY) < 72 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+      goToServingSheet();
+    }
+  };
+
   return (
-    <div className={`beverage-serving-panel${isMakingMode ? ' beverage-making-panel' : ''}`}>
+    <div
+      className={`beverage-serving-panel${isMakingMode ? ' beverage-making-panel' : ''}`}
+      onTouchStart={isMakingMode ? handleMakingTouchStart : undefined}
+      onTouchEnd={isMakingMode ? handleMakingTouchEnd : undefined}
+    >
       <header className="beverage-serving-title">
-        <a href="/managerdashboard?view=staff-page" aria-label="스텝페이지로 돌아가기">
+        <a className="beverage-serving-back" href="/managerdashboard?view=staff-page" aria-label="스텝페이지로 돌아가기">
           <BackIcon />
         </a>
         <h2>{isMakingMode ? '음료 제조' : '음료 서빙'}</h2>
-        <span>{branch.name}</span>
+        <span className="beverage-serving-branch">{branch.name}</span>
+        {isMakingMode && (
+          <a className="beverage-serving-shortcut" href="/managerdashboard?view=beverage_serving_sheet">
+            <span>음료 서빙</span>
+            <ForwardIcon />
+          </a>
+        )}
       </header>
 
       {message ? (
@@ -416,12 +470,20 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
   const [drinks, setDrinks] = useState(() => parseDrinks(beverage.drinks));
   const [note, setNote] = useState(() => (beverage.notes === '입력 없음' ? '' : beverage.notes?.trim() || ''));
   const [isComposing, setIsComposing] = useState(false);
+  const [editingDrinkIndex, setEditingDrinkIndex] = useState<number | null>(null);
+  const [editingDrinkValue, setEditingDrinkValue] = useState('');
+  const [editingCustomDrink, setEditingCustomDrink] = useState(false);
+  const [drinkDropdownOpen, setDrinkDropdownOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setDrinkInput('');
     setDrinks(parseDrinks(beverage.drinks));
     setNote(beverage.notes === '입력 없음' ? '' : beverage.notes?.trim() || '');
+    setEditingDrinkIndex(null);
+    setEditingDrinkValue('');
+    setEditingCustomDrink(false);
+    setDrinkDropdownOpen(false);
   }, [beverage.memberId, beverage.drinks, beverage.notes]);
 
   const addDrink = () => {
@@ -436,6 +498,39 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
 
   const removeDrink = (index: number) => {
     setDrinks((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    if (editingDrinkIndex === index) {
+      setEditingDrinkIndex(null);
+      setEditingDrinkValue('');
+      setEditingCustomDrink(false);
+      setDrinkDropdownOpen(false);
+    }
+  };
+
+  const startEditingDrink = (index: number) => {
+    setEditingDrinkIndex(index);
+    setEditingDrinkValue(drinks[index]);
+    setEditingCustomDrink(!BASE_DRINK_OPTIONS.some((option) => option.value && option.value === drinks[index]));
+    setDrinkDropdownOpen(false);
+  };
+
+  const saveEditedDrink = () => {
+    const nextDrink = editingDrinkValue.trim();
+    if (editingDrinkIndex == null || !nextDrink) {
+      return;
+    }
+
+    setDrinks((current) => current.map((drink, index) => index === editingDrinkIndex ? nextDrink : drink));
+    setEditingDrinkIndex(null);
+    setEditingDrinkValue('');
+    setEditingCustomDrink(false);
+    setDrinkDropdownOpen(false);
+  };
+
+  const cancelEditingDrink = () => {
+    setEditingDrinkIndex(null);
+    setEditingDrinkValue('');
+    setEditingCustomDrink(false);
+    setDrinkDropdownOpen(false);
   };
 
   const save = async () => {
@@ -492,8 +587,58 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
           ) : (
             drinks.map((drink, index) => (
               <li key={`${drink}-${index}`}>
-                <span>{index + 1}. {drink}</span>
-                <button type="button" disabled={saving} onClick={() => removeDrink(index)}>삭제</button>
+                {editingDrinkIndex === index ? (
+                  <div className="beverage-seat-modal-drink-edit">
+                    {editingCustomDrink ? (
+                      <input
+                        aria-label={`${index + 1}번째 음료 직접 입력`}
+                        autoFocus
+                        disabled={saving}
+                        placeholder="음료를 직접 입력하세요"
+                        value={editingDrinkValue}
+                        onChange={(event) => setEditingDrinkValue(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            saveEditedDrink();
+                          }
+                        }}
+                      />
+                    ) : (
+                      <Dropdown
+                        classNamePrefix="form-dropdown"
+                        disabled={saving}
+                        label={`${index + 1}번째 음료 메뉴 선택`}
+                        open={drinkDropdownOpen}
+                        options={EDIT_DRINK_OPTIONS}
+                        placeholderClass={!editingDrinkValue}
+                        selectedOption={EDIT_DRINK_OPTIONS.find((option) => option.value === editingDrinkValue) || BASE_DRINK_OPTIONS[0]}
+                        onToggle={() => setDrinkDropdownOpen((open) => !open)}
+                        onSelect={(value) => {
+                          setDrinkDropdownOpen(false);
+                          if (value === CUSTOM_DRINK_VALUE) {
+                            setEditingDrinkValue('');
+                            setEditingCustomDrink(true);
+                            return;
+                          }
+                          setEditingDrinkValue(value);
+                        }}
+                      />
+                    )}
+                    <div className="beverage-seat-modal-edit-actions">
+                      <button className="save-edit" type="button" disabled={saving || !editingDrinkValue.trim()} onClick={saveEditedDrink}>완료</button>
+                      <button className="cancel-edit" type="button" disabled={saving} onClick={cancelEditingDrink}>취소</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span>{index + 1}. {drink}</span>
+                    <div className="beverage-seat-modal-item-actions">
+                      <button className="edit-drink" type="button" disabled={saving} onClick={() => startEditingDrink(index)}>수정</button>
+                      <button type="button" disabled={saving} onClick={() => removeDrink(index)}>삭제</button>
+                    </div>
+                  </>
+                )}
               </li>
             ))
           )}
@@ -830,6 +975,14 @@ function BackIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+function ForwardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m9 18 6-6-6-6" />
     </svg>
   );
 }

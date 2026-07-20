@@ -5,13 +5,14 @@
 }
 
 .beverage-serving-title {
+  position: relative;
   display: grid;
   grid-template-columns: 28px minmax(0, auto) 1fr;
   align-items: center;
   gap: 10px;
 }
 
-.beverage-serving-title a {
+.beverage-serving-title .beverage-serving-back {
   width: 28px;
   height: 30px;
   display: grid;
@@ -19,7 +20,7 @@
   color: #26323a;
 }
 
-.beverage-serving-title svg {
+.beverage-serving-title .beverage-serving-back svg {
   width: 23px;
   height: 23px;
   fill: none;
@@ -29,14 +30,15 @@
   stroke-width: 2.4;
 }
 
-.beverage-serving-title h2 {
+.beverage-serving-title h2,
+.beverage-serving-shortcut {
   margin: 0;
   color: #202931;
   font-size: 22px;
   font-weight: 900;
 }
 
-.beverage-serving-title span {
+.beverage-serving-branch {
   width: fit-content;
   justify-self: end;
   padding: 7px 12px;
@@ -45,6 +47,56 @@
   color: #fff;
   font-size: 12px;
   font-weight: 900;
+}
+
+.beverage-making-panel .beverage-serving-title {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+}
+
+.beverage-making-panel .beverage-serving-branch {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.beverage-serving-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: end;
+  min-height: 30px;
+  padding: 0;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.beverage-serving-shortcut::selection {
+  background: transparent;
+  color: inherit;
+}
+
+.beverage-serving-shortcut span {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.beverage-serving-shortcut svg {
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
 }
 
 .beverage-serving-room-tabs {
@@ -503,6 +555,13 @@ button.beverage-serving-cell:disabled {
   font-weight: 900;
 }
 
+.beverage-seat-modal-item-actions,
+.beverage-seat-modal-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .beverage-seat-modal-drinks li.empty {
   justify-content: center;
   color: #94a3b8;
@@ -518,6 +577,103 @@ button.beverage-serving-cell:disabled {
   font-size: 11px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.beverage-seat-modal-drinks li button.edit-drink {
+  background: #edf5ff;
+  color: #2474df;
+}
+
+.beverage-seat-modal-drink-edit {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown,
+.beverage-seat-modal-drink-edit input {
+  min-width: 0;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown,
+.beverage-seat-modal-drink-edit .form-dropdown-button,
+.beverage-seat-modal-drink-edit input {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d8e4ec;
+  border-radius: 7px;
+  background: #fff;
+  color: #26323a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown,
+.beverage-seat-modal-drink-edit input {
+  grid-column: 1 / -1;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown {
+  position: relative;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown-button {
+  min-height: 32px;
+  padding: 0 30px 0 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown-button span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown-button::after {
+  right: 11px;
+  width: 7px;
+  height: 7px;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown-menu {
+  z-index: 80;
+  max-height: 194px;
+  overflow-y: auto;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown-option {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+.beverage-seat-modal-drink-edit input:focus {
+  outline: none;
+  border-color: #3182f6;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.12);
+}
+
+.beverage-seat-modal-edit-actions button {
+  min-width: 34px;
+  min-height: 28px;
+  padding: 0 6px;
+}
+
+.beverage-seat-modal-edit-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.beverage-seat-modal-edit-actions .save-edit {
+  background: #3182f6;
+  color: #fff;
+}
+
+.beverage-seat-modal-edit-actions .cancel-edit {
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .beverage-seat-modal textarea {
@@ -560,4 +716,3 @@ button.beverage-serving-cell:disabled {
   background: #3182f6;
   color: #fff;
 }
-

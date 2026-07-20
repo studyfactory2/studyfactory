@@ -685,7 +685,7 @@
   color: #4e5968;
 }
 
-.beverage-making-panel .beverage-serving-title span {
+.beverage-making-panel .beverage-serving-branch {
   background: linear-gradient(135deg, #4593fc, #3182f6);
   box-shadow: 0 6px 14px rgba(49, 130, 246, 0.18);
 }
@@ -759,7 +759,7 @@
   color: #4e5968;
 }
 
-.beverage-serving-panel:not(.beverage-making-panel) .beverage-serving-title span {
+.beverage-serving-panel:not(.beverage-making-panel) .beverage-serving-branch {
   background: linear-gradient(135deg, #4593fc, #3182f6);
   box-shadow: 0 6px 14px rgba(49, 130, 246, 0.18);
 }
@@ -1146,7 +1146,7 @@
   .beverage-making-panel .beverage-serving-title h2 {
     font-size: 19px;
   }
-  .beverage-making-panel .beverage-serving-title span {
+  .beverage-making-panel .beverage-serving-branch {
     padding: 7px 10px;
     font-size: 11px;
   }
