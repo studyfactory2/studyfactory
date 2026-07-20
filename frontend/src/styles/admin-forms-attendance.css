@@ -864,6 +864,7 @@
   white-space: nowrap;
 }
 
+.staff-attendance-actions .suggestion-tag.has-content,
 .staff-attendance-actions .meal-tag.has-content,
 .staff-attendance-actions .todo-tag.has-content {
   border-color: #286ee8;
