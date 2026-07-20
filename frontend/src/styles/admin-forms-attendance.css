@@ -864,12 +864,17 @@
   white-space: nowrap;
 }
 
-.staff-attendance-actions .suggestion-tag:not(:disabled),
 .staff-attendance-actions .meal-tag.has-content,
 .staff-attendance-actions .todo-tag.has-content {
   border-color: #286ee8;
   background: linear-gradient(180deg, #4593fc 0%, #1b64da 100%);
   color: #fff;
+}
+
+.staff-attendance-actions .suggestion-tag {
+  border-color: #d6e5ff;
+  background: #edf5ff;
+  color: #1b64da;
 }
 
 .staff-attendance-actions .meal-tag:not(.has-content),
