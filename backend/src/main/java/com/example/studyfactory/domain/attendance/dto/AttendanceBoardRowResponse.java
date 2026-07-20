@@ -11,6 +11,7 @@ public record AttendanceBoardRowResponse(
         LocalDate joinDate,
         LocalDateTime createdAt,
         String certificationContent,
-        List<String> slots
+        List<String> slots,
+        List<String> slotSources
 ) {
 }

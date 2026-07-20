@@ -96,6 +96,9 @@ class AttendanceServiceTest {
         assertThat(response.rows().get(6).memberId()).isEqualTo(2L);
         assertThat(response.rows().get(6).name()).isEqualTo("김태환");
         assertThat(response.rows().get(6).slots()).containsExactly("오전", "오전", "오전", "오전", "O", "스터디", "알바");
+        assertThat(response.rows().get(6).slotSources()).containsExactly(
+                "MEMBER_LEAVE", "MEMBER_LEAVE", "MEMBER_LEAVE", "MEMBER_LEAVE", "NONE", "MANAGER_LEAVE", "MANAGER_LEAVE"
+        );
         assertThat(response.rows().get(response.rows().size() - 1).seatNumber()).isNull();
         assertThat(response.rows().get(response.rows().size() - 1).name()).isEqualTo("좌석없음");
     }

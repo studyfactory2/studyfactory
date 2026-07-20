@@ -659,11 +659,12 @@ export function StaffAttendancePanel() {
                       </td>
                     ) : SLOT_LABELS.map((slot, index) => {
                       const status = row.slots[index] || 'X';
+                      const statusSource = row.slotSources?.[index] || 'NONE';
                       const selected = selectedSlot?.seatNumber === row.seatNumber && selectedSlot?.slot === slot;
 
                       return (
                         <td
-                          className={`${toStatusClassName(status, emptySeat)}${selected ? ' selected-slot' : ''}`}
+                          className={`${toStatusClassName(status, emptySeat, statusSource)}${selected ? ' selected-slot' : ''}`}
                           key={slot}
                           onClick={() => {
                             if (row.seatNumber == null) {
@@ -672,7 +673,7 @@ export function StaffAttendancePanel() {
                             setSelectedSlot({ memberId: row.memberId ?? null, seatNumber: row.seatNumber, name: row.name, slot });
                           }}
                         >
-                          <span>{status}</span>
+                          <span>{toAttendanceDisplayLabel(status)}</span>
                         </td>
                       );
                     })}
@@ -1224,7 +1225,7 @@ function createMonthCalendar(date: string) {
   };
 }
 
-function toStatusClassName(status: string, emptySeat: boolean) {
+function toStatusClassName(status: string, emptySeat: boolean, source = 'NONE') {
   if (emptySeat) {
     return 'status-empty-seat';
   }
@@ -1235,11 +1236,25 @@ function toStatusClassName(status: string, emptySeat: boolean) {
   if (status === 'O') {
     return 'status-present';
   }
+  if (source === 'MEMBER_LEAVE') {
+    return 'status-member-leave';
+  }
   if (status === '오전' || status === '오후') {
     return 'status-half-leave';
   }
 
   return 'status-leave';
+}
+
+function toAttendanceDisplayLabel(status: string) {
+  if (status === '오전반차') {
+    return '오전';
+  }
+  if (status === '오후반차') {
+    return '오후';
+  }
+
+  return status;
 }
 
 function toAttendanceStatusLabel(status: SlotStatusUpdateType, reason?: string) {

@@ -1117,20 +1117,8 @@
   font-weight: 900;
 }
 
-.staff-attendance-table .status-half-leave {
-  background: #fff;
-  color: #155b40;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.staff-attendance-table .status-leave {
-  background: #fff;
-  color: #d71920;
-  font-size: 11px;
-  font-weight: 900;
-}
-
+.staff-attendance-table .status-half-leave,
+.staff-attendance-table .status-leave,
 .staff-attendance-table .status-special {
   background: #fff;
   color: #d71920;
@@ -1140,6 +1128,7 @@
 
 .staff-attendance-table .status-absent span,
 .staff-attendance-table .status-present span,
+.staff-attendance-table .status-member-leave span,
 .staff-attendance-table .status-half-leave span,
 .staff-attendance-table .status-leave span,
 .staff-attendance-table .status-special span {
@@ -1168,14 +1157,21 @@
   color: #fff;
 }
 
+.staff-attendance-table .status-member-leave span {
+  background: linear-gradient(180deg, #4593fc 0%, #1b64da 100%);
+  color: #fff;
+}
+
 .staff-attendance-table .status-half-leave span,
 .staff-attendance-table .status-leave span,
 .staff-attendance-table .status-special span {
-  background: #c8f3dc;
+  background: #edf5ff;
+  color: #d64d59;
 }
 
 .staff-attendance-table tbody td.status-absent,
 .staff-attendance-table tbody td.status-present,
+.staff-attendance-table tbody td.status-member-leave,
 .staff-attendance-table tbody td.status-half-leave,
 .staff-attendance-table tbody td.status-leave {
   cursor: pointer;

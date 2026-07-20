@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiRequest } from '../../api/client';
-import type { LeaveResponse, LeaveType as ApiLeaveType } from '../../types/domain';
+import type { LeaveResponse, LeaveType as ApiLeaveType, MemberLeavePlanResponse } from '../../types/domain';
 
 type LeaveType = '월차' | '오전반차' | '오후반차';
 type Message = {
@@ -48,18 +48,18 @@ export function LeavePlanPanel() {
   const today = useMemo(() => toDateKey(new Date()), []);
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState(today);
-  const [leaves, setLeaves] = useState<LeaveResponse[]>([]);
+  const [leaves, setLeaves] = useState<MemberLeavePlanResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<LeaveResponse | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MemberLeavePlanResponse | null>(null);
   const [deleteCompleteOpen, setDeleteCompleteOpen] = useState(false);
   const days = useMemo(() => getMonthDays(visibleMonth), [visibleMonth]);
   const emptyDays = useMemo(() => Array.from({ length: visibleMonth.getDay() }, (_, index) => index), [visibleMonth]);
   const leavesByDate = useMemo(() => {
-    const grouped = new Map<string, LeaveResponse[]>();
+    const grouped = new Map<string, MemberLeavePlanResponse[]>();
     for (const leave of leaves) {
       grouped.set(leave.leaveDate, [...(grouped.get(leave.leaveDate) || []), leave]);
     }
@@ -78,7 +78,7 @@ export function LeavePlanPanel() {
   const loadLeaves = async () => {
     setLoading(true);
     try {
-      const responses = await apiRequest<LeaveResponse[]>('/api/leaves/me');
+      const responses = await apiRequest<MemberLeavePlanResponse[]>('/api/leaves/me/plan');
       setLeaves(responses);
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '휴무 내역을 불러오지 못했습니다.' });
@@ -127,7 +127,7 @@ export function LeavePlanPanel() {
   };
 
   const deleteLeave = async () => {
-    if (!deleteTarget) {
+    if (!deleteTarget?.id) {
       return;
     }
 
@@ -179,9 +179,12 @@ export function LeavePlanPanel() {
               <span className="member-calendar-date-number">{date.getDate()}</span>
               {dayLeaves.length > 0 && (
                 <span className="member-calendar-leave-badges">
-                  {dayLeaves.slice(0, 2).map((leave) => (
-                    <span className={`member-calendar-leave-badge ${toLeaveBadgeClassName(leave.leaveType)}`} key={leave.id}>
-                      {toCalendarLeaveLabel(leave.leaveType)}
+                  {dayLeaves.slice(0, 2).map((leave, index) => (
+                    <span
+                      className={`member-calendar-leave-badge ${toLeaveBadgeClassName(leave)}`}
+                      key={`${leave.source}-${leave.id ?? leave.label}-${index}`}
+                    >
+                      {toCalendarLeaveLabel(leave)}
                     </span>
                   ))}
                 </span>
@@ -225,16 +228,20 @@ export function LeavePlanPanel() {
           <p>내역이 없습니다.</p>
         ) : (
           <div className="leave-history-list">
-            {leaves.map((leave) => {
-              const canCancel = leave.leaveDate >= today;
+            {leaves.map((leave, index) => {
+              const canCancel = leave.source === 'LEAVE' && leave.leaveDate >= today && Boolean(leave.id);
+              const isManagerLeave = leave.source === 'SPECIAL_LEAVE';
 
               return (
-                <article className={`leave-history-card${canCancel ? '' : ' without-cancel'}`} key={leave.id}>
+                <article
+                  className={`leave-history-card${canCancel ? '' : ' without-cancel'}${isManagerLeave ? ' manager-leave' : ''}`}
+                  key={`${leave.source}-${leave.id ?? leave.leaveDate}-${leave.label}-${index}`}
+                >
                   <div>
                     <strong>{formatCompactLeaveDate(leave.leaveDate)}</strong>
                   </div>
                   <div className="leave-history-actions">
-                    <span>{toLeaveTypeLabel(leave.leaveType)}</span>
+                    <span>{leave.label}</span>
                     {canCancel && (
                       <button type="button" onClick={() => setDeleteTarget(leave)}>⊗ 취소</button>
                     )}
@@ -318,7 +325,7 @@ function LeaveCompleteModal({ onClose }: { onClose: () => void }) {
 }
 
 type LeaveDeleteConfirmModalProps = {
-  leave: LeaveResponse;
+  leave: MemberLeavePlanResponse;
   submitting: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -329,7 +336,7 @@ function LeaveDeleteConfirmModal({ leave, submitting, onClose, onConfirm }: Leav
     <div className="side-dish-modal-backdrop" role="presentation">
       <section className="side-dish-small-modal" role="dialog" aria-modal="true" aria-labelledby="leave-delete-title">
         <h2 id="leave-delete-title">휴무 취소</h2>
-        <p>{formatLeaveDate(leave.leaveDate)} {toLeaveTypeLabel(leave.leaveType)} 신청을 취소하시겠습니까?</p>
+        <p>{formatLeaveDate(leave.leaveDate)} {leave.label} 신청을 취소하시겠습니까?</p>
         <div className="side-dish-modal-actions">
           <button className="side-dish-modal-cancel" type="button" disabled={submitting} onClick={onClose}>닫기</button>
           <button className="side-dish-modal-danger" type="button" disabled={submitting} onClick={onConfirm}>
@@ -382,33 +389,28 @@ function toApiLeaveType(leaveType: LeaveType): ApiLeaveType {
   return 'AFTERNOON';
 }
 
-function toLeaveTypeLabel(leaveType: ApiLeaveType) {
-  if (leaveType === 'FULL') {
+function toCalendarLeaveLabel(leave: MemberLeavePlanResponse) {
+  if (leave.source === 'SPECIAL_LEAVE') {
+    return leave.label;
+  }
+  if (leave.leaveType === 'FULL') {
     return '월차';
   }
-  if (leaveType === 'MORNING') {
-    return '오전반차';
-  }
-
-  return '오후반차';
-}
-
-function toCalendarLeaveLabel(leaveType: ApiLeaveType) {
-  if (leaveType === 'FULL') {
-    return '월차';
-  }
-  if (leaveType === 'MORNING') {
+  if (leave.leaveType === 'MORNING') {
     return '오전';
   }
 
   return '오후';
 }
 
-function toLeaveBadgeClassName(leaveType: ApiLeaveType) {
-  if (leaveType === 'FULL') {
+function toLeaveBadgeClassName(leave: MemberLeavePlanResponse) {
+  if (leave.source === 'SPECIAL_LEAVE') {
+    return 'manager';
+  }
+  if (leave.leaveType === 'FULL') {
     return 'full';
   }
-  if (leaveType === 'MORNING') {
+  if (leave.leaveType === 'MORNING') {
     return 'morning';
   }
 
