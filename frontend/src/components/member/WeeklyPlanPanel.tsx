@@ -223,8 +223,30 @@ export function WeeklyPlanPanel() {
       });
       setStoredPlan(toStoredPlan(response));
       setMessage(successMessage);
+      return true;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '주간학습장을 저장하지 못했습니다.');
+      return false;
+    }
+  };
+
+  const savePlanWithDrafts = async () => {
+    const nextPlans = { ...storedPlan.plans };
+    const pendingDrafts = Object.entries(drafts)
+      .map(([cellKey, value]) => [cellKey, value.trim()] as const)
+      .filter(([, value]) => value);
+
+    pendingDrafts.forEach(([cellKey, value]) => {
+      nextPlans[cellKey] = [...(nextPlans[cellKey] || []), { text: value, done: false }];
+    });
+
+    const saved = await savePlan(
+      { ...storedPlan, plans: nextPlans },
+      pendingDrafts.length > 0 ? '입력한 할 일까지 함께 저장되었습니다.' : '이번 주 계획이 저장되었습니다.',
+    );
+
+    if (saved && pendingDrafts.length > 0) {
+      setDrafts({});
     }
   };
 
@@ -361,7 +383,7 @@ export function WeeklyPlanPanel() {
               프린트 / PDF 저장
             </button>
           </div>
-          <button className="member-primary-action" type="button" onClick={() => void savePlan()}>
+          <button className="member-primary-action" type="button" onClick={() => void savePlanWithDrafts()}>
             이번 주 계획 저장하기
           </button>
         </>
