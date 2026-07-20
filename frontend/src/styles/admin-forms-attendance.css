@@ -864,12 +864,17 @@
   white-space: nowrap;
 }
 
-.staff-attendance-actions .suggestion-tag:not(:disabled),
 .staff-attendance-actions .meal-tag.has-content,
 .staff-attendance-actions .todo-tag.has-content {
   border-color: #286ee8;
   background: linear-gradient(180deg, #4593fc 0%, #1b64da 100%);
   color: #fff;
+}
+
+.staff-attendance-actions .suggestion-tag {
+  border-color: #d6e5ff;
+  background: #edf5ff;
+  color: #1b64da;
 }
 
 .staff-attendance-actions .meal-tag:not(.has-content),
@@ -933,7 +938,8 @@
   overflow: auto;
   position: relative;
   touch-action: pan-x pan-y;
-  display: block;
+  display: flex;
+  flex-direction: column;
   border: 1px solid #d6e5ff;
   border-radius: 2px 2px 18px 18px;
   background: #fff;
@@ -941,6 +947,7 @@
 
 .staff-attendance-table {
   width: 100%;
+  flex: 0 0 auto;
   min-width: 0;
   table-layout: fixed;
   border-collapse: separate;
@@ -1212,6 +1219,7 @@
 .staff-attendance-command-bar {
   position: sticky;
   bottom: 0;
+  flex: 0 0 auto;
   z-index: 30;
   width: fit-content;
   margin: 0 18px 0 auto;
@@ -1220,6 +1228,11 @@
   gap: 8px;
   background: rgba(255, 255, 255, 0.96);
   border-radius: 16px 16px 0 0;
+}
+
+.staff-attendance-command-spacer {
+  flex: 1 0 16px;
+  min-height: 16px;
 }
 
 .staff-attendance-command-bar button {

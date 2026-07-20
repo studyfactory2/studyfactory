@@ -83,7 +83,6 @@ export function StaffAttendancePanel() {
 
     return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
   }), [suggestions]);
-  const unresolvedSuggestionCount = useMemo(() => suggestionItems.filter((suggestion) => !suggestion.isResolved).length, [suggestionItems]);
   const otherCalendar = useMemo(() => createMonthCalendar(otherCalendarDate), [otherCalendarDate]);
   const allOtherSlotsSelected = SLOT_LABELS.every((slot) => otherSlots.includes(slot));
   const lunchSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'LUNCH'), [sideDishes]);
@@ -594,9 +593,8 @@ export function StaffAttendancePanel() {
       </div>
 
       <div className="staff-attendance-actions">
-        <button className="suggestion-tag" type="button" disabled={suggestionItems.length === 0} onClick={() => setSuggestionModalOpen(true)}>
+        <button className="suggestion-tag" type="button" onClick={() => setSuggestionModalOpen(true)}>
           회원건의
-          {unresolvedSuggestionCount > 0 && <b>{unresolvedSuggestionCount}</b>}
         </button>
         <button className={`meal-tag${sideDishes.length > 0 ? ' has-content' : ''}`} type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>
           반찬신청
@@ -682,6 +680,7 @@ export function StaffAttendancePanel() {
               })}
             </tbody>
           </table>
+          <div className="staff-attendance-command-spacer" aria-hidden="true" />
           <div className="staff-attendance-command-bar">
             <button className="command-present" type="button" disabled={!selectedSlot?.memberId || submitting} onClick={() => updateSlotStatus('PRESENT', undefined, selectedDate, selectedSlot?.slot)}>O 출석</button>
             <button className="command-absent" type="button" disabled={!selectedSlot?.memberId || submitting} onClick={() => updateSlotStatus('ABSENT', undefined, selectedDate, selectedSlot?.slot)}>X 결석</button>
