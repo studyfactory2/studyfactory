@@ -682,6 +682,7 @@ export function StaffAttendancePanel() {
               })}
             </tbody>
           </table>
+          <div className="staff-attendance-command-spacer" aria-hidden="true" />
           <div className="staff-attendance-command-bar">
             <button className="command-present" type="button" disabled={!selectedSlot?.memberId || submitting} onClick={() => updateSlotStatus('PRESENT', undefined, selectedDate, selectedSlot?.slot)}>O 출석</button>
             <button className="command-absent" type="button" disabled={!selectedSlot?.memberId || submitting} onClick={() => updateSlotStatus('ABSENT', undefined, selectedDate, selectedSlot?.slot)}>X 결석</button>
