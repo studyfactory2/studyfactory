@@ -2302,7 +2302,8 @@
   html,
   body,
   #root {
-    width: 100% !important;
+    /* Keep mobile and desktop print previews on the same A4 content width. */
+    width: 196mm !important;
     min-width: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -2320,6 +2321,7 @@
 
   .manager-page {
     display: block !important;
+    width: 196mm !important;
     padding: 0 !important;
     background: #fff !important;
   }
@@ -2329,7 +2331,8 @@
   }
 
   .member-dashboard-main {
-    width: 100% !important;
+    width: 196mm !important;
+    max-width: none !important;
     min-height: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
