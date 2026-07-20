@@ -331,6 +331,13 @@ export function WeeklyPlanPanel() {
         />
       ) : (
         <>
+          <div className="weekly-plan-print-heading" aria-hidden="true">
+            <div>
+              <p>Study Factory</p>
+              <h1>주간 학습장</h1>
+            </div>
+            <strong>{toWeekRangeLabel(weekStart)}</strong>
+          </div>
           <WeeklyGoalField goal={storedPlan.goal} onChange={changeGoal} />
           <WeeklyBoard
             drafts={drafts}
@@ -342,12 +349,16 @@ export function WeeklyPlanPanel() {
             onSaveCellItems={saveCellItems}
             onTogglePlanDone={togglePlanDone}
           />
+          <WeeklyPrintBoard plan={storedPlan} weekDays={weekDays} />
           <div className="weekly-plan-actions">
             <button className="member-secondary-action" type="button" onClick={() => moveWeek(-1)}>
               지난주
             </button>
             <button className="member-secondary-action" type="button" onClick={() => moveWeek(1)}>
               다음주
+            </button>
+            <button className="weekly-plan-print-button" type="button" onClick={() => window.print()}>
+              프린트 / PDF 저장
             </button>
           </div>
           <button className="member-primary-action" type="button" onClick={() => void savePlan()}>
@@ -364,6 +375,7 @@ function WeeklyGoalField({ goal, onChange }: { goal: string; onChange: (goal: st
   return (
     <label className="weekly-goal-field">
       <span>이번주 목표</span>
+      <p className="weekly-goal-print-content">{goal}</p>
       <textarea
         placeholder="예) 오전에는 기출, 오후에는 오답 정리"
         rows={3}
@@ -454,6 +466,63 @@ function WeeklyBoard({ drafts, onAddPlan, onChangeDraft, onRemovePlan, onSaveCel
           </div>
         </div>
       </section>
+  );
+}
+
+function WeeklyPrintBoard({ plan, weekDays }: Pick<WeeklyBoardProps, 'plan' | 'weekDays'>) {
+  const rows = STUDY_PERIODS.flatMap((period, periodIndex) => {
+    const periodRow = [{ ...period, periodIndex, isBreak: false }];
+
+    if (periodIndex === 1) {
+      periodRow.push({ label: '점심시간', duration: '75분', periodIndex: BREAK_PERIODS.lunch, isBreak: true });
+    }
+    if (periodIndex === 4) {
+      periodRow.push({ label: '저녁시간', duration: '75분', periodIndex: BREAK_PERIODS.dinner, isBreak: true });
+    }
+
+    return periodRow;
+  });
+
+  return (
+    <section className="weekly-print-board" aria-label="주간 학습 계획표 인쇄용">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">교시</th>
+            {weekDays.map((day) => (
+              <th scope="col" key={day.label}>
+                <span>{day.label}</span>
+                <strong>{toDateLabel(day.date)}</strong>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr className={row.isBreak ? 'break-row' : ''} key={row.periodIndex}>
+              <th scope="row">
+                <span>{row.label}</span>
+                <small>{row.duration}</small>
+              </th>
+              {weekDays.map((day, dayIndex) => {
+                const items = plan.plans[`${row.periodIndex}-${dayIndex}`] || [];
+                return (
+                  <td key={`${row.periodIndex}-${day.label}`}>
+                    {items.length > 0 && (
+                      <ul>
+                        {items.map((item, itemIndex) => (
+                          <li className={item.done ? 'done' : ''} key={`${item.text}-${itemIndex}`}>{item.text}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }
 
