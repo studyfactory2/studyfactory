@@ -646,7 +646,19 @@ button.beverage-serving-cell:disabled {
 
 .beverage-seat-modal-drink-edit .form-dropdown-option {
   min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: #fff;
+  color: #25313a;
   font-size: 12px;
+  font-weight: 800;
+}
+
+.beverage-seat-modal-drink-edit .form-dropdown-option:hover,
+.beverage-seat-modal-drink-edit .form-dropdown-option.selected {
+  background: #edf5ff;
+  color: #3182f6;
 }
 
 .beverage-seat-modal-drink-edit input:focus {
