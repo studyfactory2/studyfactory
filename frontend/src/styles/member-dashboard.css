@@ -2391,7 +2391,7 @@
 
   .weekly-goal-field {
     min-height: 0 !important;
-    padding: 3mm 4mm !important;
+    padding: 3mm 4mm 4mm !important;
     gap: 1mm !important;
     border-color: #dce7eb !important;
     border-radius: 3mm !important;
@@ -2405,7 +2405,7 @@
 
   .weekly-goal-print-content {
     display: block !important;
-    min-height: 1.2em;
+    min-height: 3em;
     margin: 0 !important;
     color: #25313a !important;
     font-size: 10pt !important;
