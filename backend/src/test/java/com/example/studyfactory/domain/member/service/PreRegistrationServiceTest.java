@@ -77,7 +77,6 @@ class PreRegistrationServiceTest {
         assertThat(response.certificationId()).isEqualTo(3L);
         assertThat(response.drinkSetting()).isEqualTo("아이스 아메리카노");
         assertThat(response.drinkNote()).isEqualTo("연하게");
-        assertThat(response.memberNote()).isEqualTo("오전 교육 예정");
         then(memberRepository).should().save(any(Member.class));
         then(beverageService).should().createPreference(1L, 1L, "아이스 아메리카노", "연하게");
     }
@@ -93,8 +92,7 @@ class PreRegistrationServiceTest {
                 LocalDate.of(2026, 7, 1),
                 " 회계사 ",
                 "아이스 아메리카노",
-                "연하게",
-                "오전 교육 예정"
+                "연하게"
         );
         given(branchRepository.existsById(1L)).willReturn(true);
         given(certificationRepository.findByContent("회계사")).willReturn(Optional.empty());
@@ -129,8 +127,7 @@ class PreRegistrationServiceTest {
                 LocalDate.of(2026, 7, 1),
                 " ",
                 "아이스 아메리카노",
-                "연하게",
-                "오전 교육 예정"
+                "연하게"
         );
         given(branchRepository.existsById(1L)).willReturn(true);
         given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
@@ -180,8 +177,7 @@ class PreRegistrationServiceTest {
                 LocalDate.of(2026, 7, 1),
                 "홍길동 매니저",
                 "아이스 아메리카노",
-                "연하게",
-                "오전 교육 예정"
+                "연하게"
         );
     }
 }

@@ -120,7 +120,6 @@ class MemberServiceTest {
                 20,
                 LocalDate.of(2026, 8, 1),
                 4L,
-                "오후 상담",
                 "회계사\n세무사"
         );
 
@@ -130,7 +129,6 @@ class MemberServiceTest {
         assertThat(member.getSeatNumber()).isEqualTo(20);
         assertThat(member.getJoinDate()).isEqualTo(LocalDate.of(2026, 8, 1));
         assertThat(member.getCertificationId()).isEqualTo(4L);
-        assertThat(member.getMemberNote()).isEqualTo("오후 상담");
         assertThat(member.getPreparingCertifications()).isEqualTo("회계사\n세무사");
     }
 
@@ -147,7 +145,6 @@ class MemberServiceTest {
                 20,
                 LocalDate.of(2026, 8, 1),
                 null,
-                "",
                 ""
         );
 

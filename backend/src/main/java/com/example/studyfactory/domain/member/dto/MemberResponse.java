@@ -13,7 +13,6 @@ public record MemberResponse(
         Integer seatNumber,
         LocalDate joinDate,
         Long certificationId,
-        String memberNote,
         String preparingCertifications,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -28,7 +27,6 @@ public record MemberResponse(
                 member.getSeatNumber(),
                 member.getJoinDate(),
                 member.getCertificationId(),
-                member.getMemberNote(),
                 member.getPreparingCertifications(),
                 member.getCreatedAt(),
                 member.getUpdatedAt()

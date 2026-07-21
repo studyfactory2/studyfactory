@@ -18,7 +18,6 @@ type PreRegistrationFormState = {
   certification: string;
   drinkSetting: string;
   drinkNote: string;
-  memberNote: string;
 };
 
 const FALLBACK_BRANCH: Branch = { id: 1, name: '망미점' };
@@ -136,7 +135,6 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
   const [certification, setCertification] = useState('');
   const [drinkSetting, setDrinkSetting] = useState('');
   const [drinkNote, setDrinkNote] = useState('');
-  const [memberNote, setMemberNote] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [modalMessage, setModalMessage] = useState('');
   const [pendingMembers, setPendingMembers] = useState<PreRegistrationResponse[]>([]);
@@ -255,7 +253,6 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
           certification,
           drinkSetting,
           drinkNote,
-          memberNote,
         })),
       });
       resetCreateForm();
@@ -280,7 +277,6 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
       certification: findCertification(certifications, member.certificationId),
       drinkSetting: member.drinkSetting || '',
       drinkNote: member.drinkNote || '',
-      memberNote: member.memberNote || '',
     });
     setShowEditCustomDrink(toDrinkParts(member.drinkSetting || '').customText.length > 0);
     setEditJoinDateMonth(toDateMonth(member.expectedJoinDate || ''));
@@ -355,7 +351,6 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     certification: formState.certification.trim() || null,
     drinkSetting: formState.drinkSetting.trim(),
     drinkNote: formState.drinkNote.trim(),
-    memberNote: formState.memberNote.trim(),
   });
 
   const resetCreateForm = () => {
@@ -365,7 +360,6 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setCertification('');
     setDrinkSetting('');
     setDrinkNote('');
-    setMemberNote('');
     setShowCustomDrink(false);
     setDrinkOpen(false);
     setNameplateOpen(false);
@@ -519,10 +513,6 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
           <span>음료 참고사항</span>
           <textarea placeholder="음료 참고사항" rows={1} value={drinkNote} onChange={(event) => setDrinkNote(event.target.value)} />
         </label>
-        <label className="full-field">
-          <span>회원 참고사항</span>
-          <textarea placeholder="참고사항을 입력하세요." rows={1} value={memberNote} onChange={(event) => setMemberNote(event.target.value)} />
-        </label>
         {message && <p className={`pre-register-message ${message.type}`}>{message.text}</p>}
         <button className="register-submit" type="submit" disabled={submitting}>
           {submitting ? '등록 중' : '등록하기'}
@@ -658,10 +648,6 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                     <label className="full-field">
                       <span>음료 참고사항</span>
                       <textarea rows={1} value={editDraft.drinkNote} onChange={(event) => changeEditDraft('drinkNote', event.target.value)} />
-                    </label>
-                    <label className="full-field">
-                      <span>회원 참고사항</span>
-                      <textarea rows={1} value={editDraft.memberNote} onChange={(event) => changeEditDraft('memberNote', event.target.value)} />
                     </label>
                     <div className="waiting-edit-actions">
                       <button type="button" onClick={resetInlineEdit}>취소</button>

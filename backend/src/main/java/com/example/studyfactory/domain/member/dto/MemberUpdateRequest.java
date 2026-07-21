@@ -24,8 +24,6 @@ public record MemberUpdateRequest(
 
         Long certificationId,
 
-        String memberNote,
-
         String preparingCertifications
 ) {
 }

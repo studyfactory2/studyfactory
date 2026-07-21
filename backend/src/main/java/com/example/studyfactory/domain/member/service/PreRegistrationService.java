@@ -38,8 +38,7 @@ public class PreRegistrationService {
                 request.role(),
                 request.seatNumber(),
                 request.expectedJoinDate(),
-                certificationId,
-                request.memberNote()
+                certificationId
         );
         Member savedMember = memberRepository.save(member);
         BeveragePreference beveragePreference = beverageService.createPreference(
@@ -71,8 +70,7 @@ public class PreRegistrationService {
                 request.role(),
                 request.seatNumber(),
                 request.expectedJoinDate(),
-                certificationId,
-                request.memberNote()
+                certificationId
         );
         BeveragePreference beveragePreference = beverageService.updatePreference(member, request.drinkSetting(), request.drinkNote());
 

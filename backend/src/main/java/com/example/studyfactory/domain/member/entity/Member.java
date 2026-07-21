@@ -42,18 +42,21 @@ public class Member extends BaseEntity {
     private WorkInformation workInformation;
 
     @Column(columnDefinition = "text")
-    private String memberNote;
-
-    @Column(columnDefinition = "text")
     private String preparingCertifications;
 
+    public Member(Long branchId, String name, String password, Integer seatNumber, LocalDate joinDate, Long certificationId) {
+        this(branchId, name, password, MemberRole.MEMBER, seatNumber, joinDate, certificationId);
+    }
+
+    /** @deprecated 회원 참고사항은 더 이상 저장하지 않습니다. */
+    @Deprecated
     public Member(Long branchId, String name, String password, Integer seatNumber, LocalDate joinDate, Long certificationId,
-                  String memberNote) {
-        this(branchId, name, password, MemberRole.MEMBER, seatNumber, joinDate, certificationId, memberNote);
+                  String ignoredMemberNote) {
+        this(branchId, name, password, seatNumber, joinDate, certificationId);
     }
 
     public Member(Long branchId, String name, String password, MemberRole role, Integer seatNumber, LocalDate joinDate,
-                  Long certificationId, String memberNote) {
+                  Long certificationId) {
         this(
                 null,
                 new ReferenceInformation(branchId, certificationId),
@@ -61,9 +64,15 @@ public class Member extends BaseEntity {
                 password,
                 role,
                 new WorkInformation(seatNumber, joinDate),
-                memberNote,
                 null
         );
+    }
+
+    /** @deprecated 회원 참고사항은 더 이상 저장하지 않습니다. */
+    @Deprecated
+    public Member(Long branchId, String name, String password, MemberRole role, Integer seatNumber, LocalDate joinDate,
+                  Long certificationId, String ignoredMemberNote) {
+        this(branchId, name, password, role, seatNumber, joinDate, certificationId);
     }
 
     private Member(
@@ -73,7 +82,6 @@ public class Member extends BaseEntity {
             String password,
             MemberRole role,
             WorkInformation workInformation,
-            String memberNote,
             String preparingCertifications
     ) {
         this.id = id;
@@ -82,7 +90,6 @@ public class Member extends BaseEntity {
         this.password = password;
         this.role = role;
         this.workInformation = workInformation;
-        this.memberNote = memberNote;
         this.preparingCertifications = preparingCertifications;
     }
 
@@ -112,14 +119,19 @@ public class Member extends BaseEntity {
             MemberRole role,
             Integer seatNumber,
             LocalDate joinDate,
-            Long certificationId,
-            String memberNote
+            Long certificationId
     ) {
         referenceInformation.update(branchId, certificationId);
         this.name = name;
         this.role = role;
         workInformation.update(seatNumber, joinDate);
-        this.memberNote = memberNote;
+    }
+
+    /** @deprecated 회원 참고사항은 더 이상 저장하지 않습니다. */
+    @Deprecated
+    public void updatePreRegistration(Long branchId, String name, MemberRole role, Integer seatNumber, LocalDate joinDate,
+                                      Long certificationId, String ignoredMemberNote) {
+        updatePreRegistration(branchId, name, role, seatNumber, joinDate, certificationId);
     }
 
     public void update(
@@ -129,15 +141,20 @@ public class Member extends BaseEntity {
             Integer seatNumber,
             LocalDate joinDate,
             Long certificationId,
-            String memberNote,
             String preparingCertifications
     ) {
         referenceInformation.update(branchId, certificationId);
         this.name = name;
         this.role = role;
         workInformation.update(seatNumber, joinDate);
-        this.memberNote = memberNote;
         this.preparingCertifications = preparingCertifications;
+    }
+
+    /** @deprecated 회원 참고사항은 더 이상 저장하지 않습니다. */
+    @Deprecated
+    public void update(Long branchId, String name, MemberRole role, Integer seatNumber, LocalDate joinDate,
+                       Long certificationId, String ignoredMemberNote, String preparingCertifications) {
+        update(branchId, name, role, seatNumber, joinDate, certificationId, preparingCertifications);
     }
 
     public void updateSeat(Integer seatNumber) {

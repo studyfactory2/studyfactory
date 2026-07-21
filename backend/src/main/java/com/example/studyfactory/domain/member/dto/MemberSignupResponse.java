@@ -13,7 +13,6 @@ public record MemberSignupResponse(
         Integer seatNumber,
         LocalDate joinDate,
         Long certificationId,
-        String memberNote,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -27,7 +26,6 @@ public record MemberSignupResponse(
                 member.getSeatNumber(),
                 member.getJoinDate(),
                 member.getCertificationId(),
-                member.getMemberNote(),
                 member.getCreatedAt(),
                 member.getUpdatedAt()
         );

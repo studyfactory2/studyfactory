@@ -18,7 +18,6 @@ public record PreRegistrationCreateRequest(
         LocalDate expectedJoinDate,
         String certification,
         String drinkSetting,
-        String drinkNote,
-        String memberNote
+        String drinkNote
 ) {
 }

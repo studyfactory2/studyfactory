@@ -12,8 +12,7 @@ public record PreRegistrationVerifyResponse(
         LocalDate expectedJoinDate,
         Long certificationId,
         String drinkSetting,
-        String drinkNote,
-        String memberNote
+        String drinkNote
 ) {
 
     public static PreRegistrationVerifyResponse from(Member member, BeveragePreference beveragePreference) {
@@ -25,8 +24,7 @@ public record PreRegistrationVerifyResponse(
                 member.getJoinDate(),
                 member.getCertificationId(),
                 beveragePreference.getDrinks(),
-                beveragePreference.getNotes(),
-                member.getMemberNote()
+                beveragePreference.getNotes()
         );
     }
 }
