@@ -35,7 +35,7 @@
   margin: 0;
   color: #202931;
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .beverage-serving-branch {
@@ -46,7 +46,7 @@
   background: #3182f6;
   color: #fff;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .beverage-making-panel .beverage-serving-title {
@@ -113,7 +113,7 @@
   background: #fff;
   color: #62747c;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -156,13 +156,13 @@
 .beverage-serving-room-heading strong {
   color: #111827;
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .beverage-serving-room-heading span {
   color: #64748b;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .beverage-serving-grid {
@@ -211,6 +211,9 @@ button.beverage-serving-cell:disabled {
 .beverage-serving-cell.on-leave strong,
 .beverage-serving-cell.on-leave small,
 .beverage-serving-cell.on-leave em,
+.beverage-serving-cell.on-leave small span,
+.beverage-serving-cell.on-leave small span.tumbler-drink,
+.beverage-serving-cell.on-leave small.empty-drink,
 .beverage-serving-cell.empty-seat strong {
   color: #566571;
 }
@@ -220,7 +223,7 @@ button.beverage-serving-cell:disabled {
   background: #e9edf3;
   color: #293746;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 650;
 }
 
 .beverage-serving-cell strong,
@@ -236,13 +239,13 @@ button.beverage-serving-cell:disabled {
 .beverage-serving-cell strong {
   color: #274450;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 650;
 }
 
 .beverage-serving-cell small {
   color: #1f78c1;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .beverage-serving-cell small span {
@@ -261,7 +264,7 @@ button.beverage-serving-cell:disabled {
   color: #7b8790;
   font-size: 9px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .beverage-serving-empty {

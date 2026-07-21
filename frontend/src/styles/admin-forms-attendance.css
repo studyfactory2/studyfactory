@@ -748,7 +748,7 @@
   background: #fff;
   color: #1b64da;
   font-size: clamp(0.72rem, 2.5vw, 0.9rem);
-  font-weight: 900;
+  font-weight: 600;
   box-shadow: 0 2px 8px rgba(23, 82, 80, 0.04);
 }
 
@@ -908,6 +908,7 @@
   background: #fff;
   color: #1b64da;
   font-size: 12px;
+  font-weight: 600;
 }
 
 .staff-attendance-actions .meal-tag.has-content b,
