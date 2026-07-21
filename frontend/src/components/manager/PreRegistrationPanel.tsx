@@ -17,7 +17,7 @@ type PreRegistrationFormState = {
   expectedJoinDate: string;
   certification: string;
   drinkSetting: string;
-  drinkNote: string;
+  drinkNotes: Record<string, string>;
 };
 
 const FALLBACK_BRANCH: Branch = { id: 1, name: '망미점' };
@@ -134,7 +134,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
   const [expectedJoinDate, setExpectedJoinDate] = useState('');
   const [certification, setCertification] = useState('');
   const [drinkSetting, setDrinkSetting] = useState('');
-  const [drinkNote, setDrinkNote] = useState('');
+  const [drinkNotes, setDrinkNotes] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [modalMessage, setModalMessage] = useState('');
   const [pendingMembers, setPendingMembers] = useState<PreRegistrationResponse[]>([]);
@@ -252,7 +252,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
           expectedJoinDate,
           certification,
           drinkSetting,
-          drinkNote,
+          drinkNotes,
         })),
       });
       resetCreateForm();
@@ -276,7 +276,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
       expectedJoinDate: member.expectedJoinDate || '',
       certification: findCertification(certifications, member.certificationId),
       drinkSetting: member.drinkSetting || '',
-      drinkNote: member.drinkNote || '',
+      drinkNotes: member.drinkNotes || {},
     });
     setShowEditCustomDrink(toDrinkParts(member.drinkSetting || '').customText.length > 0);
     setEditJoinDateMonth(toDateMonth(member.expectedJoinDate || ''));
@@ -350,7 +350,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     expectedJoinDate: formState.expectedJoinDate || null,
     certification: formState.certification.trim() || null,
     drinkSetting: formState.drinkSetting.trim(),
-    drinkNote: formState.drinkNote.trim(),
+    drinkNotes: normalizeDrinkNotes(formState.drinkSetting, formState.drinkNotes),
   });
 
   const resetCreateForm = () => {
@@ -359,7 +359,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setExpectedJoinDate('');
     setCertification('');
     setDrinkSetting('');
-    setDrinkNote('');
+    setDrinkNotes({});
     setShowCustomDrink(false);
     setDrinkOpen(false);
     setNameplateOpen(false);
@@ -378,7 +378,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
     setShowEditCustomDrink(false);
   };
 
-  const changeEditDraft = (field: keyof PreRegistrationFormState, value: string) => {
+  const changeEditDraft = <K extends keyof PreRegistrationFormState>(field: K, value: PreRegistrationFormState[K]) => {
     setEditDraft((current) => {
       if (!current) {
         return current;
@@ -509,10 +509,11 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
             onClose={() => setDrinkOpen(false)}
           />
         </label>
-        <label className="full-field">
-          <span>음료 참고사항</span>
-          <textarea placeholder="음료 참고사항" rows={1} value={drinkNote} onChange={(event) => setDrinkNote(event.target.value)} />
-        </label>
+        <DrinkNotesField
+          drinks={parseDrinkItems(drinkSetting)}
+          notes={drinkNotes}
+          onChange={setDrinkNotes}
+        />
         {message && <p className={`pre-register-message ${message.type}`}>{message.text}</p>}
         <button className="register-submit" type="submit" disabled={submitting}>
           {submitting ? '등록 중' : '등록하기'}
@@ -645,10 +646,11 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                         onClose={() => setEditDrinkOpen(false)}
                       />
                     </label>
-                    <label className="full-field">
-                      <span>음료 참고사항</span>
-                      <textarea rows={1} value={editDraft.drinkNote} onChange={(event) => changeEditDraft('drinkNote', event.target.value)} />
-                    </label>
+                    <DrinkNotesField
+                      drinks={parseDrinkItems(editDraft.drinkSetting)}
+                      notes={editDraft.drinkNotes}
+                      onChange={(notes) => changeEditDraft('drinkNotes', notes)}
+                    />
                     <div className="waiting-edit-actions">
                       <button type="button" onClick={resetInlineEdit}>취소</button>
                       <button type="button" disabled={editingSubmitting} onClick={() => submitInlineEdit(member.id)}>
@@ -960,6 +962,35 @@ function DrinkSettingField({ value, open, showCustomInput, onChange, onToggle, o
   );
 }
 
+type DrinkNotesFieldProps = {
+  drinks: string[];
+  notes: Record<string, string>;
+  onChange: (notes: Record<string, string>) => void;
+};
+
+function DrinkNotesField({ drinks, notes, onChange }: DrinkNotesFieldProps) {
+  if (drinks.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="drink-notes-field full-field">
+      <span>음료 참고사항</span>
+      {drinks.map((drink) => (
+        <label key={drink}>
+          <strong>{drink}</strong>
+          <input
+            aria-label={`${drink} 참고사항`}
+            placeholder="참고사항 없음"
+            value={notes[drink] || ''}
+            onChange={(event) => onChange({ ...notes, [drink]: event.target.value })}
+          />
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function toDrinkParts(value: string) {
   const drinks = parseDrinkItems(value);
   const baseDrink = drinks.find((drink) => DRINK_OPTIONS.some((option) => option.value === drink)) || '';
@@ -977,6 +1008,14 @@ function parseDrinkItems(value: string) {
     .split(/[,\n\r]+/)
     .map((drink) => drink.trim())
     .filter(Boolean);
+}
+
+function normalizeDrinkNotes(drinkSetting: string, notes: Record<string, string>) {
+  return Object.fromEntries(
+    parseDrinkItems(drinkSetting)
+      .map((drink) => [drink, notes[drink]?.trim()] as const)
+      .filter(([, note]) => Boolean(note)),
+  );
 }
 
 function startOfMonth(date: Date) {

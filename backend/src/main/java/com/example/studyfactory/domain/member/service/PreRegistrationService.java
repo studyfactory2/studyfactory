@@ -1,6 +1,6 @@
 package com.example.studyfactory.domain.member.service;
 
-import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
+import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
@@ -41,21 +41,18 @@ public class PreRegistrationService {
                 certificationId
         );
         Member savedMember = memberRepository.save(member);
-        BeveragePreference beveragePreference = beverageService.createPreference(
-                savedMember.getId(),
-                savedMember.getBranchId(),
-                request.drinkSetting(),
-                request.drinkNote()
-        );
+        List<BeverageItem> beverageItems = request.drinkNotes() == null
+                ? beverageService.createPreference(savedMember.getId(), request.drinkSetting(), request.drinkNote())
+                : beverageService.createPreference(savedMember.getId(), request.drinkSetting(), request.drinkNotes());
 
-        return PreRegistrationResponse.from(savedMember, beveragePreference);
+        return PreRegistrationResponse.from(savedMember, beverageItems);
     }
 
     @Transactional(readOnly = true)
     public List<PreRegistrationResponse> findPending() {
         return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
-                .map(member -> PreRegistrationResponse.from(member, beverageService.findLatestPreference(member)))
+                .map(member -> PreRegistrationResponse.from(member, beverageService.findItems(member.getId())))
                 .toList();
     }
 
@@ -72,9 +69,11 @@ public class PreRegistrationService {
                 request.expectedJoinDate(),
                 certificationId
         );
-        BeveragePreference beveragePreference = beverageService.updatePreference(member, request.drinkSetting(), request.drinkNote());
+        List<BeverageItem> beverageItems = request.drinkNotes() == null
+                ? beverageService.updatePreference(member, request.drinkSetting(), request.drinkNote())
+                : beverageService.updatePreference(member, request.drinkSetting(), request.drinkNotes());
 
-        return PreRegistrationResponse.from(member, beveragePreference);
+        return PreRegistrationResponse.from(member, beverageItems);
     }
 
     @Transactional

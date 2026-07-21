@@ -138,13 +138,13 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
     setBeverages((current) =>
       current.map((beverage) =>
         beverage.memberId === memberId
-          ? { ...beverage, drinks: response.drinks, notes: response.notes, createdAt: response.createdAt, updatedAt: response.updatedAt }
+          ? { ...beverage, drinks: response.drinks, drinkNotes: response.drinkNotes, createdAt: response.createdAt, updatedAt: response.updatedAt }
           : beverage
       )
     );
     setEditingSeat((current) =>
       current && current.beverage.memberId === memberId
-        ? { ...current, beverage: { ...current.beverage, drinks: response.drinks, notes: response.notes, createdAt: response.createdAt, updatedAt: response.updatedAt } }
+        ? { ...current, beverage: { ...current.beverage, drinks: response.drinks, drinkNotes: response.drinkNotes, createdAt: response.createdAt, updatedAt: response.updatedAt } }
         : current
     );
   };
@@ -408,8 +408,7 @@ function RoomItemCell({ item, beverage, leaveMemberIds, onOpen }: RoomItemCellPr
   }
 
   const drinks = beverage ? parseDrinks(beverage.drinks) : [];
-  const note = beverage?.notes?.trim();
-  const hasNote = Boolean(note && note !== '입력 없음');
+  const drinkNotes = beverage?.drinkNotes || {};
   const memberName = beverage?.memberName?.trim();
   const title = memberName ? `${item.number}.${memberName}` : `${item.number}.`;
   const onLeave = Boolean(beverage && leaveMemberIds.has(beverage.memberId));
@@ -436,7 +435,10 @@ function RoomItemCell({ item, beverage, leaveMemberIds, onOpen }: RoomItemCellPr
           ))}
         </small>
       ) : null}
-      {hasNote && <em>{note}</em>}
+      {(() => {
+        const notes = drinks.map((drink) => drinkNotes[drink]?.trim()).filter((note): note is string => Boolean(note));
+        return notes.length > 0 ? <em>{notes.join(', ')}</em> : null;
+      })()}
     </button>
   );
 }
@@ -468,23 +470,27 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
   const { item, beverage } = editingSeat;
   const [drinkInput, setDrinkInput] = useState('');
   const [drinks, setDrinks] = useState(() => parseDrinks(beverage.drinks));
-  const [note, setNote] = useState(() => (beverage.notes === '입력 없음' ? '' : beverage.notes?.trim() || ''));
+  const [drinkNotes, setDrinkNotes] = useState<Record<string, string>>(() => beverage.drinkNotes || {});
   const [isComposing, setIsComposing] = useState(false);
   const [editingDrinkIndex, setEditingDrinkIndex] = useState<number | null>(null);
   const [editingDrinkValue, setEditingDrinkValue] = useState('');
   const [editingCustomDrink, setEditingCustomDrink] = useState(false);
   const [drinkDropdownOpen, setDrinkDropdownOpen] = useState(false);
+  const [editingNoteDrink, setEditingNoteDrink] = useState<string | null>(null);
+  const [editingNoteValue, setEditingNoteValue] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setDrinkInput('');
     setDrinks(parseDrinks(beverage.drinks));
-    setNote(beverage.notes === '입력 없음' ? '' : beverage.notes?.trim() || '');
+    setDrinkNotes(beverage.drinkNotes || {});
     setEditingDrinkIndex(null);
     setEditingDrinkValue('');
     setEditingCustomDrink(false);
     setDrinkDropdownOpen(false);
-  }, [beverage.memberId, beverage.drinks, beverage.notes]);
+    setEditingNoteDrink(null);
+    setEditingNoteValue('');
+  }, [beverage.memberId, beverage.drinks, beverage.drinkNotes]);
 
   const addDrink = () => {
     const nextDrinks = parseDrinks(drinkInput);
@@ -497,7 +503,13 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
   };
 
   const removeDrink = (index: number) => {
+    const removedDrink = drinks[index];
     setDrinks((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    setDrinkNotes((current) => {
+      const next = { ...current };
+      delete next[removedDrink];
+      return next;
+    });
     if (editingDrinkIndex === index) {
       setEditingDrinkIndex(null);
       setEditingDrinkValue('');
@@ -519,7 +531,16 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
       return;
     }
 
+    const previousDrink = drinks[editingDrinkIndex];
     setDrinks((current) => current.map((drink, index) => index === editingDrinkIndex ? nextDrink : drink));
+    setDrinkNotes((current) => {
+      const next = { ...current };
+      if (previousDrink !== nextDrink && next[previousDrink]) {
+        next[nextDrink] = next[previousDrink];
+        delete next[previousDrink];
+      }
+      return next;
+    });
     setEditingDrinkIndex(null);
     setEditingDrinkValue('');
     setEditingCustomDrink(false);
@@ -533,6 +554,42 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
     setDrinkDropdownOpen(false);
   };
 
+  const startEditingNote = (drink: string) => {
+    setEditingNoteDrink(drink);
+    setEditingNoteValue(drinkNotes[drink] || '');
+  };
+
+  const saveEditedNote = () => {
+    if (!editingNoteDrink) {
+      return;
+    }
+
+    const nextNote = editingNoteValue.trim();
+    setDrinkNotes((current) => {
+      const next = { ...current };
+      if (nextNote) {
+        next[editingNoteDrink] = nextNote;
+      } else {
+        delete next[editingNoteDrink];
+      }
+      return next;
+    });
+    setEditingNoteDrink(null);
+    setEditingNoteValue('');
+  };
+
+  const deleteNote = (drink: string) => {
+    setDrinkNotes((current) => {
+      const next = { ...current };
+      delete next[drink];
+      return next;
+    });
+    if (editingNoteDrink === drink) {
+      setEditingNoteDrink(null);
+      setEditingNoteValue('');
+    }
+  };
+
   const save = async () => {
     try {
       setSaving(true);
@@ -540,7 +597,7 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
         method: 'PATCH',
         body: JSON.stringify({
           drinkSetting: drinks.join(','),
-          drinkNote: note.trim(),
+          drinkNotes,
         }),
       });
       onSaved(beverage.memberId, response);
@@ -644,14 +701,47 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
           )}
         </ol>
 
-        <label className="beverage-seat-modal-label" htmlFor="beverage-seat-note">참고사항</label>
-        <textarea
-          id="beverage-seat-note"
-          value={note}
-          placeholder="음료 관련 참고사항"
-          disabled={saving}
-          onChange={(event) => setNote(event.target.value)}
-        />
+        {drinks.length > 0 && (
+          <div className="beverage-seat-modal-notes">
+            <span className="beverage-seat-modal-label">음료별 참고사항</span>
+            {drinks.map((drink, index) => (
+              <div className="beverage-seat-modal-note" key={`${drink}-${index}`}>
+                <strong>{drink}</strong>
+                {editingNoteDrink === drink ? (
+                  <div className="beverage-seat-modal-note-edit">
+                    <input
+                      aria-label={`${drink} 참고사항`}
+                      autoFocus
+                      value={editingNoteValue}
+                      placeholder="참고사항을 입력하세요"
+                      disabled={saving}
+                      onChange={(event) => setEditingNoteValue(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          saveEditedNote();
+                        }
+                      }}
+                    />
+                    <button type="button" className="save-note" disabled={saving} onClick={saveEditedNote}>완료</button>
+                    <button type="button" className="cancel-note" disabled={saving} onClick={() => {
+                      setEditingNoteDrink(null);
+                      setEditingNoteValue('');
+                    }}>취소</button>
+                  </div>
+                ) : (
+                  <>
+                    <span className={drinkNotes[drink]?.trim() ? 'has-note' : 'empty-note'}>{drinkNotes[drink]?.trim() || '참고사항 없음'}</span>
+                    <div className="beverage-seat-modal-note-actions">
+                      <button type="button" disabled={saving} onClick={() => startEditingNote(drink)}>수정</button>
+                      <button type="button" className="delete-note" disabled={saving || !drinkNotes[drink]?.trim()} onClick={() => deleteNote(drink)}>삭제</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="beverage-seat-modal-actions">
           <button className="beverage-seat-modal-cancel" type="button" disabled={saving} onClick={onClose}>취소</button>
@@ -677,9 +767,13 @@ function isTumblerDrink(drink: string) {
 }
 
 function formatTumblerRequester(beverage: MemberBeverageResponse) {
-  const note = beverage.notes?.trim();
+  const note = parseDrinks(beverage.drinks)
+    .filter(isTumblerDrink)
+    .map((drink) => beverage.drinkNotes?.[drink]?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join(', ');
 
-  if (!note || note === '입력 없음') {
+  if (!note) {
     return beverage.memberName;
   }
 

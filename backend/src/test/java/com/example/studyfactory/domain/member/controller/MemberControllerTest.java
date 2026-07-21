@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
-import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
-import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.beverage.entity.BeverageItem;
+import com.example.studyfactory.domain.beverage.repository.BeverageItemRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
@@ -35,14 +35,14 @@ class MemberControllerTest {
     private MemberRepository memberRepository;
 
     @Autowired
-    private BeveragePreferenceRepository beveragePreferenceRepository;
+    private BeverageItemRepository beverageItemRepository;
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
     void setUp() {
-        beveragePreferenceRepository.deleteAll();
+        beverageItemRepository.deleteAll();
         memberRepository.deleteAll();
     }
 
@@ -158,14 +158,14 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.memberId").value(member.getId()))
                 .andExpect(jsonPath("$.branchId").value(member.getBranchId()))
                 .andExpect(jsonPath("$.drinks").value("따뜻한 라떼"))
-                .andExpect(jsonPath("$.notes").value("시럽 추가"));
+                .andExpect(jsonPath("$.drinkNotes['따뜻한 라떼']").value("시럽 추가"));
     }
 
     @Test
     @DisplayName("인증된 사원이 본인 음료 설정에 새 음료를 추가한다")
     void addDrink() throws Exception {
         Member member = memberRepository.save(createMember("kim", 10));
-        beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "콜라", "제로칼로리로 해주세요"));
+        beverageItemRepository.save(new BeverageItem(member.getId(), "콜라", "제로칼로리로 해주세요"));
         String accessToken = jwtTokenProvider.createAccessToken(member);
         String requestBody = """
                 {
@@ -182,7 +182,7 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.memberId").value(member.getId()))
                 .andExpect(jsonPath("$.branchId").value(member.getBranchId()))
                 .andExpect(jsonPath("$.drinks").value("콜라\n사이다\n식혜"))
-                .andExpect(jsonPath("$.notes").value("차갑게 주세요"));
+                .andExpect(jsonPath("$.drinkNotes['사이다']").value("차갑게 주세요"));
     }
 
     @Test
@@ -190,7 +190,7 @@ class MemberControllerTest {
     void addDrinkForMemberByStaff() throws Exception {
         Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
         Member targetMember = memberRepository.save(createMember("kim", 11));
-        beveragePreferenceRepository.save(new BeveragePreference(targetMember.getId(), targetMember.getBranchId(), "콜라", "제로칼로리로 해주세요"));
+        beverageItemRepository.save(new BeverageItem(targetMember.getId(), "콜라", "제로칼로리로 해주세요"));
         String accessToken = jwtTokenProvider.createAccessToken(staff);
         String requestBody = """
                 {
@@ -207,7 +207,7 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.memberId").value(targetMember.getId()))
                 .andExpect(jsonPath("$.branchId").value(targetMember.getBranchId()))
                 .andExpect(jsonPath("$.drinks").value("콜라\n사이다"))
-                .andExpect(jsonPath("$.notes").value("차갑게 주세요"));
+                .andExpect(jsonPath("$.drinkNotes['사이다']").value("차갑게 주세요"));
     }
 
     @Test
@@ -234,7 +234,11 @@ class MemberControllerTest {
     @DisplayName("인증된 사원이 본인 음료 설정에서 특정 항목을 삭제한다")
     void deleteDrinkItem() throws Exception {
         Member member = memberRepository.save(createMember("kim", 10));
-        beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "콜라\n사이다\n식혜", "차갑게 주세요"));
+        beverageItemRepository.saveAll(java.util.List.of(
+                new BeverageItem(member.getId(), "콜라", "차갑게 주세요"),
+                new BeverageItem(member.getId(), "사이다", "차갑게 주세요"),
+                new BeverageItem(member.getId(), "식혜", "차갑게 주세요")
+        ));
         String accessToken = jwtTokenProvider.createAccessToken(member);
 
         mockMvc.perform(delete("/api/beverages/me/items")
@@ -244,7 +248,7 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.memberId").value(member.getId()))
                 .andExpect(jsonPath("$.branchId").value(member.getBranchId()))
                 .andExpect(jsonPath("$.drinks").value("콜라\n사이다"))
-                .andExpect(jsonPath("$.notes").value("차갑게 주세요"));
+                .andExpect(jsonPath("$.drinkNotes['콜라']").value("차갑게 주세요"));
     }
 
     @Test
@@ -252,7 +256,11 @@ class MemberControllerTest {
     void deleteDrinkItemForMemberByStaff() throws Exception {
         Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
         Member targetMember = memberRepository.save(createMember("kim", 11));
-        beveragePreferenceRepository.save(new BeveragePreference(targetMember.getId(), targetMember.getBranchId(), "콜라\n사이다\n식혜", "차갑게 주세요"));
+        beverageItemRepository.saveAll(java.util.List.of(
+                new BeverageItem(targetMember.getId(), "콜라", "차갑게 주세요"),
+                new BeverageItem(targetMember.getId(), "사이다", "차갑게 주세요"),
+                new BeverageItem(targetMember.getId(), "식혜", "차갑게 주세요")
+        ));
         String accessToken = jwtTokenProvider.createAccessToken(staff);
 
         mockMvc.perform(delete("/api/beverages/members/{memberId}/items", targetMember.getId())
@@ -262,7 +270,7 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.memberId").value(targetMember.getId()))
                 .andExpect(jsonPath("$.branchId").value(targetMember.getBranchId()))
                 .andExpect(jsonPath("$.drinks").value("콜라\n사이다"))
-                .andExpect(jsonPath("$.notes").value("차갑게 주세요"));
+                .andExpect(jsonPath("$.drinkNotes['콜라']").value("차갑게 주세요"));
     }
 
     @Test
@@ -270,7 +278,11 @@ class MemberControllerTest {
     void rejectDeleteDrinkItemForMemberWithoutPermission() throws Exception {
         Member member = memberRepository.save(createMember("member", 10));
         Member targetMember = memberRepository.save(createMember("kim", 11));
-        beveragePreferenceRepository.save(new BeveragePreference(targetMember.getId(), targetMember.getBranchId(), "콜라\n사이다\n식혜", "차갑게 주세요"));
+        beverageItemRepository.saveAll(java.util.List.of(
+                new BeverageItem(targetMember.getId(), "콜라", "차갑게 주세요"),
+                new BeverageItem(targetMember.getId(), "사이다", "차갑게 주세요"),
+                new BeverageItem(targetMember.getId(), "식혜", "차갑게 주세요")
+        ));
         String accessToken = jwtTokenProvider.createAccessToken(member);
 
         mockMvc.perform(delete("/api/beverages/members/{memberId}/items", targetMember.getId())

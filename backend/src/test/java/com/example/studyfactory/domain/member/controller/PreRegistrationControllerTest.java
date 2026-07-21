@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
-import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.beverage.repository.BeverageItemRepository;
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
@@ -45,14 +45,14 @@ class PreRegistrationControllerTest {
     private MemberRepository memberRepository;
 
     @Autowired
-    private BeveragePreferenceRepository beveragePreferenceRepository;
+    private BeverageItemRepository beverageItemRepository;
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
     void setUp() {
-        beveragePreferenceRepository.deleteAll();
+        beverageItemRepository.deleteAll();
         memberRepository.deleteAll();
         branchRepository.deleteAll();
         certificationRepository.deleteAll();
@@ -89,10 +89,10 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.expectedJoinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$.certificationId").value(certification.getId()))
                 .andExpect(jsonPath("$.drinkSetting").value("아이스 아메리카노"))
-                .andExpect(jsonPath("$.drinkNote").value("연하게"));
+                .andExpect(jsonPath("$.drinkNotes['아이스 아메리카노']").value("연하게"));
 
         assertThat(memberRepository.count()).isEqualTo(1);
-        assertThat(beveragePreferenceRepository.count()).isEqualTo(1);
+        assertThat(beverageItemRepository.count()).isEqualTo(1);
     }
 
     @Test
@@ -258,7 +258,7 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.seatNumber").value(15))
                 .andExpect(jsonPath("$.expectedJoinDate").value("2026-07-02"))
                 .andExpect(jsonPath("$.drinkSetting").value("라떼"))
-                .andExpect(jsonPath("$.drinkNote").value("뜨겁게"));
+                .andExpect(jsonPath("$.drinkNotes['라떼']").value("뜨겁게"));
     }
 
     @Test
@@ -292,7 +292,7 @@ class PreRegistrationControllerTest {
                 .andExpect(status().isNoContent());
 
         assertThat(memberRepository.existsById(memberId.longValue())).isFalse();
-        assertThat(beveragePreferenceRepository.findByMemberId(memberId.longValue())).isEmpty();
+        assertThat(beverageItemRepository.findByMemberIdOrderByCreatedAtAsc(memberId.longValue())).isEmpty();
     }
 
     @Test

@@ -37,7 +37,7 @@ export type PreRegistrationVerifyResponse = {
   expectedJoinDate?: string;
   certificationId?: number | null;
   drinkSetting?: string | null;
-  drinkNote?: string | null;
+  drinkNotes?: Record<string, string> | null;
 };
 
 export type PreRegistrationResponse = {
@@ -49,7 +49,7 @@ export type PreRegistrationResponse = {
   expectedJoinDate?: string;
   certificationId?: number | null;
   drinkSetting?: string | null;
-  drinkNote?: string | null;
+  drinkNotes?: Record<string, string> | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -89,7 +89,7 @@ export type BeveragePreferenceResponse = {
   memberId: number;
   branchId: number;
   drinks: string;
-  notes?: string | null;
+  drinkNotes?: Record<string, string> | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -101,7 +101,7 @@ export type MemberBeverageResponse = {
   role: MemberRole;
   seatNumber?: number | null;
   drinks: string;
-  notes?: string | null;
+  drinkNotes?: Record<string, string> | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 };

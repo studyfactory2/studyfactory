@@ -370,6 +370,44 @@
   background: var(--color-primary-dark);
 }
 
+.drink-notes-field {
+  display: grid;
+  gap: 8px;
+}
+
+.drink-notes-field > span {
+  color: #526174;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.drink-notes-field label {
+  display: grid;
+  grid-template-columns: minmax(86px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #dce7f5;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.drink-notes-field label strong {
+  color: #37475b;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.drink-notes-field label input {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid #e5edf7;
+  border-radius: 0;
+  background: transparent;
+}
+
 .form-dropdown-button {
   padding-right: 38px;
   cursor: pointer;

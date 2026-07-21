@@ -14,46 +14,33 @@ const BASE_DRINK_OPTIONS = [
 ];
 
 function parseDrinks(value: string) {
-  return value
-    .split(/[,\n]/)
-    .map((drink) => drink.trim())
-    .filter(Boolean);
+  return value.split(/[,\n]/).map((drink) => drink.trim()).filter(Boolean);
 }
 
 function uniqueDrinks(drinks: string[]) {
-  const seen = new Set<string>();
-
-  return drinks.filter((drink) => {
-    if (seen.has(drink)) {
-      return false;
-    }
-
-    seen.add(drink);
-    return true;
-  });
+  return [...new Set(drinks)];
 }
 
 export function BeveragePanel() {
   const [inputMode, setInputMode] = useState<'menu' | 'custom'>('menu');
   const [drinkInput, setDrinkInput] = useState('');
   const [drinks, setDrinks] = useState<string[]>([]);
-  const [note, setNote] = useState('');
+  const [drinkNotes, setDrinkNotes] = useState<Record<string, string>>({});
   const [isComposing, setIsComposing] = useState(false);
   const [drinkDropdownOpen, setDrinkDropdownOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    void loadDrinks();
-  }, []);
+  useEffect(() => { void loadDrinks(); }, []);
 
   const loadDrinks = async () => {
     setInitialLoading(true);
     try {
       const response = await apiRequest<BeveragePreferenceResponse>('/api/beverages/me');
-      setDrinks(parseDrinks(response.drinks));
-      setNote(response.notes || '');
+      const nextDrinks = parseDrinks(response.drinks);
+      setDrinks(nextDrinks);
+      setDrinkNotes(response.drinkNotes || {});
     } catch {
       setMessage('저장된 음료를 불러오지 못했습니다.');
     } finally {
@@ -61,31 +48,33 @@ export function BeveragePanel() {
     }
   };
 
-  const changeBaseDrink = (value: string) => {
-    if (!value) {
-      setDrinkDropdownOpen(false);
-      return;
-    }
-
-    setDrinks((current) => uniqueDrinks([...current, value]));
-    setDrinkDropdownOpen(false);
+  const addDrinks = (nextDrinks: string[]) => {
+    setDrinks((current) => uniqueDrinks([...current, ...nextDrinks]));
     setMessage(null);
+  };
+
+  const changeBaseDrink = (value: string) => {
+    if (value) {
+      addDrinks([value]);
+    }
+    setDrinkDropdownOpen(false);
   };
 
   const addDrink = () => {
     const nextDrinks = parseDrinks(drinkInput);
-
-    if (nextDrinks.length === 0) {
-      return;
+    if (nextDrinks.length > 0) {
+      addDrinks(nextDrinks);
+      setDrinkInput('');
     }
-
-    setDrinks((current) => uniqueDrinks([...current, ...nextDrinks]));
-    setDrinkInput('');
-    setMessage(null);
   };
 
-  const removeDrink = (index: number) => {
-    setDrinks((current) => current.filter((_, currentIndex) => currentIndex !== index));
+  const removeDrink = (drink: string) => {
+    setDrinks((current) => current.filter((item) => item !== drink));
+    setDrinkNotes((current) => {
+      const next = { ...current };
+      delete next[drink];
+      return next;
+    });
   };
 
   const saveDrinks = async () => {
@@ -94,14 +83,12 @@ export function BeveragePanel() {
     try {
       const response = await apiRequest<BeveragePreferenceResponse>('/api/beverages/me', {
         method: 'PATCH',
-        body: JSON.stringify({
-          drinkSetting: drinks.join(','),
-          drinkNote: note.trim(),
-        }),
+        body: JSON.stringify({ drinkSetting: drinks.join(','), drinkNotes }),
       });
-      setDrinks(parseDrinks(response.drinks));
+      const nextDrinks = parseDrinks(response.drinks);
+      setDrinks(nextDrinks);
       setDrinkInput('');
-      setNote(response.notes || '');
+      setDrinkNotes(response.drinkNotes || {});
       setMessage('음료가 저장되었습니다.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '음료 저장에 실패했습니다.');
@@ -109,8 +96,6 @@ export function BeveragePanel() {
       setLoading(false);
     }
   };
-
-  const selectedDrinkOption = BASE_DRINK_OPTIONS[0];
 
   return (
     <div className="member-panel beverage-preference-panel">
@@ -126,92 +111,28 @@ export function BeveragePanel() {
         {inputMode === 'menu' ? (
           <div className="beverage-menu-picker">
             <span className="beverage-picker-icon" aria-hidden="true"><CoffeeIcon /></span>
-            <Dropdown
-              classNamePrefix="custom-select"
-              label="기본 음료"
-              open={drinkDropdownOpen}
-              options={BASE_DRINK_OPTIONS}
-              placeholderClass
-              selectedOption={selectedDrinkOption}
-              onSelect={changeBaseDrink}
-              onToggle={() => setDrinkDropdownOpen((open) => !open)}
-            />
+            <Dropdown classNamePrefix="custom-select" label="기본 음료" open={drinkDropdownOpen} options={BASE_DRINK_OPTIONS} placeholderClass selectedOption={BASE_DRINK_OPTIONS[0]} onSelect={changeBaseDrink} onToggle={() => setDrinkDropdownOpen((open) => !open)} />
           </div>
         ) : (
           <div className="beverage-input-row beverage-custom-input-row">
-            <input
-              aria-label="직접 입력 음료"
-              placeholder="예: 텀블러 아아 (얼음 적게)"
-              value={drinkInput}
-              onChange={(event) => setDrinkInput(event.target.value)}
-              onCompositionStart={() => setIsComposing(true)}
-              onCompositionEnd={() => setIsComposing(false)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !isComposing) {
-                  event.preventDefault();
-                  addDrink();
-                }
-              }}
-            />
-            <button className="beverage-custom-submit" type="button" onClick={addDrink}>
-              +
-            </button>
+            <input aria-label="직접 입력 음료" placeholder="예: 텀블러 아아 (얼음 적게)" value={drinkInput} onChange={(event) => setDrinkInput(event.target.value)} onCompositionStart={() => setIsComposing(true)} onCompositionEnd={() => setIsComposing(false)} onKeyDown={(event) => { if (event.key === 'Enter' && !isComposing) { event.preventDefault(); addDrink(); } }} />
+            <button className="beverage-custom-submit" type="button" onClick={addDrink}>+</button>
           </div>
         )}
-        <ol className="beverage-list">
-          {initialLoading ? (
-            <li className="empty">저장된 음료를 불러오는 중입니다.</li>
-          ) : drinks.length === 0 ? (
-            <li className="empty">입력된 음료가 없습니다.</li>
-          ) : (
-            drinks.map((drink, index) => (
-              <li key={`${drink}-${index}`}>
-                <span>{drink}</span>
-                <button type="button" aria-label={`${drink} 삭제`} onClick={() => removeDrink(index)}>
-                  <TrashIcon />
-                </button>
-              </li>
-            ))
-          )}
+        <ol className="beverage-note-list">
+          {initialLoading ? <li className="empty">저장된 음료를 불러오는 중입니다.</li> : drinks.length === 0 ? <li className="empty">음료를 선택하면 참고사항을 입력할 수 있습니다.</li> : drinks.map((drink) => (
+            <li key={drink}>
+              <label><strong>{drink}</strong><input aria-label={`${drink} 참고사항`} placeholder="참고사항 없음" value={drinkNotes[drink] || ''} onChange={(event) => setDrinkNotes((current) => ({ ...current, [drink]: event.target.value }))} /></label>
+              <button type="button" aria-label={`${drink} 삭제`} onClick={() => removeDrink(drink)}><TrashIcon /></button>
+            </li>
+          ))}
         </ol>
-        <label className="member-field">
-          <span>참고사항</span>
-          <textarea
-            placeholder="당도, 얼음, 시럽 등 요청사항을 자유롭게 적어주세요"
-            rows={5}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </label>
-        <button className="member-primary-action" type="button" disabled={loading} onClick={saveDrinks}>
-          {loading ? '저장 중' : '저장하기 →'}
-        </button>
+        <button className="member-primary-action" type="button" disabled={loading} onClick={saveDrinks}>{loading ? '저장 중' : '저장하기 →'}</button>
         {message && <p className="beverage-message">{message}</p>}
       </div>
     </div>
   );
 }
 
-function CoffeeIcon() {
-  return (
-    <svg className="coffee-line-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 8h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z" />
-      <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
-      <path d="M7 5c0-1 1-1.2 1-2.2" />
-      <path d="M11 5c0-1 1-1.2 1-2.2" />
-      <path d="M15 5c0-1 1-1.2 1-2.2" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg className="trash-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v5" />
-      <path d="M14 11v5" />
-    </svg>
-  );
-}
+function CoffeeIcon() { return <svg className="coffee-line-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z" /><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" /><path d="M7 5c0-1 1-1.2 1-2.2" /><path d="M11 5c0-1 1-1.2 1-2.2" /><path d="M15 5c0-1 1-1.2 1-2.2" /></svg>; }
+function TrashIcon() { return <svg className="trash-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v5" /><path d="M14 11v5" /></svg>; }

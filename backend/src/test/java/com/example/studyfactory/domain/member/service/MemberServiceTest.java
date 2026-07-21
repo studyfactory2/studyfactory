@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
-import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
+import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
@@ -47,10 +47,10 @@ class MemberServiceTest {
     @DisplayName("이름과 지점에 해당하는 사전등록 사원 정보를 확인한다")
     void verifyPreRegistration() {
         Member member = createPreRegisteredMember();
-        BeveragePreference beveragePreference = new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게");
+        BeverageItem beverageItem = new BeverageItem(1L, "아이스 아메리카노", "연하게");
         given(memberRepository.findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc("hong", 1L))
                 .willReturn(List.of(member));
-        given(beverageService.findLatestPreference(member)).willReturn(beveragePreference);
+        given(beverageService.findItems(member.getId())).willReturn(List.of(beverageItem));
 
         List<PreRegistrationVerifyResponse> responses = memberService.verifyPreRegistration(
                 new PreRegistrationVerifyRequest(" hong ", 1L)
@@ -62,7 +62,7 @@ class MemberServiceTest {
         assertThat(response.name()).isEqualTo("hong");
         assertThat(response.certificationId()).isEqualTo(3L);
         assertThat(response.drinkSetting()).isEqualTo("아이스 아메리카노");
-        assertThat(response.drinkNote()).isEqualTo("연하게");
+        assertThat(response.drinkNotes()).containsEntry("아이스 아메리카노", "연하게");
     }
 
     @Test

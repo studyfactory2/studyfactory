@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
+import java.util.Map;
 
 public record PreRegistrationCreateRequest(
         @NotNull(message = "지점은 필수입니다.")
@@ -18,6 +19,12 @@ public record PreRegistrationCreateRequest(
         LocalDate expectedJoinDate,
         String certification,
         String drinkSetting,
+        Map<String, String> drinkNotes,
         String drinkNote
 ) {
+
+    public PreRegistrationCreateRequest(Long branchId, String name, MemberRole role, Integer seatNumber,
+                                        LocalDate expectedJoinDate, String certification, String drinkSetting, String drinkNote) {
+        this(branchId, name, role, seatNumber, expectedJoinDate, certification, drinkSetting, null, drinkNote);
+    }
 }
