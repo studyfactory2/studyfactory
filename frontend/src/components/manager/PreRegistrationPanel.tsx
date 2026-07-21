@@ -27,10 +27,24 @@ const ROLE_OPTIONS: Array<{ value: MemberRole; label: string }> = [
   { value: 'STAFF', label: '스탭' },
   { value: 'ADMIN', label: '관리자' },
 ];
-const DRINK_OPTIONS: DropdownOption[] = [
+const CUSTOM_DRINK_VALUE = '__custom__';
+const EMPTY_DRINK_VALUE = '__empty__';
+const MENU_DRINK_OPTIONS: DropdownOption[] = [
   { value: '선식', label: '선식' },
   { value: '해독쥬스', label: '해독쥬스' },
-  { value: '없음', label: '없음' },
+  { value: '아아', label: '아아' },
+  { value: '뜨아', label: '뜨아' },
+  { value: '텀아아', label: '텀아아' },
+  { value: '텀뜨아', label: '텀뜨아' },
+];
+const DRINK_OPTIONS: DropdownOption[] = [
+  ...MENU_DRINK_OPTIONS,
+  { value: EMPTY_DRINK_VALUE, label: '없음' },
+  { value: CUSTOM_DRINK_VALUE, label: '직접 입력' },
+];
+const ADDITIONAL_DRINK_OPTIONS: DropdownOption[] = [
+  ...MENU_DRINK_OPTIONS,
+  { value: CUSTOM_DRINK_VALUE, label: '직접 입력' },
 ];
 const NAMEPLATE_OPTIONS = [
   '2026공기업합격 합격자',
@@ -505,7 +519,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
               setRoleOpen(false);
               setSeatOpen(false);
             }}
-            onAddCustomInput={() => setShowCustomDrink(true)}
+            onShowCustomInput={() => setShowCustomDrink(true)}
             onClose={() => setDrinkOpen(false)}
           />
         </label>
@@ -642,7 +656,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                           setEditRoleOpen(false);
                           setEditSeatOpen(false);
                         }}
-                        onAddCustomInput={() => setShowEditCustomDrink(true)}
+                        onShowCustomInput={() => setShowEditCustomDrink(true)}
                         onClose={() => setEditDrinkOpen(false)}
                       />
                     </label>
@@ -914,23 +928,49 @@ type DrinkSettingFieldProps = {
   showCustomInput: boolean;
   onChange: (value: string) => void;
   onToggle: () => void;
-  onAddCustomInput: () => void;
+  onShowCustomInput: () => void;
   onClose: () => void;
 };
 
-function DrinkSettingField({ value, open, showCustomInput, onChange, onToggle, onAddCustomInput, onClose }: DrinkSettingFieldProps) {
+function DrinkSettingField({ value, open, showCustomInput, onChange, onToggle, onShowCustomInput, onClose }: DrinkSettingFieldProps) {
+  const [additionalPickerOpen, setAdditionalPickerOpen] = useState(false);
   const { baseDrink, customText } = toDrinkParts(value);
+  const drinks = parseDrinkItems(value);
   const selectedOption = baseDrink
     ? { value: baseDrink, label: baseDrink }
     : { value: '', label: '음료를 선택해주세요' };
 
   const changeBaseDrink = (nextBaseDrink: string) => {
-    onChange(toDrinkSettingValue(nextBaseDrink, customText));
+    if (nextBaseDrink === EMPTY_DRINK_VALUE) {
+      onChange('');
+      onClose();
+      return;
+    }
+    if (nextBaseDrink === CUSTOM_DRINK_VALUE) {
+      onShowCustomInput();
+      onClose();
+      return;
+    }
+
+    const nextDrinks = baseDrink
+      ? [nextBaseDrink, ...drinks.filter((drink) => drink !== baseDrink)]
+      : [nextBaseDrink, ...drinks];
+    onChange(uniqueDrinkItems(nextDrinks).join(','));
     onClose();
   };
 
+  const addMenuDrink = (nextDrink: string) => {
+    if (nextDrink === CUSTOM_DRINK_VALUE) {
+      onShowCustomInput();
+    } else {
+      onChange(uniqueDrinkItems([...drinks, nextDrink]).join(','));
+    }
+    setAdditionalPickerOpen(false);
+  };
+
   const changeCustomText = (nextCustomText: string) => {
-    onChange(toDrinkSettingValue(baseDrink, nextCustomText));
+    const menuDrinks = drinks.filter((drink) => MENU_DRINK_OPTIONS.some((option) => option.value === drink));
+    onChange(uniqueDrinkItems([...menuDrinks, ...parseDrinkItems(nextCustomText)]).join(','));
   };
 
   return (
@@ -946,10 +986,25 @@ function DrinkSettingField({ value, open, showCustomInput, onChange, onToggle, o
           onToggle={onToggle}
           onSelect={changeBaseDrink}
         />
-        <button type="button" aria-label="음료 직접 입력 추가" onClick={onAddCustomInput}>
+        <button type="button" aria-label="음료 추가" onClick={() => {
+          setAdditionalPickerOpen(true);
+          onClose();
+        }}>
           +
         </button>
       </div>
+      {additionalPickerOpen && (
+        <Dropdown
+          classNamePrefix="form-dropdown"
+          label="음료 추가"
+          open
+          options={ADDITIONAL_DRINK_OPTIONS}
+          placeholderClass
+          selectedOption={{ value: '', label: '추가할 음료를 선택해주세요' }}
+          onToggle={() => setAdditionalPickerOpen(false)}
+          onSelect={addMenuDrink}
+        />
+      )}
       {showCustomInput && (
         <input
           type="text"
@@ -993,14 +1048,10 @@ function DrinkNotesField({ drinks, notes, onChange }: DrinkNotesFieldProps) {
 
 function toDrinkParts(value: string) {
   const drinks = parseDrinkItems(value);
-  const baseDrink = drinks.find((drink) => DRINK_OPTIONS.some((option) => option.value === drink)) || '';
-  const customText = drinks.filter((drink) => drink !== baseDrink).join(', ');
+  const baseDrink = drinks.find((drink) => MENU_DRINK_OPTIONS.some((option) => option.value === drink)) || '';
+  const customText = drinks.filter((drink) => !MENU_DRINK_OPTIONS.some((option) => option.value === drink)).join(', ');
 
   return { baseDrink, customText };
-}
-
-function toDrinkSettingValue(baseDrink: string, customText: string) {
-  return [baseDrink, ...parseDrinkItems(customText)].filter(Boolean).join(',');
 }
 
 function parseDrinkItems(value: string) {
@@ -1008,6 +1059,10 @@ function parseDrinkItems(value: string) {
     .split(/[,\n\r]+/)
     .map((drink) => drink.trim())
     .filter(Boolean);
+}
+
+function uniqueDrinkItems(drinks: string[]) {
+  return [...new Set(drinks.map((drink) => drink.trim()).filter(Boolean))];
 }
 
 function normalizeDrinkNotes(drinkSetting: string, notes: Record<string, string>) {
