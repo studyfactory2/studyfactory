@@ -38,7 +38,6 @@ export type PreRegistrationVerifyResponse = {
   certificationId?: number | null;
   drinkSetting?: string | null;
   drinkNote?: string | null;
-  memberNote?: string | null;
 };
 
 export type PreRegistrationResponse = {
@@ -51,7 +50,6 @@ export type PreRegistrationResponse = {
   certificationId?: number | null;
   drinkSetting?: string | null;
   drinkNote?: string | null;
-  memberNote?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -65,7 +63,6 @@ export type MemberResponse = {
   joinDate?: string | null;
   expectedJoinDate?: string | null;
   certificationId?: number | null;
-  memberNote?: string | null;
   preparingCertifications?: string | null;
   createdAt: string;
   updatedAt: string;

@@ -15,7 +15,6 @@ type MemberEditState = {
   name: string;
   seatNumber: string;
   joinDate: string;
-  memberNote: string;
   preparingCertifications: string[];
   preparingCertificationInput: string;
 };
@@ -91,7 +90,6 @@ export function MemberStatusPanel({ branches, certifications }: MemberStatusPane
       name: member.name,
       seatNumber: member.seatNumber ? String(member.seatNumber) : '',
       joinDate: member.joinDate || member.expectedJoinDate || '',
-      memberNote: member.memberNote || '',
       preparingCertifications: toPreparingCertificationList(member.preparingCertifications, findCertification(certifications, member.certificationId)),
       preparingCertificationInput: '',
     });
@@ -174,7 +172,6 @@ export function MemberStatusPanel({ branches, certifications }: MemberStatusPane
           seatNumber: editDraft.seatNumber ? Number(editDraft.seatNumber) : null,
           joinDate: editDraft.joinDate,
           certificationId: null,
-          memberNote: editDraft.memberNote.trim(),
           preparingCertifications: editDraft.preparingCertifications.join('\n'),
         }),
       });

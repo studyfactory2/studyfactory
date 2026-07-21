@@ -62,7 +62,6 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$[0].seatNumber").value(10))
                 .andExpect(jsonPath("$[0].joinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$[0].certificationId").value(3))
-                .andExpect(jsonPath("$[0].memberNote").value("오전 교육 예정"))
                 .andExpect(jsonPath("$[0].password").doesNotExist())
                 .andExpect(jsonPath("$[1].name").value("lee"));
     }

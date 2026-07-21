@@ -73,8 +73,7 @@ class PreRegistrationControllerTest {
                   "expectedJoinDate": "2026-07-01",
                   "certification": "홍길동 매니저",
                   "drinkSetting": "아이스 아메리카노",
-                  "drinkNote": "연하게",
-                  "memberNote": "오전 교육 예정"
+                  "drinkNote": "연하게"
                 }
                 """.formatted(branch.getId());
 
@@ -90,8 +89,7 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.expectedJoinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$.certificationId").value(certification.getId()))
                 .andExpect(jsonPath("$.drinkSetting").value("아이스 아메리카노"))
-                .andExpect(jsonPath("$.drinkNote").value("연하게"))
-                .andExpect(jsonPath("$.memberNote").value("오전 교육 예정"));
+                .andExpect(jsonPath("$.drinkNote").value("연하게"));
 
         assertThat(memberRepository.count()).isEqualTo(1);
         assertThat(beveragePreferenceRepository.count()).isEqualTo(1);
@@ -111,8 +109,7 @@ class PreRegistrationControllerTest {
                   "expectedJoinDate": "2026-07-01",
                   "certification": "회계사",
                   "drinkSetting": "아이스 아메리카노",
-                  "drinkNote": "연하게",
-                  "memberNote": "오전 교육 예정"
+                  "drinkNote": "연하게"
                 }
                 """.formatted(branch.getId());
 
@@ -141,8 +138,7 @@ class PreRegistrationControllerTest {
                   "expectedJoinDate": "2026-07-01",
                   "certification": null,
                   "drinkSetting": "아이스 아메리카노",
-                  "drinkNote": "연하게",
-                  "memberNote": "오전 교육 예정"
+                  "drinkNote": "연하게"
                 }
                 """.formatted(branch.getId());
 
@@ -170,8 +166,7 @@ class PreRegistrationControllerTest {
                   "expectedJoinDate": "2026-07-01",
                   "certification": null,
                   "drinkSetting": "아이스 아메리카노",
-                  "drinkNote": "연하게",
-                  "memberNote": "오전 교육 예정"
+                  "drinkNote": "연하게"
                 }
                 """.formatted(branch.getId());
 
@@ -199,8 +194,7 @@ class PreRegistrationControllerTest {
                   "expectedJoinDate": "2026-07-01",
                   "certification": null,
                   "drinkSetting": "아이스 아메리카노",
-                  "drinkNote": "연하게",
-                  "memberNote": "오전 교육 예정"
+                  "drinkNote": "연하게"
                 }
                 """.formatted(branch.getId());
         mockMvc.perform(post("/api/pre-registrations")
@@ -230,8 +224,7 @@ class PreRegistrationControllerTest {
                   "expectedJoinDate": "2026-07-01",
                   "certification": null,
                   "drinkSetting": "아이스 아메리카노",
-                  "drinkNote": "연하게",
-                  "memberNote": "오전 교육 예정"
+                  "drinkNote": "연하게"
                 }
                 """.formatted(branch.getId());
         String createResponse = mockMvc.perform(post("/api/pre-registrations")
@@ -251,8 +244,7 @@ class PreRegistrationControllerTest {
                   "expectedJoinDate": "2026-07-02",
                   "certification": "관리자",
                   "drinkSetting": "라떼",
-                  "drinkNote": "뜨겁게",
-                  "memberNote": "수정됨"
+                  "drinkNote": "뜨겁게"
                 }
                 """.formatted(branch.getId());
 
@@ -266,8 +258,7 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.seatNumber").value(15))
                 .andExpect(jsonPath("$.expectedJoinDate").value("2026-07-02"))
                 .andExpect(jsonPath("$.drinkSetting").value("라떼"))
-                .andExpect(jsonPath("$.drinkNote").value("뜨겁게"))
-                .andExpect(jsonPath("$.memberNote").value("수정됨"));
+                .andExpect(jsonPath("$.drinkNote").value("뜨겁게"));
     }
 
     @Test
@@ -284,8 +275,7 @@ class PreRegistrationControllerTest {
                   "expectedJoinDate": "2026-07-01",
                   "certification": null,
                   "drinkSetting": "아이스 아메리카노",
-                  "drinkNote": "연하게",
-                  "memberNote": "오전 교육 예정"
+                  "drinkNote": "연하게"
                 }
                 """.formatted(branch.getId());
         String createResponse = mockMvc.perform(post("/api/pre-registrations")

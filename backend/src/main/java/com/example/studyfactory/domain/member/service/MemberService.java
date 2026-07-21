@@ -55,7 +55,6 @@ public class MemberService {
                 request.seatNumber(),
                 request.joinDate(),
                 request.certificationId(),
-                request.memberNote(),
                 request.preparingCertifications()
         );
 

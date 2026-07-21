@@ -16,7 +16,6 @@ public record PreRegistrationResponse(
         Long certificationId,
         String drinkSetting,
         String drinkNote,
-        String memberNote,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -32,7 +31,6 @@ public record PreRegistrationResponse(
                 member.getCertificationId(),
                 beveragePreference.getDrinks(),
                 beveragePreference.getNotes(),
-                member.getMemberNote(),
                 member.getCreatedAt(),
                 member.getUpdatedAt()
         );

@@ -29,7 +29,6 @@ class MemberTest {
         assertThat(member.getSeatNumber()).isEqualTo(12);
         assertThat(member.getJoinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(member.getCertificationId()).isEqualTo(3L);
-        assertThat(member.getMemberNote()).isEqualTo("오전 교육 예정");
     }
 
     @Test
