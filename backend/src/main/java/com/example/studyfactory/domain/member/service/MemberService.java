@@ -1,6 +1,5 @@
 package com.example.studyfactory.domain.member.service;
 
-import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
@@ -81,7 +80,7 @@ public class MemberService {
         }
 
         return members.stream()
-                .map(member -> PreRegistrationVerifyResponse.from(member, beverageService.findLatestPreference(member)))
+                .map(member -> PreRegistrationVerifyResponse.from(member, beverageService.findItems(member.getId())))
                 .toList();
     }
 

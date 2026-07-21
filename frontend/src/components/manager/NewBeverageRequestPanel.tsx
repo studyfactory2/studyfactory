@@ -60,7 +60,7 @@ export function NewBeverageRequestPanel({ branches }: NewBeverageRequestPanelPro
           ) : (
             sortedBeverages.map((beverage) => {
               const drinks = toDrinkPreview(beverage.drinks);
-              const note = hasNote(beverage.notes) ? beverage.notes?.trim() : '';
+              const notes = Object.entries(beverage.drinkNotes || {});
 
               return (
                 <article className="new-beverage-card" key={beverage.memberId}>
@@ -69,7 +69,7 @@ export function NewBeverageRequestPanel({ branches }: NewBeverageRequestPanelPro
                   </strong>
                   <div>
                     <span>{drinks}</span>
-                    {note ? <small>요청사항: {note}</small> : null}
+                    {notes.map(([drink, note]) => <small key={drink}>{drink}: {note}</small>)}
                   </div>
                 </article>
               );
@@ -127,10 +127,6 @@ function toSortableSeatNumber(seatNumber?: number | null) {
   }
 
   return seatNumber;
-}
-
-function hasNote(note?: string | null) {
-  return Boolean(note && note.trim() && note.trim() !== '입력 없음');
 }
 
 function BackIcon() {

@@ -5,8 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
-import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.beverage.entity.BeverageItem;
+import com.example.studyfactory.domain.beverage.repository.BeverageItemRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
@@ -31,11 +31,11 @@ class MemberSignupTest {
     private MemberRepository memberRepository;
 
     @Autowired
-    private BeveragePreferenceRepository beveragePreferenceRepository;
+    private BeverageItemRepository beverageItemRepository;
 
     @BeforeEach
     void setUp() {
-        beveragePreferenceRepository.deleteAll();
+        beverageItemRepository.deleteAll();
         memberRepository.deleteAll();
     }
 
@@ -43,7 +43,7 @@ class MemberSignupTest {
     @DisplayName("이름과 지점이 일치하면 사전등록된 사원 정보를 반환한다")
     void verifyPreRegistration() throws Exception {
         Member member = memberRepository.save(createPreRegisteredMember());
-        beveragePreferenceRepository.save(new BeveragePreference(member.getId(), member.getBranchId(), "아이스 아메리카노", "연하게"));
+        beverageItemRepository.save(new BeverageItem(member.getId(), "아이스 아메리카노", "연하게"));
         String requestBody = """
                 {
                   "name": "hong",
@@ -60,7 +60,7 @@ class MemberSignupTest {
                 .andExpect(jsonPath("$[0].name").value("hong"))
                 .andExpect(jsonPath("$[0].certificationId").value(3))
                 .andExpect(jsonPath("$[0].drinkSetting").value("아이스 아메리카노"))
-                .andExpect(jsonPath("$[0].drinkNote").value("연하게"));
+                .andExpect(jsonPath("$[0].drinkNotes['아이스 아메리카노']").value("연하게"));
     }
 
     @Test

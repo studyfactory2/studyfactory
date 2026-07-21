@@ -7,7 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
-import com.example.studyfactory.domain.beverage.entity.BeveragePreference;
+import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
@@ -20,6 +20,7 @@ import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,8 +64,8 @@ class PreRegistrationServiceTest {
             ReflectionTestUtils.setField(member, "id", 1L);
             return member;
         });
-        given(beverageService.createPreference(1L, 1L, "아이스 아메리카노", "연하게"))
-                .willReturn(new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게"));
+        given(beverageService.createPreference(1L, "아이스 아메리카노", "연하게"))
+                .willReturn(List.of(new BeverageItem(1L, "아이스 아메리카노", "연하게")));
 
         PreRegistrationResponse response = preRegistrationService.create(request);
 
@@ -76,9 +77,9 @@ class PreRegistrationServiceTest {
         assertThat(response.expectedJoinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(response.certificationId()).isEqualTo(3L);
         assertThat(response.drinkSetting()).isEqualTo("아이스 아메리카노");
-        assertThat(response.drinkNote()).isEqualTo("연하게");
+        assertThat(response.drinkNotes()).containsEntry("아이스 아메리카노", "연하게");
         then(memberRepository).should().save(any(Member.class));
-        then(beverageService).should().createPreference(1L, 1L, "아이스 아메리카노", "연하게");
+        then(beverageService).should().createPreference(1L, "아이스 아메리카노", "연하게");
     }
 
     @Test
@@ -106,8 +107,8 @@ class PreRegistrationServiceTest {
             ReflectionTestUtils.setField(member, "id", 1L);
             return member;
         });
-        given(beverageService.createPreference(1L, 1L, "아이스 아메리카노", "연하게"))
-                .willReturn(new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게"));
+        given(beverageService.createPreference(1L, "아이스 아메리카노", "연하게"))
+                .willReturn(List.of(new BeverageItem(1L, "아이스 아메리카노", "연하게")));
 
         PreRegistrationResponse response = preRegistrationService.create(request);
 
@@ -135,8 +136,8 @@ class PreRegistrationServiceTest {
             ReflectionTestUtils.setField(member, "id", 1L);
             return member;
         });
-        given(beverageService.createPreference(1L, 1L, "아이스 아메리카노", "연하게"))
-                .willReturn(new BeveragePreference(1L, 1L, "아이스 아메리카노", "연하게"));
+        given(beverageService.createPreference(1L, "아이스 아메리카노", "연하게"))
+                .willReturn(List.of(new BeverageItem(1L, "아이스 아메리카노", "연하게")));
 
         PreRegistrationResponse response = preRegistrationService.create(request);
 

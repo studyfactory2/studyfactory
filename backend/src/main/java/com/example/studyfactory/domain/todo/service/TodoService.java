@@ -1,6 +1,6 @@
 package com.example.studyfactory.domain.todo.service;
 
-import com.example.studyfactory.domain.beverage.repository.BeveragePreferenceRepository;
+import com.example.studyfactory.domain.beverage.repository.BeverageItemRepository;
 import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.member.entity.Member;
@@ -20,7 +20,6 @@ import com.example.studyfactory.domain.todo.entity.TodoSourceType;
 import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
 import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +33,7 @@ public class TodoService {
     private final TodoItemRepository todoItemRepository;
     private final TodoReplyRepository todoReplyRepository;
     private final MemberRepository memberRepository;
-    private final BeveragePreferenceRepository beveragePreferenceRepository;
+    private final BeverageItemRepository beverageItemRepository;
     private final CertificationRepository certificationRepository;
 
     @Transactional(readOnly = true)
@@ -161,8 +160,11 @@ public class TodoService {
         String seat = member.getSeatNumber() == null ? "" : member.getSeatNumber() + "번 ";
         String certification = getCertificationContent(member);
         String certificationText = certification == null || certification.isBlank() ? "" : " (" + certification + ")";
-        String drinks = beveragePreferenceRepository.findFirstByMemberIdOrderByCreatedAtDesc(member.getId())
-                .map(preference -> toDrinkText(preference.getDrinks()))
+        String drinks = beverageItemRepository.findByMemberIdOrderByCreatedAtAsc(member.getId())
+                .stream()
+                .map(item -> item.getName())
+                .filter(drink -> !isExcludedDrinkName(drink))
+                .reduce((left, right) -> left + ", " + right)
                 .orElse("");
 
         String content = seat + member.getName() + certificationText;
@@ -181,21 +183,6 @@ public class TodoService {
         return certificationRepository.findById(member.getCertificationId())
                 .map(Certification::getContent)
                 .orElse(null);
-    }
-
-    private String toDrinkText(String drinks) {
-        if (drinks == null || drinks.isBlank()) {
-            return "";
-        }
-
-        String drinkText = Arrays.stream(drinks.split("[,\\r\\n]+"))
-                .map(String::trim)
-                .filter(drink -> !drink.isBlank())
-                .filter(drink -> !isExcludedDrinkName(drink))
-                .reduce((left, right) -> left + ", " + right)
-                .orElse("");
-
-        return drinkText;
     }
 
     private boolean isExcludedDrinkName(String drink) {

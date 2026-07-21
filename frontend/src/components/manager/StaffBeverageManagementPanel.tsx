@@ -65,7 +65,7 @@ export function StaffBeverageManagementPanel({ branches }: StaffBeverageManageme
         method: 'POST',
         body: JSON.stringify({
           drinkSetting: nextDrink,
-          drinkNote: beverage.notes?.trim() || null,
+          drinkNotes: {},
         }),
       });
       updateBeverage(beverage.memberId, response);
@@ -98,7 +98,7 @@ export function StaffBeverageManagementPanel({ branches }: StaffBeverageManageme
     setBeverages((currentBeverages) =>
       currentBeverages.map((beverage) =>
         beverage.memberId === memberId
-          ? { ...beverage, drinks: response.drinks, notes: response.notes }
+          ? { ...beverage, drinks: response.drinks, drinkNotes: response.drinkNotes }
           : beverage,
       ),
     );
@@ -156,7 +156,9 @@ export function StaffBeverageManagementPanel({ branches }: StaffBeverageManageme
                     <span className="staff-beverage-member">
                       <strong>{beverage.memberName}</strong>
                       <small>{toDrinkPreview(beverage.drinks)}</small>
-                      {hasNote(beverage.notes) ? <em>참고사항: {beverage.notes}</em> : null}
+                      {Object.entries(beverage.drinkNotes || {}).map(([drink, note]) => (
+                        <em key={drink}>{drink}: {note}</em>
+                      ))}
                     </span>
                     <ChevronIcon />
                   </button>
@@ -259,10 +261,6 @@ function toSortableSeatNumber(seatNumber?: number | null) {
   }
 
   return seatNumber;
-}
-
-function hasNote(note?: string | null) {
-  return Boolean(note && note.trim() && note.trim() !== '입력 없음');
 }
 
 function isInteractiveElement(target: EventTarget) {

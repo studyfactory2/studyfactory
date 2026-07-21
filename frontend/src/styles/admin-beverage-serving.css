@@ -698,6 +698,111 @@ button.beverage-serving-cell:disabled {
   resize: vertical;
 }
 
+.beverage-seat-modal-notes {
+  display: grid;
+  gap: 7px;
+  margin: 3px 0 15px;
+}
+
+.beverage-seat-modal-note {
+  display: grid;
+  grid-template-columns: minmax(62px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 3px 8px;
+  border: 1px solid #d8e4ec;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.beverage-seat-modal-notes strong {
+  color: #405267;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.beverage-seat-modal-note > span {
+  min-width: 0;
+  overflow: hidden;
+  color: #526477;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.beverage-seat-modal-note > span.empty-note {
+  color: #9aa8b6;
+  font-weight: 600;
+}
+
+.beverage-seat-modal-note-actions,
+.beverage-seat-modal-note-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.beverage-seat-modal-note-actions button,
+.beverage-seat-modal-note-edit button {
+  min-width: 32px;
+  min-height: 25px;
+  padding: 0 6px;
+  border: 1px solid #d9e6f4;
+  border-radius: 6px;
+  background: #fff;
+  color: #3182f6;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.beverage-seat-modal-note-actions .delete-note {
+  border-color: #ffd8dc;
+  color: #ef5964;
+}
+
+.beverage-seat-modal-note-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.beverage-seat-modal-note-edit {
+  min-width: 0;
+  grid-column: 2 / -1;
+}
+
+.beverage-seat-modal-note-edit input {
+  min-width: 0;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid #b9d6ff;
+  border-radius: 6px;
+  background: #fff;
+  color: #26323a;
+  font-size: 12px;
+  font-weight: 800;
+  outline: none;
+}
+
+.beverage-seat-modal-note-edit input:focus {
+  border-color: #3182f6;
+  box-shadow: 0 0 0 2px rgba(49, 130, 246, 0.12);
+}
+
+.beverage-seat-modal-note-edit .save-note {
+  border-color: #3182f6;
+  background: #3182f6;
+  color: #fff;
+}
+
+.beverage-seat-modal-note-edit .cancel-note {
+  color: #718096;
+}
+
 .beverage-seat-modal-actions {
   display: flex;
   justify-content: flex-end;
