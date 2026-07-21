@@ -23,6 +23,7 @@ type SelectedSlot = {
   slot: number;
 };
 type SlotStatusUpdateType = 'PRESENT' | 'ABSENT' | 'OTHER';
+type DateSlideDirection = 'previous' | 'next' | null;
 
 export function StaffAttendancePanel() {
   const [board, setBoard] = useState<DailyAttendanceBoardResponse | null>(null);
@@ -56,7 +57,9 @@ export function StaffAttendancePanel() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [searchedSeatNumber, setSearchedSeatNumber] = useState<number | null>(null);
+  const [dateSlideDirection, setDateSlideDirection] = useState<DateSlideDirection>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
+  const pendingDateSlideDirectionRef = useRef<DateSlideDirection>(null);
   const branchId = localStorage.getItem('branchId');
   const attendanceRows = useMemo(() => board?.rows || [], [board]);
   const todoItems = useMemo(() => [...todos].sort((first, second) => {
@@ -104,6 +107,19 @@ export function StaffAttendancePanel() {
   }, [selectedDate, todoBranchId]);
 
   useEffect(() => {
+    if (searchedSeatNumber == null) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const targetRow = tableWrapRef.current?.querySelector<HTMLTableRowElement>(`tr[data-seat-number="${searchedSeatNumber}"]`);
+      targetRow?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [attendanceRows, searchedSeatNumber]);
+
+  useEffect(() => {
     if (todoModalOpen) {
       void loadTodos(selectedDate);
     }
@@ -119,6 +135,8 @@ export function StaffAttendancePanel() {
       }
       const response = await apiRequest<DailyAttendanceBoardResponse>(`/api/attendances/daily-board?${params.toString()}`);
       setBoard(response);
+      setDateSlideDirection(pendingDateSlideDirectionRef.current);
+      pendingDateSlideDirectionRef.current = null;
       setSelectedSlot(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '출석부를 불러오지 못했습니다.');
@@ -299,6 +317,7 @@ export function StaffAttendancePanel() {
   const moveDate = (amount: number) => {
     const date = new Date(`${selectedDate}T00:00:00`);
     date.setDate(date.getDate() + amount);
+    pendingDateSlideDirectionRef.current = amount < 0 ? 'previous' : 'next';
     setSelectedDate(toDateKey(date));
   };
 
@@ -319,10 +338,6 @@ export function StaffAttendancePanel() {
     }
 
     setSearchedSeatNumber(matchingRow.seatNumber);
-    window.requestAnimationFrame(() => {
-      const targetRow = tableWrapRef.current?.querySelector<HTMLTableRowElement>(`tr[data-seat-number="${matchingRow.seatNumber}"]`);
-      targetRow?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-    });
   };
 
   const updateSlotStatus = async (
@@ -618,13 +633,16 @@ export function StaffAttendancePanel() {
         </button>
       </div>
 
-      {loading ? (
+      {loading && !board ? (
         <p className="staff-attendance-message">불러오는 중입니다.</p>
       ) : message ? (
         <p className="staff-attendance-message">{message}</p>
-      ) : (
+      ) : board ? (
         <div className="staff-attendance-table-wrap" ref={tableWrapRef}>
-          <table className="staff-attendance-table">
+          <table
+            className={`staff-attendance-table${dateSlideDirection ? ` date-slide-${dateSlideDirection}` : ''}`}
+            onAnimationEnd={() => setDateSlideDirection(null)}
+          >
             <colgroup>
               <col className="staff-seat-column" />
               <col className="staff-name-column" />
@@ -704,7 +722,7 @@ export function StaffAttendancePanel() {
             <button className="command-undo" type="button" disabled={!selectedSlot || submitting} onClick={() => moveToNextEditableSlot()}>↵</button>
           </div>
         </div>
-      )}
+      ) : null}
       {otherModalOpen && (
         <div className="attendance-modal-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) {

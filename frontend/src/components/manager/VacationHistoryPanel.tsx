@@ -275,9 +275,23 @@ function getDayClassName(date: Date) {
 function toMonthlyLeaves(responses: MonthlyLeaveCalendarResponse[]) {
   return responses.reduce<Record<string, MonthlyLeaveCalendarResponse[]>>((accumulator, response) => {
     const current = accumulator[response.leaveDate] || [];
-    accumulator[response.leaveDate] = [...current, response].sort((first, second) => (
-      toSourceOrder(first.source) - toSourceOrder(second.source)
-    ));
+    const duplicateIndex = current.findIndex((leaveStatus) => leaveStatus.label === response.label);
+
+    if (duplicateIndex === -1) {
+      accumulator[response.leaveDate] = [...current, response].sort((first, second) => (
+        toSourceOrder(first.source) - toSourceOrder(second.source)
+      ));
+      return accumulator;
+    }
+
+    const duplicate = current[duplicateIndex];
+    if (toSourceOrder(response.source) < toSourceOrder(duplicate.source)) {
+      const next = [...current];
+      next[duplicateIndex] = response;
+      accumulator[response.leaveDate] = next.sort((first, second) => (
+        toSourceOrder(first.source) - toSourceOrder(second.source)
+      ));
+    }
 
     return accumulator;
   }, {});
