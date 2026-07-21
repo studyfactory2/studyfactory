@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { apiRequest } from '../../api/client';
 import type { Branch, DailyAttendanceBoardResponse, DailySideDishResponse, MealType, SuggestionResponse, TodoResponse } from '../../types/domain';
 
@@ -55,16 +55,10 @@ export function StaffAttendancePanel() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [searchedSeatNumber, setSearchedSeatNumber] = useState<number | null>(null);
+  const tableWrapRef = useRef<HTMLDivElement>(null);
   const branchId = localStorage.getItem('branchId');
-  const filteredRows = useMemo(() => {
-    const rows = board?.rows || [];
-    const keyword = name.trim();
-    if (!keyword) {
-      return rows;
-    }
-
-    return rows.filter((row) => row.name.includes(keyword) || String(row.seatNumber || '').includes(keyword));
-  }, [board, name]);
+  const attendanceRows = useMemo(() => board?.rows || [], [board]);
   const todoItems = useMemo(() => [...todos].sort((first, second) => {
     if (first.completed !== second.completed) {
       return Number(first.completed) - Number(second.completed);
@@ -310,9 +304,25 @@ export function StaffAttendancePanel() {
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!name.trim()) {
+    const keyword = name.trim();
+    if (!keyword) {
+      setSearchedSeatNumber(null);
       setSearchOpen(false);
+      return;
     }
+
+    const matchingRow = attendanceRows.find((row) => row.name === keyword || String(row.seatNumber || '') === keyword)
+      || attendanceRows.find((row) => row.name.includes(keyword) || String(row.seatNumber || '').includes(keyword));
+
+    if (matchingRow?.seatNumber == null) {
+      return;
+    }
+
+    setSearchedSeatNumber(matchingRow.seatNumber);
+    window.requestAnimationFrame(() => {
+      const targetRow = tableWrapRef.current?.querySelector<HTMLTableRowElement>(`tr[data-seat-number="${matchingRow.seatNumber}"]`);
+      targetRow?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    });
   };
 
   const updateSlotStatus = async (
@@ -522,7 +532,7 @@ export function StaffAttendancePanel() {
       return;
     }
 
-    const editableSlots = SLOT_LABELS.flatMap((slot) => filteredRows
+    const editableSlots = SLOT_LABELS.flatMap((slot) => attendanceRows
       .filter((row) => row.seatNumber != null && !isJoinDateRow(row))
       .map((row) => ({ memberId: row.memberId ?? null, seatNumber: row.seatNumber as number, name: row.name, slot })));
     const currentIndex = editableSlots.findIndex((slot) => slot.seatNumber === currentSlot.seatNumber && slot.slot === currentSlot.slot);
@@ -613,7 +623,7 @@ export function StaffAttendancePanel() {
       ) : message ? (
         <p className="staff-attendance-message">{message}</p>
       ) : (
-        <div className="staff-attendance-table-wrap">
+        <div className="staff-attendance-table-wrap" ref={tableWrapRef}>
           <table className="staff-attendance-table">
             <colgroup>
               <col className="staff-seat-column" />
@@ -632,7 +642,7 @@ export function StaffAttendancePanel() {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row) => {
+              {attendanceRows.map((row) => {
                 const emptySeat = row.name === '공석';
                 const rowClasses = [
                   row.seatNumber == null ? 'unassigned-row' : emptySeat ? 'empty-seat-row' : '',
@@ -646,7 +656,11 @@ export function StaffAttendancePanel() {
                 const canResetJoinDate = canResetJoinDateAttendance(row);
 
                 return (
-                  <tr className={rowClassName} key={`${row.seatNumber || 'unassigned'}-${row.name}`}>
+                  <tr
+                    className={`${rowClassName}${row.seatNumber === searchedSeatNumber ? ' search-target-row' : ''}`}
+                    data-seat-number={row.seatNumber ?? undefined}
+                    key={`${row.seatNumber || 'unassigned'}-${row.name}`}
+                  >
                     <td className="staff-seat-cell">
                       {row.seatNumber == null ? '-' : <span>{row.seatNumber}</span>}
                     </td>

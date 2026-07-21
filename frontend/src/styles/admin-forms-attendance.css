@@ -831,6 +831,7 @@
   border: 0;
   color: #333d4b;
   font-size: 0.85rem;
+  font-weight: 400;
   outline: none;
   background: transparent;
 }
@@ -1032,6 +1033,21 @@
   color: #333d4b;
 }
 
+.staff-attendance-table tbody tr.search-target-row td:nth-child(2) {
+  position: sticky;
+  background: #fff;
+  color: #145fc7;
+}
+
+.staff-attendance-table tbody tr.search-target-row td:nth-child(2)::after {
+  content: '';
+  position: absolute;
+  inset: 3px 5px;
+  border: 2px solid #1b64da;
+  border-radius: 7px;
+  pointer-events: none;
+}
+
 .staff-attendance-table .staff-seat-cell {
   text-align: center;
 }
@@ -1105,6 +1121,20 @@
   color: #286ee8;
   font-size: 13px;
   font-weight: 900;
+}
+
+/* 1열람실(1~54번)은 숫자만, 2열람실(55번~)은 연한 파란 좌석 배지로 구분한다. */
+.staff-attendance-table tbody tr:not(.second-room-row) .staff-seat-cell span {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.staff-attendance-table tbody tr.second-room-row .staff-seat-cell span {
+  background: #e7f1ff;
 }
 
 .staff-attendance-table .status-empty-seat {

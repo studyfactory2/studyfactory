@@ -262,6 +262,7 @@
 
   .staff-attendance-command-bar {
     right: 10px;
+    bottom: max(12px, env(safe-area-inset-bottom));
     margin-right: 6px;
     padding: 8px 9px 10px;
     gap: 7px;
@@ -271,6 +272,11 @@
     min-width: 66px;
     height: 42px;
     font-size: 14px;
+  }
+
+  .staff-attendance-command-bar .command-undo {
+    font-size: 22px;
+    line-height: 1;
   }
 
   .manager-card:has(.admin-grid-panel) {
