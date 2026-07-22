@@ -1919,6 +1919,17 @@
   font-weight: 800;
 }
 
+.attendance-side-dish-section.closed {
+  background: #f8fafc;
+}
+
+.attendance-side-dish-section.closed strong,
+.attendance-side-dish-section.closed ol {
+  color: #9aa8bb;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
 .attendance-note-modal {
   width: min(300px, calc(100vw - 36px));
   padding: 14px;
