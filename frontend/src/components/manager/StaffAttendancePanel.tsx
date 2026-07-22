@@ -85,6 +85,8 @@ export function StaffAttendancePanel() {
   const allOtherSlotsSelected = SLOT_LABELS.every((slot) => otherSlots.includes(slot));
   const lunchSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'LUNCH'), [sideDishes]);
   const dinnerSideDishes = useMemo(() => sideDishes.filter((sideDish) => sideDish.mealType === 'DINNER'), [sideDishes]);
+  const lunchSideDishClosed = useMemo(() => isLunchSideDishClosed(selectedDate, new Date()), [selectedDate]);
+  const visibleSideDishCount = lunchSideDishClosed ? dinnerSideDishes.length : sideDishes.length;
   const selectedTodoBranch = useMemo(() => {
     return branches.find((branch) => String(branch.id) === todoBranchId)
       || branches.find((branch) => branch.name === '망미점')
@@ -623,9 +625,14 @@ export function StaffAttendancePanel() {
           회원건의
           {unresolvedSuggestionCount > 0 && <b>{unresolvedSuggestionCount}</b>}
         </button>
-        <button className={`meal-tag${sideDishes.length > 0 ? ' has-content' : ''}`} type="button" disabled={sideDishes.length === 0} onClick={() => setSideDishModalOpen(true)}>
+        <button
+          className={`meal-tag${visibleSideDishCount > 0 ? ' has-content' : ''}`}
+          type="button"
+          disabled={sideDishes.length === 0}
+          onClick={() => setSideDishModalOpen(true)}
+        >
           반찬신청
-          {sideDishes.length > 0 && <b>{sideDishes.length}</b>}
+          {visibleSideDishCount > 0 && <b>{visibleSideDishCount}</b>}
         </button>
         <button className={`todo-tag${todoCount > 0 ? ' has-content' : ''}`} type="button" onClick={() => setTodoModalOpen(true)}>
           출석참고
@@ -880,7 +887,12 @@ export function StaffAttendancePanel() {
               <button type="button" aria-label="닫기" onClick={() => setSideDishModalOpen(false)}>×</button>
             </header>
             <div className="attendance-side-dish-content">
-              <SideDishMealSection title="점심 반찬 신청" mealType="LUNCH" sideDishes={lunchSideDishes} />
+              <SideDishMealSection
+                title="점심 반찬 신청"
+                mealType="LUNCH"
+                sideDishes={lunchSideDishes}
+                closed={lunchSideDishClosed}
+              />
               <SideDishMealSection title="저녁 반찬 신청" mealType="DINNER" sideDishes={dinnerSideDishes} />
             </div>
           </section>
@@ -1105,11 +1117,12 @@ type SideDishMealSectionProps = {
   title: string;
   mealType: MealType;
   sideDishes: DailySideDishResponse[];
+  closed?: boolean;
 };
 
-function SideDishMealSection({ title, mealType, sideDishes }: SideDishMealSectionProps) {
+function SideDishMealSection({ title, mealType, sideDishes, closed = false }: SideDishMealSectionProps) {
   return (
-    <section className="attendance-side-dish-section">
+    <section className={`attendance-side-dish-section${closed ? ' closed' : ''}`}>
       <strong>{title}</strong>
       {sideDishes.length > 0 ? (
         <ol>
@@ -1137,6 +1150,18 @@ function formatSideDishItems(sideDish: DailySideDishResponse) {
   }
 
   return items.map((item) => item.replace(/:\s*(\d+)/g, (_, price: string) => ` ${Number(price).toLocaleString()}원`));
+}
+
+function isLunchSideDishClosed(dateKey: string, now: Date) {
+  const todayKey = toDateKey(now);
+  if (dateKey < todayKey) {
+    return true;
+  }
+  if (dateKey > todayKey) {
+    return false;
+  }
+
+  return now.getHours() > 13 || (now.getHours() === 13 && now.getMinutes() >= 20);
 }
 
 function toMemberSeatText(sideDish: DailySideDishResponse) {
