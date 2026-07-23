@@ -95,6 +95,11 @@
   color: #dd7a1d;
 }
 
+.admin-grid-icon-plan {
+  background: #f0edff;
+  color: #7057e8;
+}
+
 .admin-grid-button > span:not(.admin-grid-icon) {
   display: grid;
   gap: 1px;
@@ -528,4 +533,3 @@
   min-height: 660px;
   padding: 30px 34px 38px;
 }
-

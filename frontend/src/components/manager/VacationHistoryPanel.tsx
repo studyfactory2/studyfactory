@@ -5,6 +5,8 @@ import { Dropdown, type DropdownOption } from '../common/Dropdown';
 
 type VacationHistoryPanelProps = {
   branches: Branch[];
+  title?: string;
+  onMemberSelect?: (member: MemberResponse) => void;
 };
 
 const WEEKDAYS = [
@@ -17,7 +19,7 @@ const WEEKDAYS = [
   { label: '토', className: 'saturday' },
 ];
 
-export function VacationHistoryPanel({ branches }: VacationHistoryPanelProps) {
+export function VacationHistoryPanel({ branches, title = '사원별 휴가 현황', onMemberSelect }: VacationHistoryPanelProps) {
   const branchOptions = [{ value: '', label: '전체 지점' }, ...toBranchOptions(branches)];
   const [members, setMembers] = useState<MemberResponse[]>([]);
   const [selectedMember, setSelectedMember] = useState<MemberResponse | null>(null);
@@ -91,6 +93,11 @@ export function VacationHistoryPanel({ branches }: VacationHistoryPanelProps) {
   };
 
   const openMemberCalendar = (member: MemberResponse) => {
+    if (onMemberSelect) {
+      onMemberSelect(member);
+      return;
+    }
+
     setSelectedMember(member);
     setVisibleMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     setMonthlyLeaves({});
@@ -118,7 +125,7 @@ export function VacationHistoryPanel({ branches }: VacationHistoryPanelProps) {
           </button>
           <div>
             <h2>{selectedMember.name}</h2>
-            <span>{findBranchName(branches, selectedMember.branchId)} 휴가 현황</span>
+            <span>{findBranchName(branches, selectedMember.branchId)} {title.replace('사원별 ', '')}</span>
           </div>
         </header>
         <section className="vacation-calendar-panel">
@@ -168,7 +175,7 @@ export function VacationHistoryPanel({ branches }: VacationHistoryPanelProps) {
         <button type="button" aria-label="뒤로가기" onClick={() => { window.history.pushState(null, '', '/managerdashboard?view=grid'); window.dispatchEvent(new PopStateEvent('popstate')); }}>
           <BackIcon />
         </button>
-        <h2>사원별 휴가 현황</h2>
+        <h2>{title}</h2>
         <div className="vacation-history-branch">
           <Dropdown
             classNamePrefix="form-dropdown"

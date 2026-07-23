@@ -8,6 +8,7 @@ import { ManagerTopBar } from '../components/manager/ManagerTopBar';
 import { MemberStatusPanel } from '../components/manager/MemberStatusPanel';
 import { NewBeverageRequestPanel } from '../components/manager/NewBeverageRequestPanel';
 import { OtherLeaveRequestPanel } from '../components/manager/OtherLeaveRequestPanel';
+import { PlanStatusPanel } from '../components/manager/PlanStatusPanel';
 import { PlaceholderPanel } from '../components/manager/PlaceholderPanel';
 import { PreRegistrationPanel } from '../components/manager/PreRegistrationPanel';
 import { StaffAttendancePanel } from '../components/manager/StaffAttendancePanel';
@@ -244,6 +245,10 @@ function ManagerPanel({ branches, certifications, currentView, editableStaffWork
 
   if (currentView === 'vacation_history') {
     return <VacationHistoryPanel branches={branches} />;
+  }
+
+  if (currentView === 'weekly_plan_status') {
+    return <PlanStatusPanel branches={branches} />;
   }
 
   if (currentView === 'other_leave_request') {
