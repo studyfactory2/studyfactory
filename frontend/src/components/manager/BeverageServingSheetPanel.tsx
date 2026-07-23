@@ -791,14 +791,18 @@ function createBeverageSummary(
     .filter((change): change is SummaryMember => change !== null)
     .sort(compareSummaryMembers);
   const afterEightTodayLeaves = dailyLeaveStatuses.filter((status) => isTodayLeaveRequestedAfterEight(status, now));
-  const afterEightLeaveMembers = dailyLeaveStatuses
-    .filter((status) => isTodayLeaveRequestedAfterEight(status, now))
-    .map((beverage) => ({
-      id: `${beverage.memberId}-${beverage.createdAt}-${beverage.leaveType}`,
-      label: formatLeaveMemberLabel(beverage),
-      status: toLeaveTypeLabel(beverage.leaveType),
-    }))
-    .sort(compareSummaryMembers);
+  const afterEightLeaveMembers = Array.from(
+    new Map(
+      afterEightTodayLeaves.map((status) => [
+        status.memberId,
+        {
+          id: `${status.memberId}-${status.createdAt}-${status.leaveType}`,
+          label: formatLeaveMemberLabel(status),
+          status: toLeaveTypeLabel(status),
+        },
+      ])
+    ).values()
+  ).sort(compareSummaryMembers);
   // 오전에 제공하는 음료이므로, 당일 월차·오전반차는 신청 시각과 관계없이
   // 제조 수량에서는 제외한다. 오후반차는 오전 음료를 받으므로 제외하지 않는다.
   const beverageLeaveMemberIds = new Set(
@@ -881,7 +885,11 @@ function formatLeaveMemberLabel(status: DailyLeaveStatusResponse) {
   return status.name;
 }
 
-function toLeaveTypeLabel(leaveType: DailyLeaveStatusResponse['leaveType']) {
+function toLeaveTypeLabel(status: DailyLeaveStatusResponse) {
+  if (status.label) {
+    return status.label;
+  }
+  const { leaveType } = status;
   if (leaveType === 'FULL') {
     return '월차';
   }

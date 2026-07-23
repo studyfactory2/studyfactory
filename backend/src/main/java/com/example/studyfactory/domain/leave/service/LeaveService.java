@@ -123,7 +123,53 @@ public class LeaveService {
 
     @Transactional(readOnly = true)
     public List<DailyLeaveStatusResponse> findDailyStatuses(LocalDate date, String name, Long branchId, LeaveType leaveType) {
-        return leaveRequestRepository.findDailyStatuses(resolveDate(date), toSearchName(name), branchId, leaveType);
+        LocalDate targetDate = resolveDate(date);
+        String searchName = toSearchName(name);
+        List<DailyLeaveStatusResponse> responses = new ArrayList<>(
+                leaveRequestRepository.findDailyStatuses(targetDate, searchName, branchId, leaveType)
+        );
+        Map<String, DailyLeaveStatusResponse> managerLeaveStatuses = new LinkedHashMap<>();
+        List<SpecialLeave> specialLeaves = branchId == null
+                ? specialLeaveRepository.findByLeaveDateOrderByCreatedAtAsc(targetDate)
+                : specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(branchId, targetDate);
+        Map<Long, Member> membersById = memberRepository.findAllById(
+                        specialLeaves.stream().map(SpecialLeave::getMemberId).distinct().toList()
+                )
+                .stream()
+                .collect(Collectors.toMap(Member::getId, member -> member));
+
+        for (SpecialLeave specialLeave : specialLeaves) {
+            LeaveType managerLeaveType = toManagerLeaveType(specialLeave.getReason());
+            Member member = membersById.get(specialLeave.getMemberId());
+            if (member == null) {
+                continue;
+            }
+            if (searchName != null && !member.getName().contains(searchName)) {
+                continue;
+            }
+            if (leaveType != null && leaveType != managerLeaveType) {
+                continue;
+            }
+
+            managerLeaveStatuses.putIfAbsent(
+                    String.valueOf(member.getId()),
+                    new DailyLeaveStatusResponse(
+                            member.getId(),
+                            member.getBranchId(),
+                            member.getSeatNumber(),
+                            member.getName(),
+                            "",
+                            specialLeave.getLeaveDate(),
+                            managerLeaveType,
+                            specialLeave.getCreatedAt(),
+                            toSpecialLeaveLabel(specialLeave),
+                            "SPECIAL_LEAVE"
+                    )
+            );
+        }
+        responses.addAll(managerLeaveStatuses.values());
+
+        return responses;
     }
 
     @Transactional(readOnly = true)
@@ -429,6 +475,17 @@ public class LeaveService {
         }
 
         return "오후반차";
+    }
+
+    private LeaveType toManagerLeaveType(String reason) {
+        if ("오전반차".equals(reason)) {
+            return LeaveType.MORNING;
+        }
+        if ("오후반차".equals(reason)) {
+            return LeaveType.AFTERNOON;
+        }
+
+        return LeaveType.FULL;
     }
 
     private String toSpecialLeaveLabel(SpecialLeave specialLeave) {
