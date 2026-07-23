@@ -72,9 +72,11 @@ public class LeaveService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberLeavePlanResponse> findMyLeavePlan(Long memberId) {
+    public List<MemberLeavePlanResponse> findMyLeavePlan(Long memberId, Integer year, Integer month) {
         List<MemberLeavePlanResponse> responses = new ArrayList<>();
         Map<String, MemberLeavePlanResponse> managerLeavesByDateAndReason = new LinkedHashMap<>();
+        Map<String, MemberLeavePlanResponse> fixedLeavesByDateAndReason = new LinkedHashMap<>();
+        YearMonth visibleMonth = resolveYearMonth(year, month);
 
         leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
                 .forEach(leaveRequest -> responses.add(MemberLeavePlanResponse.fromLeaveRequest(
@@ -90,6 +92,21 @@ public class LeaveService {
                     );
                 });
         responses.addAll(managerLeavesByDateAndReason.values());
+
+        LocalDate date = visibleMonth.atDay(1);
+        LocalDate endDate = visibleMonth.atEndOfMonth();
+        List<FixedLeave> fixedLeaves = fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(memberId);
+        while (!date.isAfter(endDate)) {
+            LocalDate leaveDate = date;
+            fixedLeaves.stream()
+                    .filter(fixedLeave -> fixedLeave.getDayOfWeek() == leaveDate.getDayOfWeek())
+                    .forEach(fixedLeave -> fixedLeavesByDateAndReason.putIfAbsent(
+                            leaveDate + "|" + fixedLeave.getReason(),
+                            MemberLeavePlanResponse.fromFixedLeave(fixedLeave, leaveDate, fixedLeave.getReason())
+                    ));
+            date = date.plusDays(1);
+        }
+        responses.addAll(fixedLeavesByDateAndReason.values());
 
         return responses.stream()
                 .sorted(Comparator.comparing(MemberLeavePlanResponse::leaveDate).reversed())

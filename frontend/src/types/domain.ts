@@ -185,7 +185,7 @@ export type MemberLeavePlanResponse = {
   leaveDate: string;
   leaveType?: LeaveType | null;
   label: string;
-  source: 'LEAVE' | 'SPECIAL_LEAVE';
+  source: 'LEAVE' | 'FIXED_LEAVE' | 'SPECIAL_LEAVE';
 };
 
 export type MonthlyLeaveCalendarResponse = {
