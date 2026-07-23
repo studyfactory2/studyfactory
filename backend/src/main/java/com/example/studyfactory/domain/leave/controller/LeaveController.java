@@ -49,8 +49,12 @@ public class LeaveController {
     }
 
     @GetMapping("/me/plan")
-    public List<MemberLeavePlanResponse> findMyLeavePlan(@CurrentMember Long memberId) {
-        return leaveService.findMyLeavePlan(memberId);
+    public List<MemberLeavePlanResponse> findMyLeavePlan(
+            @CurrentMember Long memberId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
+    ) {
+        return leaveService.findMyLeavePlan(memberId, year, month);
     }
 
     @DeleteMapping("/{leaveId}")

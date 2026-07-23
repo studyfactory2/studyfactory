@@ -61,24 +61,36 @@ export function LeavePlanPanel() {
   const leavesByDate = useMemo(() => {
     const grouped = new Map<string, MemberLeavePlanResponse[]>();
     for (const leave of leaves) {
-      grouped.set(leave.leaveDate, [...(grouped.get(leave.leaveDate) || []), leave]);
+      const current = grouped.get(leave.leaveDate) || [];
+      const isDuplicatedFixedLeave = leave.source === 'FIXED_LEAVE'
+        && current.some((item) => item.source === 'FIXED_LEAVE' && item.label === leave.label);
+
+      if (!isDuplicatedFixedLeave) {
+        grouped.set(leave.leaveDate, [...current, leave]);
+      }
     }
 
     return grouped;
   }, [leaves]);
+  const leaveHistory = useMemo(
+    () => leaves.filter((leave) => leave.source !== 'FIXED_LEAVE'),
+    [leaves]
+  );
 
   useEffect(() => {
-    void loadLeaves();
-  }, []);
+    void loadLeaves(visibleMonth);
+  }, [visibleMonth]);
 
   const moveMonth = (amount: number) => {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
   };
 
-  const loadLeaves = async () => {
+  const loadLeaves = async (month = visibleMonth) => {
     setLoading(true);
     try {
-      const responses = await apiRequest<MemberLeavePlanResponse[]>('/api/leaves/me/plan');
+      const responses = await apiRequest<MemberLeavePlanResponse[]>(
+        `/api/leaves/me/plan?year=${month.getFullYear()}&month=${month.getMonth() + 1}`
+      );
       setLeaves(responses);
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '휴무 내역을 불러오지 못했습니다.' });
@@ -224,11 +236,11 @@ export function LeavePlanPanel() {
       <section className="member-list-box">
         {loading ? (
           <p>휴무 내역을 불러오는 중입니다.</p>
-        ) : leaves.length === 0 ? (
+        ) : leaveHistory.length === 0 ? (
           <p>내역이 없습니다.</p>
         ) : (
           <div className="leave-history-list">
-            {leaves.map((leave, index) => {
+            {leaveHistory.map((leave, index) => {
               const canCancel = leave.source === 'LEAVE' && leave.leaveDate >= today && Boolean(leave.id);
               const isManagerLeave = leave.source === 'SPECIAL_LEAVE';
 
@@ -390,7 +402,7 @@ function toApiLeaveType(leaveType: LeaveType): ApiLeaveType {
 }
 
 function toCalendarLeaveLabel(leave: MemberLeavePlanResponse) {
-  if (leave.source === 'SPECIAL_LEAVE') {
+  if (leave.source === 'SPECIAL_LEAVE' || leave.source === 'FIXED_LEAVE') {
     return leave.label;
   }
   if (leave.leaveType === 'FULL') {
@@ -404,6 +416,9 @@ function toCalendarLeaveLabel(leave: MemberLeavePlanResponse) {
 }
 
 function toLeaveBadgeClassName(leave: MemberLeavePlanResponse) {
+  if (leave.source === 'FIXED_LEAVE') {
+    return 'fixed';
+  }
   if (leave.source === 'SPECIAL_LEAVE') {
     return 'manager';
   }

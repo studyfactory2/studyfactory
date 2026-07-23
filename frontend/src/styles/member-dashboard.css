@@ -213,6 +213,12 @@
   color: #65717d;
 }
 
+.member-calendar-leave-badge.fixed {
+  border: 1px solid #cfd7df;
+  background: #eef1f4;
+  color: #65717d;
+}
+
 .member-calendar-grid button.past .member-calendar-leave-badge {
   opacity: 0.62;
 }
