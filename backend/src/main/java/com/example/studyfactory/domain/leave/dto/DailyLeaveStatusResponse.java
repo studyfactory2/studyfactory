@@ -12,6 +12,21 @@ public record DailyLeaveStatusResponse(
         String branch,
         LocalDate leaveDate,
         LeaveType leaveType,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String label,
+        String source
 ) {
+
+    public DailyLeaveStatusResponse(
+            Long memberId,
+            Long branchId,
+            Integer seatNumber,
+            String name,
+            String branch,
+            LocalDate leaveDate,
+            LeaveType leaveType,
+            LocalDateTime createdAt
+    ) {
+        this(memberId, branchId, seatNumber, name, branch, leaveDate, leaveType, createdAt, null, "LEAVE");
+    }
 }

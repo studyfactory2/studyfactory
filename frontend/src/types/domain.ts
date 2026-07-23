@@ -168,6 +168,8 @@ export type DailyLeaveStatusResponse = {
   leaveDate: string;
   leaveType: LeaveType;
   createdAt: string;
+  label?: string | null;
+  source?: 'LEAVE' | 'SPECIAL_LEAVE';
 };
 
 export type LeaveResponse = {
