@@ -55,6 +55,16 @@ public class WeeklyPlanService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public WeeklyPlanResponse findForManager(Long currentMemberId, Long memberId, LocalDate weekStartDate) {
+        Member currentMember = findMember(currentMemberId);
+        if (!currentMember.hasAllPermissions()) {
+            throw MemberException.forbidden();
+        }
+
+        return findMine(memberId, weekStartDate);
+    }
+
     @Transactional
     public WeeklyPlanResponse saveMine(Long memberId, WeeklyPlanSaveRequest request) {
         Member member = findMember(memberId);

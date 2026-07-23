@@ -1930,6 +1930,137 @@
   text-decoration-thickness: 1.5px;
 }
 
+.member-weekly-plan-card {
+  display: grid;
+  gap: 14px;
+}
+
+.member-weekly-plan-viewer .vacation-detail-header {
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+
+.member-weekly-plan-viewer .vacation-detail-header > button {
+  width: 34px;
+  height: 38px;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.member-weekly-plan-week-control {
+  min-height: 42px;
+  padding: 0 6px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: center;
+  border: 1px solid #dbe5ee;
+  border-radius: 12px;
+  background: #fbfdff;
+  text-align: center;
+}
+
+.member-weekly-plan-week-control button {
+  border: 0;
+  background: transparent;
+  color: #3182f6;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.member-weekly-plan-week-control button:disabled {
+  cursor: wait;
+  opacity: 0.48;
+}
+
+.member-weekly-plan-week-control strong {
+  color: #273444;
+  font-size: 13px;
+}
+
+.weekly-goal-readonly p {
+  min-height: 58px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #dbe5ee;
+  border-radius: 10px;
+  background: #fff;
+  color: #405169;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.member-weekly-plan-content {
+  display: grid;
+  gap: 14px;
+}
+
+.member-weekly-plan-content.week-slide-next {
+  animation: member-week-slide-from-right 260ms ease-out;
+}
+
+.member-weekly-plan-content.week-slide-previous {
+  animation: member-week-slide-from-left 260ms ease-out;
+}
+
+@keyframes member-week-slide-from-right {
+  from {
+    opacity: 0.2;
+    transform: translateX(28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes member-week-slide-from-left {
+  from {
+    opacity: 0.2;
+    transform: translateX(-28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-weekly-plan-content.week-slide-next,
+  .member-weekly-plan-content.week-slide-previous {
+    animation: none;
+  }
+}
+
+.member-weekly-plan-board .weekly-board-scroll {
+  overflow: auto;
+}
+
+.weekly-plan-readonly-cell {
+  min-height: 92px;
+}
+
+.weekly-plan-readonly-cell ol {
+  min-height: 100%;
+}
+
+.member-weekly-plan-board .weekly-plan-readonly-cell li {
+  width: 100%;
+  min-width: 0;
+  display: block;
+}
+
+.member-weekly-plan-board .weekly-plan-readonly-cell li span {
+  width: 100%;
+  min-width: 0;
+  display: block;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+}
+
 .attendance-note-modal {
   width: min(300px, calc(100vw - 36px));
   padding: 14px;

@@ -1,5 +1,5 @@
 type AdminGridItem = {
-  icon: 'member-add' | 'member' | 'calendar' | 'person-check' | 'pin';
+  icon: 'member-add' | 'member' | 'calendar' | 'person-check' | 'pin' | 'plan';
   label: string;
   href?: string;
 };
@@ -23,6 +23,7 @@ const ADMIN_GRID_SECTIONS: AdminGridSection[] = [
       { icon: 'calendar', label: '사원별\n휴가 현황', href: '/managerdashboard?view=vacation_history' },
       { icon: 'person-check', label: '사원 기타\n휴무 신청', href: '/managerdashboard?view=other_leave_request' },
       { icon: 'pin', label: '고정 기타\n휴무 관리', href: '/managerdashboard?view=fixed_leave_management' },
+      { icon: 'plan', label: '사원별\n계획 현황', href: '/managerdashboard?view=weekly_plan_status' },
     ],
   },
 ];
@@ -117,6 +118,20 @@ function AdminGridIcon({ icon }: { icon: AdminGridItem['icon'] }) {
           <path d="M12.2 5.2h7.6" />
           <path d="M14.2 5.2v9.2l-4.4 4.8h12.4l-4.4-4.8V5.2" />
           <path d="M16 19.2v7.6" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (icon === 'plan') {
+    return (
+      <span className="admin-grid-icon admin-grid-icon-plan" aria-hidden="true">
+        <svg viewBox="0 0 32 32">
+          <path d="M9 5.5h14a2.5 2.5 0 0 1 2.5 2.5v16A2.5 2.5 0 0 1 23 26.5H9A2.5 2.5 0 0 1 6.5 24V8A2.5 2.5 0 0 1 9 5.5Z" />
+          <path d="m10.4 12.6 1.8 1.8 3.2-3.6" />
+          <path d="M17.4 12.8h4.2" />
+          <path d="m10.4 19.3 1.8 1.8 3.2-3.6" />
+          <path d="M17.4 19.5h4.2" />
         </svg>
       </span>
     );

@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,6 +30,15 @@ public class WeeklyPlanController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStartDate
     ) {
         return weeklyPlanService.findMine(memberId, weekStartDate);
+    }
+
+    @GetMapping("/members/{memberId}")
+    public WeeklyPlanResponse findMemberPlan(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStartDate
+    ) {
+        return weeklyPlanService.findForManager(currentMemberId, memberId, weekStartDate);
     }
 
     @PutMapping("/me")
