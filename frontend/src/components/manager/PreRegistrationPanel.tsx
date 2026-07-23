@@ -567,7 +567,7 @@ export function PreRegistrationPanel({ branches, certifications }: PreRegistrati
                           setEditSeatOpen(false);
                         }}
                         onSelect={(value) => {
-                          changeEditDraft('role', value);
+                          changeEditDraft('role', value as MemberRole);
                           setEditRoleOpen(false);
                         }}
                       />
