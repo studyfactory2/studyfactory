@@ -510,7 +510,9 @@ public class LeaveService {
                 .withZoneSameInstant(ZoneId.of("Asia/Seoul"))
                 .toLocalDateTime();
 
+        java.time.LocalTime requestedTime = createdAtInKorea.toLocalTime();
         return createdAtInKorea.toLocalDate().equals(specialLeave.getLeaveDate())
-                && !createdAtInKorea.toLocalTime().isBefore(java.time.LocalTime.of(8, 0));
+                && !requestedTime.isBefore(java.time.LocalTime.of(8, 0))
+                && requestedTime.isBefore(java.time.LocalTime.of(9, 0));
     }
 }
