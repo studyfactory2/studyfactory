@@ -994,6 +994,11 @@ function isSameDate(first: Date, second: Date) {
 
 function isTodayLeaveRequestedAfterEight(status: DailyLeaveStatusResponse, now: Date) {
   const leaveDate = new Date(`${status.leaveDate}T00:00:00`);
+  if (status.source === 'SPECIAL_LEAVE' && status.requestedAfterEight != null) {
+    return status.leaveType !== 'AFTERNOON'
+      && isSameDate(leaveDate, now)
+      && status.requestedAfterEight;
+  }
   const requestedAt = new Date(status.createdAt);
   const eight = new Date(now);
   eight.setHours(8, 0, 0, 0);

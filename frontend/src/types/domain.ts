@@ -170,6 +170,7 @@ export type DailyLeaveStatusResponse = {
   createdAt: string;
   label?: string | null;
   source?: 'LEAVE' | 'SPECIAL_LEAVE';
+  requestedAfterEight?: boolean | null;
 };
 
 export type LeaveResponse = {
