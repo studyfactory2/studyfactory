@@ -1002,8 +1002,14 @@ function isTodayLeaveRequestedAfterEight(status: DailyLeaveStatusResponse, now: 
   const requestedAt = new Date(status.createdAt);
   const eight = new Date(now);
   eight.setHours(8, 0, 0, 0);
+  const nine = new Date(now);
+  nine.setHours(9, 0, 0, 0);
 
-  return status.leaveType !== 'AFTERNOON' && isSameDate(leaveDate, now) && isSameDate(requestedAt, now) && requestedAt >= eight;
+  return status.leaveType !== 'AFTERNOON'
+    && isSameDate(leaveDate, now)
+    && isSameDate(requestedAt, now)
+    && requestedAt >= eight
+    && requestedAt < nine;
 }
 
 function isTodayBeverageLeave(status: DailyLeaveStatusResponse, now: Date) {
