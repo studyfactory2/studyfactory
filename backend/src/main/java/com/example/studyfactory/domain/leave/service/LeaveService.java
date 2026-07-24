@@ -25,7 +25,9 @@ import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.DayOfWeek;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
@@ -163,7 +165,8 @@ public class LeaveService {
                             managerLeaveType,
                             specialLeave.getCreatedAt(),
                             toSpecialLeaveLabel(specialLeave),
-                            "SPECIAL_LEAVE"
+                            "SPECIAL_LEAVE",
+                            isCreatedAfterEightInKorea(specialLeave)
                     )
             );
         }
@@ -494,5 +497,20 @@ public class LeaveService {
         }
 
         return specialLeave.getReason();
+    }
+
+    private boolean isCreatedAfterEightInKorea(SpecialLeave specialLeave) {
+        LocalDateTime createdAt = specialLeave.getCreatedAt();
+        if (createdAt == null) {
+            return false;
+        }
+
+        LocalDateTime createdAtInKorea = createdAt
+                .atZone(ZoneId.systemDefault())
+                .withZoneSameInstant(ZoneId.of("Asia/Seoul"))
+                .toLocalDateTime();
+
+        return createdAtInKorea.toLocalDate().equals(specialLeave.getLeaveDate())
+                && !createdAtInKorea.toLocalTime().isBefore(java.time.LocalTime.of(8, 0));
     }
 }

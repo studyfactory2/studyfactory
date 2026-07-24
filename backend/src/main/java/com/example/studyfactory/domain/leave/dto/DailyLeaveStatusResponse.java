@@ -14,7 +14,8 @@ public record DailyLeaveStatusResponse(
         LeaveType leaveType,
         LocalDateTime createdAt,
         String label,
-        String source
+        String source,
+        Boolean requestedAfterEight
 ) {
 
     public DailyLeaveStatusResponse(
@@ -27,6 +28,6 @@ public record DailyLeaveStatusResponse(
             LeaveType leaveType,
             LocalDateTime createdAt
     ) {
-        this(memberId, branchId, seatNumber, name, branch, leaveDate, leaveType, createdAt, null, "LEAVE");
+        this(memberId, branchId, seatNumber, name, branch, leaveDate, leaveType, createdAt, null, "LEAVE", null);
     }
 }
