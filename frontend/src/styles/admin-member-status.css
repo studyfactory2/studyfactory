@@ -376,10 +376,12 @@
 }
 
 .fixed-leave-panel {
+  flex: 1 1 0;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+  overflow: hidden;
 }
 
 .fixed-leave-header {
@@ -499,8 +501,9 @@
 }
 
 .fixed-leave-list {
+  flex: 1 1 0;
   min-height: 0;
-  padding: 0 6px 10px 0;
+  padding: 0 6px 28px 0;
   display: grid;
   align-content: start;
   gap: 8px;
@@ -600,5 +603,20 @@
 .manager-card:has(.fixed-leave-panel) {
   height: clamp(560px, calc(100svh - 210px), 760px);
   min-height: 560px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 화면 전환 애니메이션용 래퍼도 카드의 남은 높이를 가져야 한다.
+   그렇지 않으면 고정 휴무 목록이 내용 높이로만 축소되어 스크롤 영역이 접힌다. */
+.manager-card:has(.fixed-leave-panel) > .manager-slide-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.manager-card:has(.fixed-leave-panel) > .manager-slide-panel > .fixed-leave-panel {
+  flex: 1 1 0;
 }
