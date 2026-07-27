@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.beverage.service;
 
 import com.example.studyfactory.domain.beverage.dto.BeveragePreferenceResponse;
+import com.example.studyfactory.domain.beverage.dto.BeverageItemRequest;
 import com.example.studyfactory.domain.beverage.dto.BeverageRequest;
 import com.example.studyfactory.domain.beverage.dto.BeverageUpdateRequest;
 import com.example.studyfactory.domain.beverage.dto.MemberBeverageResponse;
@@ -43,7 +44,7 @@ public class BeverageService {
     @Transactional
     public BeveragePreferenceResponse updateDrink(Long memberId, BeverageRequest request) {
         Member member = findMember(memberId);
-        replaceItems(memberId, request.drinkSetting(), resolveNotes(request.drinkSetting(), request.drinkNotes(), request.drinkNote()));
+        replaceItems(memberId, request.items(), request.drinkSetting(), resolveNotes(request.drinkSetting(), request.drinkNotes(), request.drinkNote()));
         return responseOf(member, findItems(memberId));
     }
 
@@ -70,7 +71,7 @@ public class BeverageService {
     @Transactional
     public BeveragePreferenceResponse addDrink(Long memberId, BeverageRequest request) {
         Member member = findMember(memberId);
-        addItems(memberId, request.drinkSetting(), resolveNotes(request.drinkSetting(), request.drinkNotes(), request.drinkNote()));
+        addItems(memberId, request.items(), request.drinkSetting(), resolveNotes(request.drinkSetting(), request.drinkNotes(), request.drinkNote()));
         return responseOf(member, findItems(memberId));
     }
 
@@ -78,7 +79,7 @@ public class BeverageService {
     public BeveragePreferenceResponse addDrinkForMember(Long currentMemberId, Long targetMemberId, BeverageRequest request) {
         validateAllPermissions(findMember(currentMemberId));
         Member targetMember = findMember(targetMemberId);
-        addItems(targetMemberId, request.drinkSetting(), resolveNotes(request.drinkSetting(), request.drinkNotes(), request.drinkNote()));
+        addItems(targetMemberId, request.items(), request.drinkSetting(), resolveNotes(request.drinkSetting(), request.drinkNotes(), request.drinkNote()));
         return responseOf(targetMember, findItems(targetMemberId));
     }
 
@@ -86,7 +87,7 @@ public class BeverageService {
     public BeveragePreferenceResponse updateDrinkForMember(Long currentMemberId, Long targetMemberId, BeverageUpdateRequest request) {
         validateAllPermissions(findMember(currentMemberId));
         Member targetMember = findMember(targetMemberId);
-        replaceItems(targetMemberId, request.drinkSetting(), resolveNotes(request.drinkSetting(), request.drinkNotes(), request.drinkNote()));
+        replaceItems(targetMemberId, request.items(), request.drinkSetting(), resolveNotes(request.drinkSetting(), request.drinkNotes(), request.drinkNote()));
         return responseOf(targetMember, findItems(targetMemberId));
     }
 
@@ -124,15 +125,16 @@ public class BeverageService {
     }
 
     private List<BeverageItem> replaceItems(Long memberId, String drinks, Map<String, String> drinkNotes) {
-        beverageItemRepository.deleteByMemberId(memberId);
-        return beverageItemRepository.saveAll(toItems(memberId, drinks, drinkNotes));
+        return replaceItems(memberId, null, drinks, drinkNotes);
     }
 
-    private void addItems(Long memberId, String drinks, Map<String, String> drinkNotes) {
-        List<BeverageItem> additions = toDrinks(drinks).stream()
-                .filter(drink -> !beverageItemRepository.existsByMemberIdAndName(memberId, drink))
-                .map(drink -> new BeverageItem(memberId, drink, drinkNotes.get(drink)))
-                .toList();
+    private List<BeverageItem> replaceItems(Long memberId, List<BeverageItemRequest> requestedItems, String drinks, Map<String, String> drinkNotes) {
+        beverageItemRepository.deleteByMemberId(memberId);
+        return beverageItemRepository.saveAll(toItems(memberId, requestedItems, drinks, drinkNotes));
+    }
+
+    private void addItems(Long memberId, List<BeverageItemRequest> requestedItems, String drinks, Map<String, String> drinkNotes) {
+        List<BeverageItem> additions = toItems(memberId, requestedItems, drinks, drinkNotes);
         beverageItemRepository.saveAll(additions);
     }
 
@@ -143,6 +145,17 @@ public class BeverageService {
     }
 
     private List<BeverageItem> toItems(Long memberId, String drinks, Map<String, String> drinkNotes) {
+        return toItems(memberId, null, drinks, drinkNotes);
+    }
+
+    private List<BeverageItem> toItems(Long memberId, List<BeverageItemRequest> requestedItems, String drinks, Map<String, String> drinkNotes) {
+        if (requestedItems != null) {
+            return requestedItems.stream()
+                    .filter(item -> item != null)
+                    .map(item -> new BeverageItem(memberId, normalize(item.name()), item.note()))
+                    .filter(item -> !item.getName().isBlank())
+                    .toList();
+        }
         return toDrinks(drinks).stream()
                 .map(drink -> new BeverageItem(memberId, drink, drinkNotes.get(drink)))
                 .toList();
@@ -186,7 +199,6 @@ public class BeverageService {
         return Arrays.stream(drinks.split("\\R|,"))
                 .map(this::normalize)
                 .filter(drink -> !drink.isBlank())
-                .distinct()
                 .toList();
     }
 

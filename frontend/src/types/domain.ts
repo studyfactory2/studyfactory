@@ -90,8 +90,15 @@ export type BeveragePreferenceResponse = {
   branchId: number;
   drinks: string;
   drinkNotes?: Record<string, string> | null;
+  items?: BeverageItemResponse[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type BeverageItemResponse = {
+  id: number;
+  name: string;
+  note?: string | null;
 };
 
 export type MemberBeverageResponse = {
@@ -103,6 +110,7 @@ export type MemberBeverageResponse = {
   joinDate?: string | null;
   drinks: string;
   drinkNotes?: Record<string, string> | null;
+  items?: BeverageItemResponse[];
   createdAt?: string | null;
   updatedAt?: string | null;
 };
