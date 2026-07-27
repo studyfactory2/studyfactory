@@ -249,8 +249,9 @@ export function LeavePlanPanel() {
                   className={`leave-history-card${canCancel ? '' : ' without-cancel'}${isManagerLeave ? ' manager-leave' : ''}`}
                   key={`${leave.source}-${leave.id ?? leave.leaveDate}-${leave.label}-${index}`}
                 >
-                  <div>
+                  <div className="leave-history-summary">
                     <strong>{formatCompactLeaveDate(leave.leaveDate)}</strong>
+                    {leave.slots && <span className="leave-history-slots">{formatLeaveSlots(leave.slots)}교시</span>}
                   </div>
                   <div className="leave-history-actions">
                     <span>{leave.label}</span>
@@ -444,4 +445,8 @@ function formatCompactLeaveDate(dateKey: string) {
   const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
   return `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}(${weekdays[date.getDay()]})`;
+}
+
+function formatLeaveSlots(slots: string) {
+  return slots.split(',').map((slot) => slot.trim()).filter(Boolean).join(', ');
 }

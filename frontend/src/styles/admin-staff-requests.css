@@ -1172,6 +1172,27 @@
   text-align: center;
 }
 
+.staff-leave-history-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-list-box .staff-leave-history-summary strong {
+  display: inline;
+  white-space: nowrap;
+}
+
+.staff-leave-history-slots {
+  overflow: hidden;
+  color: #71869b;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .manager-card:has(.staff-side-dish-panel) {
   width: min(526px, calc(100vw - 32px));
   min-height: 0;
@@ -1244,4 +1265,3 @@
 .staff-side-dish-panel .side-dish-calendar {
   background: #fff;
 }
-
