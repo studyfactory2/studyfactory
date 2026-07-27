@@ -19,12 +19,49 @@ class BeverageItemSchemaMigration implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        renameDetoxDrink();
+
         if (!hasTable("beverage_items") || !hasTable("beverage_preferences")) {
             return;
         }
 
         migrateIntermediateItems();
         migrateLegacyPreferences();
+    }
+
+    /** 화면 표기와 저장 값을 해독으로 통일한다. 기존 데이터는 앱 시작 시 한 번 안전하게 치환된다. */
+    private void renameDetoxDrink() {
+        if (hasTable("beverage_preference_drink_notes")) {
+            jdbcTemplate.update("""
+                    DELETE FROM beverage_preference_drink_notes legacy
+                    WHERE legacy.drink_name LIKE '%해독쥬스%'
+                      AND EXISTS (
+                          SELECT 1
+                          FROM beverage_preference_drink_notes current
+                          WHERE current.beverage_preference_id = legacy.beverage_preference_id
+                            AND current.drink_name = REPLACE(legacy.drink_name, '해독쥬스', '해독')
+                      )
+                    """);
+            jdbcTemplate.update("""
+                    UPDATE beverage_preference_drink_notes
+                    SET drink_name = REPLACE(drink_name, '해독쥬스', '해독')
+                    WHERE drink_name LIKE '%해독쥬스%'
+                    """);
+        }
+        if (hasTable("beverage_preferences") && hasColumn("beverage_preferences", "drinks")) {
+            jdbcTemplate.update("""
+                    UPDATE beverage_preferences
+                    SET drinks = REPLACE(drinks, '해독쥬스', '해독'), updated_at = CURRENT_TIMESTAMP
+                    WHERE drinks LIKE '%해독쥬스%'
+                    """);
+        }
+        if (hasTable("beverage_items")) {
+            jdbcTemplate.update("""
+                    UPDATE beverage_items
+                    SET name = REPLACE(name, '해독쥬스', '해독'), updated_at = CURRENT_TIMESTAMP
+                    WHERE name LIKE '%해독쥬스%'
+                    """);
+        }
     }
 
     private void migrateIntermediateItems() {
