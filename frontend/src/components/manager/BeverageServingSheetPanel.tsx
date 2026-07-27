@@ -39,7 +39,7 @@ const CUSTOM_DRINK_VALUE = '__custom__';
 const BASE_DRINK_OPTIONS: DropdownOption[] = [
   { value: '', label: '음료를 선택해주세요' },
   { value: '선식', label: '선식' },
-  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '해독', label: '해독' },
   { value: '아아', label: '아아' },
   { value: '뜨아', label: '뜨아' },
   { value: '텀아아', label: '텀아아' },
@@ -959,7 +959,7 @@ function toSortedCounts(
     });
 }
 
-const CUP_DRINK_PRIORITY = ['아아', '선식', '해독쥬스'];
+const CUP_DRINK_PRIORITY = ['아아', '선식', '해독'];
 
 function compareCupDrinkNames(first: string, second: string) {
   const firstFamily = getCupDrinkFamily(first);

@@ -6,7 +6,7 @@ import { Dropdown } from '../common/Dropdown';
 const BASE_DRINK_OPTIONS = [
   { value: '', label: '음료를 선택해주세요' },
   { value: '선식', label: '선식' },
-  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '해독', label: '해독' },
   { value: '아아', label: '아아' },
   { value: '뜨아', label: '뜨아' },
   { value: '텀아아', label: '텀아아' },
