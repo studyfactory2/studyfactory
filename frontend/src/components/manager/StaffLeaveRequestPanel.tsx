@@ -104,6 +104,7 @@ export function StaffLeaveRequestPanel() {
       setMessage({ type: 'success', text: '휴무 신청이 완료되었습니다.' });
       await loadLeaves();
       await loadMonthlyLeaves();
+      notifyAttendanceBoardChanged();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '휴무 신청에 실패했습니다.' });
     } finally {
@@ -119,6 +120,7 @@ export function StaffLeaveRequestPanel() {
       setMessage({ type: 'success', text: '휴무 신청이 취소되었습니다.' });
       await loadLeaves();
       await loadMonthlyLeaves();
+      notifyAttendanceBoardChanged();
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : '휴무 신청 취소에 실패했습니다.' });
     } finally {
@@ -234,6 +236,17 @@ export function StaffLeaveRequestPanel() {
       </section>
     </div>
   );
+}
+
+function notifyAttendanceBoardChanged() {
+  window.dispatchEvent(new Event('attendance-board-changed'));
+  try {
+    const channel = new BroadcastChannel('studyfactory-attendance');
+    channel.postMessage({ type: 'attendance-board-changed' });
+    channel.close();
+  } catch {
+    // BroadcastChannel을 지원하지 않는 브라우저에서도 현재 탭의 갱신은 유지한다.
+  }
 }
 
 function startOfMonth(date: Date) {

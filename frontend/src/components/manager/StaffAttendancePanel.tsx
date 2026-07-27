@@ -105,6 +105,29 @@ export function StaffAttendancePanel() {
   }, [selectedDate]);
 
   useEffect(() => {
+    const reloadBoard = () => {
+      void loadBoard(selectedDate);
+    };
+    const channel = typeof BroadcastChannel === 'undefined'
+      ? null
+      : new BroadcastChannel('studyfactory-attendance');
+    const onChannelMessage = (event: MessageEvent<{ type?: string }>) => {
+      if (event.data?.type === 'attendance-board-changed') {
+        reloadBoard();
+      }
+    };
+
+    window.addEventListener('attendance-board-changed', reloadBoard);
+    channel?.addEventListener('message', onChannelMessage);
+
+    return () => {
+      window.removeEventListener('attendance-board-changed', reloadBoard);
+      channel?.removeEventListener('message', onChannelMessage);
+      channel?.close();
+    };
+  }, [selectedDate, branchId]);
+
+  useEffect(() => {
     void loadTodos(selectedDate);
   }, [selectedDate, todoBranchId]);
 
@@ -135,6 +158,8 @@ export function StaffAttendancePanel() {
       if (branchId) {
         params.set('branchId', branchId);
       }
+      // 스텝 휴무 신청 직후에도 CDN/브라우저의 이전 출석부 응답을 재사용하지 않는다.
+      params.set('_', String(Date.now()));
       const response = await apiRequest<DailyAttendanceBoardResponse>(`/api/attendances/daily-board?${params.toString()}`);
       setBoard(response);
       setDateSlideDirection(pendingDateSlideDirectionRef.current);

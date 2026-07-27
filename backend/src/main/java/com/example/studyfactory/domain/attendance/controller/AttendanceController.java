@@ -10,6 +10,8 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,14 +28,16 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @GetMapping("/daily-board")
-    public DailyAttendanceBoardResponse findDailyBoard(
+    public ResponseEntity<DailyAttendanceBoardResponse> findDailyBoard(
             @CurrentMember Long currentMemberId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date,
             @RequestParam(required = false) Long branchId
     ) {
-        return attendanceService.findDailyBoard(currentMemberId, date, branchId);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore().mustRevalidate())
+                .body(attendanceService.findDailyBoard(currentMemberId, date, branchId));
     }
 
     @PatchMapping("/daily-board/slot")

@@ -104,6 +104,31 @@ class AttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("좌석이 배정된 스태프가 신청한 휴무도 일별 출석부에 반영된다")
+    void staffLeaveAppearsOnDailyBoard() {
+        LocalDate date = LocalDate.of(2026, 7, 27);
+        Member staff = createMember(1L, "김지원", MemberRole.STAFF, 38);
+        LeaveRequest leaveRequest = new LeaveRequest(1L, 1L, date, LeaveType.AFTERNOON);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L)).willReturn(List.of(staff));
+        given(attendanceRepository.findDailyBoardAttendances(1L, date)).willReturn(List.of());
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of(leaveRequest));
+        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of());
+        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
+        given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date)).willReturn(List.of());
+
+        DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, null);
+
+        assertThat(response.rows())
+                .anySatisfy(row -> {
+                    assertThat(row.memberId()).isEqualTo(1L);
+                    assertThat(row.seatNumber()).isEqualTo(38);
+                    assertThat(row.slots()).containsExactly("X", "X", "X", "오후", "오후", "오후", "오후");
+                    assertThat(row.slotSources()).containsExactly("NONE", "NONE", "NONE", "MEMBER_LEAVE", "MEMBER_LEAVE", "MEMBER_LEAVE", "MEMBER_LEAVE");
+                });
+    }
+
+    @Test
     @DisplayName("신규 입사 출석 초기화 기록이 있으면 입사예정일 표시를 제거한다")
     void initializedJoinDateMemberDoesNotShowJoinDateBanner() {
         LocalDate date = LocalDate.of(2026, 7, 7);
