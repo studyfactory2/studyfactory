@@ -13,6 +13,7 @@ public record BeveragePreferenceResponse(
         Long branchId,
         String drinks,
         Map<String, String> drinkNotes,
+        List<BeverageItemResponse> items,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -24,6 +25,7 @@ public record BeveragePreferenceResponse(
                 member.getBranchId(),
                 toDrinkText(items),
                 toDrinkNotes(items),
+                items.stream().map(BeverageItemResponse::from).toList(),
                 items.isEmpty() ? null : items.get(0).getCreatedAt(),
                 items.isEmpty() ? null : items.get(items.size() - 1).getUpdatedAt()
         );

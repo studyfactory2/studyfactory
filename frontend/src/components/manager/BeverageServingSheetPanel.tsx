@@ -3,6 +3,7 @@ import { apiRequest } from '../../api/client';
 import { Dropdown, type DropdownOption } from '../common/Dropdown';
 import type {
   BeveragePreferenceResponse,
+  BeverageItemResponse,
   Branch,
   DailyAttendanceBoardResponse,
   DailyLeaveStatusResponse,
@@ -38,7 +39,7 @@ const CUSTOM_DRINK_VALUE = '__custom__';
 const BASE_DRINK_OPTIONS: DropdownOption[] = [
   { value: '', label: '음료를 선택해주세요' },
   { value: '선식', label: '선식' },
-  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '해독', label: '해독' },
   { value: '아아', label: '아아' },
   { value: '뜨아', label: '뜨아' },
   { value: '텀아아', label: '텀아아' },
@@ -138,13 +139,13 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
     setBeverages((current) =>
       current.map((beverage) =>
         beverage.memberId === memberId
-          ? { ...beverage, drinks: response.drinks, drinkNotes: response.drinkNotes, createdAt: response.createdAt, updatedAt: response.updatedAt }
+          ? { ...beverage, drinks: response.drinks, drinkNotes: response.drinkNotes, items: response.items, createdAt: response.createdAt, updatedAt: response.updatedAt }
           : beverage
       )
     );
     setEditingSeat((current) =>
       current && current.beverage.memberId === memberId
-        ? { ...current, beverage: { ...current.beverage, drinks: response.drinks, drinkNotes: response.drinkNotes, createdAt: response.createdAt, updatedAt: response.updatedAt } }
+        ? { ...current, beverage: { ...current.beverage, drinks: response.drinks, drinkNotes: response.drinkNotes, items: response.items, createdAt: response.createdAt, updatedAt: response.updatedAt } }
         : current
     );
   };
@@ -468,31 +469,37 @@ type BeverageSeatModalProps = {
   onSaved: (memberId: number, response: BeveragePreferenceResponse) => void;
 };
 
+type DrinkDraft = {
+  id?: number;
+  name: string;
+  note: string;
+};
+
 function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalProps) {
   const { item, beverage } = editingSeat;
   const [drinkInput, setDrinkInput] = useState('');
-  const [drinks, setDrinks] = useState(() => parseDrinks(beverage.drinks));
-  const [drinkNotes, setDrinkNotes] = useState<Record<string, string>>(() => beverage.drinkNotes || {});
+  const [drinkItems, setDrinkItems] = useState<DrinkDraft[]>(() => toDrinkDrafts(beverage));
   const [isComposing, setIsComposing] = useState(false);
   const [editingDrinkIndex, setEditingDrinkIndex] = useState<number | null>(null);
   const [editingDrinkValue, setEditingDrinkValue] = useState('');
   const [editingCustomDrink, setEditingCustomDrink] = useState(false);
   const [drinkDropdownOpen, setDrinkDropdownOpen] = useState(false);
-  const [editingNoteDrink, setEditingNoteDrink] = useState<string | null>(null);
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setDrinkInput('');
-    setDrinks(parseDrinks(beverage.drinks));
-    setDrinkNotes(beverage.drinkNotes || {});
+    setDrinkItems(toDrinkDrafts(beverage));
     setEditingDrinkIndex(null);
     setEditingDrinkValue('');
     setEditingCustomDrink(false);
     setDrinkDropdownOpen(false);
-    setEditingNoteDrink(null);
+    setEditingNoteIndex(null);
     setEditingNoteValue('');
-  }, [beverage.memberId, beverage.drinks, beverage.drinkNotes]);
+  }, [beverage.memberId, beverage.drinks, beverage.drinkNotes, beverage.items]);
+
+  const drinks = drinkItems.map((drink) => drink.name);
 
   const addDrink = () => {
     const nextDrinks = parseDrinks(drinkInput);
@@ -500,18 +507,12 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
       return;
     }
 
-    setDrinks((current) => [...current, ...nextDrinks]);
+    setDrinkItems((current) => [...current, ...nextDrinks.map((name) => ({ name, note: '' }))]);
     setDrinkInput('');
   };
 
   const removeDrink = (index: number) => {
-    const removedDrink = drinks[index];
-    setDrinks((current) => current.filter((_, currentIndex) => currentIndex !== index));
-    setDrinkNotes((current) => {
-      const next = { ...current };
-      delete next[removedDrink];
-      return next;
-    });
+    setDrinkItems((current) => current.filter((_, currentIndex) => currentIndex !== index));
     if (editingDrinkIndex === index) {
       setEditingDrinkIndex(null);
       setEditingDrinkValue('');
@@ -522,8 +523,8 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
 
   const startEditingDrink = (index: number) => {
     setEditingDrinkIndex(index);
-    setEditingDrinkValue(drinks[index]);
-    setEditingCustomDrink(!BASE_DRINK_OPTIONS.some((option) => option.value && option.value === drinks[index]));
+    setEditingDrinkValue(drinkItems[index].name);
+    setEditingCustomDrink(!BASE_DRINK_OPTIONS.some((option) => option.value && option.value === drinkItems[index].name));
     setDrinkDropdownOpen(false);
   };
 
@@ -533,16 +534,7 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
       return;
     }
 
-    const previousDrink = drinks[editingDrinkIndex];
-    setDrinks((current) => current.map((drink, index) => index === editingDrinkIndex ? nextDrink : drink));
-    setDrinkNotes((current) => {
-      const next = { ...current };
-      if (previousDrink !== nextDrink && next[previousDrink]) {
-        next[nextDrink] = next[previousDrink];
-        delete next[previousDrink];
-      }
-      return next;
-    });
+    setDrinkItems((current) => current.map((drink, index) => index === editingDrinkIndex ? { ...drink, name: nextDrink } : drink));
     setEditingDrinkIndex(null);
     setEditingDrinkValue('');
     setEditingCustomDrink(false);
@@ -556,38 +548,26 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
     setDrinkDropdownOpen(false);
   };
 
-  const startEditingNote = (drink: string) => {
-    setEditingNoteDrink(drink);
-    setEditingNoteValue(drinkNotes[drink] || '');
+  const startEditingNote = (index: number) => {
+    setEditingNoteIndex(index);
+    setEditingNoteValue(drinkItems[index].note || '');
   };
 
   const saveEditedNote = () => {
-    if (!editingNoteDrink) {
+    if (editingNoteIndex == null) {
       return;
     }
 
     const nextNote = editingNoteValue.trim();
-    setDrinkNotes((current) => {
-      const next = { ...current };
-      if (nextNote) {
-        next[editingNoteDrink] = nextNote;
-      } else {
-        delete next[editingNoteDrink];
-      }
-      return next;
-    });
-    setEditingNoteDrink(null);
+    setDrinkItems((current) => current.map((drink, index) => index === editingNoteIndex ? { ...drink, note: nextNote } : drink));
+    setEditingNoteIndex(null);
     setEditingNoteValue('');
   };
 
-  const deleteNote = (drink: string) => {
-    setDrinkNotes((current) => {
-      const next = { ...current };
-      delete next[drink];
-      return next;
-    });
-    if (editingNoteDrink === drink) {
-      setEditingNoteDrink(null);
+  const deleteNote = (index: number) => {
+    setDrinkItems((current) => current.map((drink, currentIndex) => currentIndex === index ? { ...drink, note: '' } : drink));
+    if (editingNoteIndex === index) {
+      setEditingNoteIndex(null);
       setEditingNoteValue('');
     }
   };
@@ -598,8 +578,7 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
       const response = await apiRequest<BeveragePreferenceResponse>(`/api/beverages/members/${beverage.memberId}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          drinkSetting: drinks.join(','),
-          drinkNotes,
+          items: drinkItems.map(({ name, note }) => ({ name, note })),
         }),
       });
       onSaved(beverage.memberId, response);
@@ -709,7 +688,7 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
             {drinks.map((drink, index) => (
               <div className="beverage-seat-modal-note" key={`${drink}-${index}`}>
                 <strong>{drink}</strong>
-                {editingNoteDrink === drink ? (
+                {editingNoteIndex === index ? (
                   <div className="beverage-seat-modal-note-edit">
                     <input
                       aria-label={`${drink} 참고사항`}
@@ -727,16 +706,16 @@ function BeverageSeatModal({ editingSeat, onClose, onSaved }: BeverageSeatModalP
                     />
                     <button type="button" className="save-note" disabled={saving} onClick={saveEditedNote}>완료</button>
                     <button type="button" className="cancel-note" disabled={saving} onClick={() => {
-                      setEditingNoteDrink(null);
+                      setEditingNoteIndex(null);
                       setEditingNoteValue('');
                     }}>취소</button>
                   </div>
                 ) : (
                   <>
-                    <span className={drinkNotes[drink]?.trim() ? 'has-note' : 'empty-note'}>{drinkNotes[drink]?.trim() || '참고사항 없음'}</span>
+                    <span className={drinkItems[index].note.trim() ? 'has-note' : 'empty-note'}>{drinkItems[index].note.trim() || '참고사항 없음'}</span>
                     <div className="beverage-seat-modal-note-actions">
-                      <button type="button" disabled={saving} onClick={() => startEditingNote(drink)}>수정</button>
-                      <button type="button" className="delete-note" disabled={saving || !drinkNotes[drink]?.trim()} onClick={() => deleteNote(drink)}>삭제</button>
+                      <button type="button" disabled={saving} onClick={() => startEditingNote(index)}>수정</button>
+                      <button type="button" className="delete-note" disabled={saving || !drinkItems[index].note.trim()} onClick={() => deleteNote(index)}>삭제</button>
                     </div>
                   </>
                 )}
@@ -764,17 +743,19 @@ function parseDrinks(drinks: string) {
     .filter((drink) => !isExcludedDrinkName(drink));
 }
 
+function toDrinkDrafts(beverage: MemberBeverageResponse): DrinkDraft[] {
+  if (beverage.items?.length) {
+    return beverage.items.map((item) => ({ id: item.id, name: item.name, note: item.note || '' }));
+  }
+
+  return parseDrinks(beverage.drinks).map((name) => ({ name, note: beverage.drinkNotes?.[name] || '' }));
+}
+
 function isTumblerDrink(drink: string) {
   return drink.includes('텀') || drink.includes('텀블러');
 }
 
-function formatTumblerRequester(beverage: MemberBeverageResponse) {
-  const note = parseDrinks(beverage.drinks)
-    .filter(isTumblerDrink)
-    .map((drink) => beverage.drinkNotes?.[drink]?.trim())
-    .filter((value): value is string => Boolean(value))
-    .join(', ');
-
+function formatTumblerRequester(beverage: MemberBeverageResponse, note: string) {
   if (!note) {
     return beverage.memberName;
   }
@@ -782,8 +763,7 @@ function formatTumblerRequester(beverage: MemberBeverageResponse) {
   return `${beverage.memberName} [${note.replace(/\s+/g, ' ')}]`;
 }
 
-function formatCupRequester(beverage: MemberBeverageResponse, drink: string) {
-  const note = beverage.drinkNotes?.[drink]?.trim();
+function formatCupRequester(beverage: MemberBeverageResponse, note: string) {
 
   if (!note) {
     return null;
@@ -834,7 +814,7 @@ function createBeverageSummary(
   const cupMemberNames = new Map<string, string[]>();
 
   countableBeverages.forEach((beverage) => {
-    parseDrinks(beverage.drinks).forEach((drink) => {
+    beverageDrinkItems(beverage).forEach(({ name: drink, note }) => {
       const normalizedDrink = normalizeDrinkName(drink);
       const targetCounts = isTumblerDrink(drink) ? tumblerCounts : cupCounts;
       const targetDeductions = isTumblerDrink(drink) ? tumblerDeductions : cupDeductions;
@@ -843,10 +823,10 @@ function createBeverageSummary(
         targetDeductions.set(normalizedDrink, (targetDeductions.get(normalizedDrink) || 0) + 1);
       } else if (isTumblerDrink(drink)) {
         const names = tumblerMemberNames.get(normalizedDrink) || [];
-        names.push(formatTumblerRequester(beverage));
+        names.push(formatTumblerRequester(beverage, note));
         tumblerMemberNames.set(normalizedDrink, names);
       } else {
-        const requester = formatCupRequester(beverage, drink);
+        const requester = formatCupRequester(beverage, note);
         if (requester) {
           const names = cupMemberNames.get(normalizedDrink) || [];
           names.push(requester);
@@ -862,6 +842,14 @@ function createBeverageSummary(
     tumblerCounts: toSortedCounts(tumblerCounts, tumblerDeductions, tumblerMemberNames),
     cupCounts: toSortedCounts(cupCounts, cupDeductions, cupMemberNames, 'cup'),
   };
+}
+
+function beverageDrinkItems(beverage: MemberBeverageResponse) {
+  if (beverage.items?.length) {
+    return beverage.items.map((item) => ({ name: item.name, note: item.note?.trim() || '' }));
+  }
+
+  return parseDrinks(beverage.drinks).map((name) => ({ name, note: beverage.drinkNotes?.[name]?.trim() || '' }));
 }
 
 function toTodayBeverageChange(beverage: MemberBeverageResponse, now: Date): SummaryMember | null {
@@ -971,7 +959,7 @@ function toSortedCounts(
     });
 }
 
-const CUP_DRINK_PRIORITY = ['아아', '선식', '해독쥬스'];
+const CUP_DRINK_PRIORITY = ['아아', '선식', '해독'];
 
 function compareCupDrinkNames(first: string, second: string) {
   const firstFamily = getCupDrinkFamily(first);

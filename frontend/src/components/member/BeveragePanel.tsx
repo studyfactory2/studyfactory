@@ -6,7 +6,7 @@ import { Dropdown } from '../common/Dropdown';
 const BASE_DRINK_OPTIONS = [
   { value: '', label: '음료를 선택해주세요' },
   { value: '선식', label: '선식' },
-  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '해독', label: '해독' },
   { value: '아아', label: '아아' },
   { value: '뜨아', label: '뜨아' },
   { value: '텀아아', label: '텀아아' },
@@ -17,15 +17,19 @@ function parseDrinks(value: string) {
   return value.split(/[,\n]/).map((drink) => drink.trim()).filter(Boolean);
 }
 
-function uniqueDrinks(drinks: string[]) {
-  return [...new Set(drinks)];
+type DrinkDraft = { id?: number; name: string; note: string };
+
+function toDrinkDrafts(response: BeveragePreferenceResponse): DrinkDraft[] {
+  if (response.items?.length) {
+    return response.items.map((item) => ({ id: item.id, name: item.name, note: item.note || '' }));
+  }
+  return parseDrinks(response.drinks).map((name) => ({ name, note: response.drinkNotes?.[name] || '' }));
 }
 
 export function BeveragePanel() {
   const [inputMode, setInputMode] = useState<'menu' | 'custom'>('menu');
   const [drinkInput, setDrinkInput] = useState('');
-  const [drinks, setDrinks] = useState<string[]>([]);
-  const [drinkNotes, setDrinkNotes] = useState<Record<string, string>>({});
+  const [drinks, setDrinks] = useState<DrinkDraft[]>([]);
   const [isComposing, setIsComposing] = useState(false);
   const [drinkDropdownOpen, setDrinkDropdownOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
@@ -38,9 +42,7 @@ export function BeveragePanel() {
     setInitialLoading(true);
     try {
       const response = await apiRequest<BeveragePreferenceResponse>('/api/beverages/me');
-      const nextDrinks = parseDrinks(response.drinks);
-      setDrinks(nextDrinks);
-      setDrinkNotes(response.drinkNotes || {});
+      setDrinks(toDrinkDrafts(response));
     } catch {
       setMessage('저장된 음료를 불러오지 못했습니다.');
     } finally {
@@ -49,7 +51,7 @@ export function BeveragePanel() {
   };
 
   const addDrinks = (nextDrinks: string[]) => {
-    setDrinks((current) => uniqueDrinks([...current, ...nextDrinks]));
+    setDrinks((current) => [...current, ...nextDrinks.map((name) => ({ name, note: '' }))]);
     setMessage(null);
   };
 
@@ -68,13 +70,8 @@ export function BeveragePanel() {
     }
   };
 
-  const removeDrink = (drink: string) => {
-    setDrinks((current) => current.filter((item) => item !== drink));
-    setDrinkNotes((current) => {
-      const next = { ...current };
-      delete next[drink];
-      return next;
-    });
+  const removeDrink = (index: number) => {
+    setDrinks((current) => current.filter((_, currentIndex) => currentIndex !== index));
   };
 
   const saveDrinks = async () => {
@@ -83,12 +80,10 @@ export function BeveragePanel() {
     try {
       const response = await apiRequest<BeveragePreferenceResponse>('/api/beverages/me', {
         method: 'PATCH',
-        body: JSON.stringify({ drinkSetting: drinks.join(','), drinkNotes }),
+        body: JSON.stringify({ items: drinks.map(({ name, note }) => ({ name, note })) }),
       });
-      const nextDrinks = parseDrinks(response.drinks);
-      setDrinks(nextDrinks);
+      setDrinks(toDrinkDrafts(response));
       setDrinkInput('');
-      setDrinkNotes(response.drinkNotes || {});
       setMessage('음료가 저장되었습니다.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '음료 저장에 실패했습니다.');
@@ -120,10 +115,10 @@ export function BeveragePanel() {
           </div>
         )}
         <ol className="beverage-note-list">
-          {initialLoading ? <li className="empty">저장된 음료를 불러오는 중입니다.</li> : drinks.length === 0 ? <li className="empty">음료를 선택하면 참고사항을 입력할 수 있습니다.</li> : drinks.map((drink) => (
-            <li key={drink}>
-              <label><strong>{drink}</strong><input aria-label={`${drink} 참고사항`} placeholder="참고사항 없음" value={drinkNotes[drink] || ''} onChange={(event) => setDrinkNotes((current) => ({ ...current, [drink]: event.target.value }))} /></label>
-              <button type="button" aria-label={`${drink} 삭제`} onClick={() => removeDrink(drink)}><TrashIcon /></button>
+          {initialLoading ? <li className="empty">저장된 음료를 불러오는 중입니다.</li> : drinks.length === 0 ? <li className="empty">음료를 선택하면 참고사항을 입력할 수 있습니다.</li> : drinks.map((drink, index) => (
+            <li key={`${drink.id || drink.name}-${index}`}>
+              <label><strong>{drink.name}</strong><input aria-label={`${index + 1}번째 ${drink.name} 참고사항`} placeholder="참고사항 없음" value={drink.note} onChange={(event) => setDrinks((current) => current.map((item, currentIndex) => currentIndex === index ? { ...item, note: event.target.value } : item))} /></label>
+              <button type="button" aria-label={`${index + 1}번째 ${drink.name} 삭제`} onClick={() => removeDrink(index)}><TrashIcon /></button>
             </li>
           ))}
         </ol>

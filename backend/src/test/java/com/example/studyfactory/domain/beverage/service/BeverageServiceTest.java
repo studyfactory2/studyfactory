@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.beverage.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -49,11 +50,27 @@ class BeverageServiceTest {
     }
 
     @Test
-    void addsOnlyNewDrinkItems() {
+    void preservesDuplicateDrinkItemsForQuantityCounting() {
         Member member = member(1L, MemberRole.MEMBER);
         given(memberRepository.findById(1L)).willReturn(Optional.of(member));
-        given(beverageItemRepository.existsByMemberIdAndName(1L, "아아")).willReturn(true);
-        given(beverageItemRepository.existsByMemberIdAndName(1L, "선식")).willReturn(false);
+        given(beverageItemRepository.saveAll(any())).willAnswer(invocation -> invocation.getArgument(0));
+        given(beverageItemRepository.findByMemberIdOrderByCreatedAtAsc(1L))
+                .willReturn(List.of(new BeverageItem(1L, "아아", null), new BeverageItem(1L, "아아", null)));
+
+        BeveragePreferenceResponse response = beverageService.updateDrink(1L, new BeverageRequest("아아,아아", ""));
+
+        assertThat(response.drinks()).isEqualTo("아아\n아아");
+        then(beverageItemRepository).should().saveAll(argThat((Iterable<BeverageItem> items) -> {
+            List<BeverageItem> savedItems = new java.util.ArrayList<>();
+            items.forEach(savedItems::add);
+            return savedItems.size() == 2 && savedItems.stream().allMatch(item -> item.getName().equals("아아"));
+        }));
+    }
+
+    @Test
+    void addsDrinkItemsIncludingDuplicates() {
+        Member member = member(1L, MemberRole.MEMBER);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
         given(beverageItemRepository.findByMemberIdOrderByCreatedAtAsc(1L))
                 .willReturn(List.of(new BeverageItem(1L, "아아", null), new BeverageItem(1L, "선식", "따뜻하게")));
 

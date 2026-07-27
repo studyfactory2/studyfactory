@@ -29,7 +29,7 @@ const ROLE_OPTIONS: Array<{ value: MemberRole; label: string }> = [
 ];
 const DRINK_OPTIONS: DropdownOption[] = [
   { value: '선식', label: '선식' },
-  { value: '해독쥬스', label: '해독쥬스' },
+  { value: '해독', label: '해독' },
   { value: '없음', label: '없음' },
 ];
 const NAMEPLATE_OPTIONS = [
