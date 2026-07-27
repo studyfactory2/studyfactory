@@ -33,9 +33,10 @@ export function StaffLeaveRequestPanel() {
   const leavesByDate = useMemo(() => groupMonthlyLeavesByDate(monthlyLeaves), [monthlyLeaves]);
   const normalLeavesByDate = useMemo(() => groupLeavesByDate(leaves), [leaves]);
   const visibleMonthLeaves = useMemo(() => {
-    return [...monthlyLeaves].sort((first, second) => (
+    return groupLeaveHistory(monthlyLeaves.filter((leave) => leave.source !== 'FIXED_LEAVE'))
+      .sort((first, second) => (
       second.leaveDate.localeCompare(first.leaveDate) || toSourceOrder(first.source) - toSourceOrder(second.source)
-    ));
+      ));
   }, [monthlyLeaves]);
 
   useEffect(() => {
@@ -152,6 +153,7 @@ export function StaffLeaveRequestPanel() {
           {days.map((date) => {
             const dateKey = toDateKey(date);
             const dayLeaves = leavesByDate.get(dateKey) || [];
+            const calendarLeaves = getUniqueCalendarLeaves(dayLeaves);
 
             return (
               <button
@@ -162,9 +164,9 @@ export function StaffLeaveRequestPanel() {
                 onClick={() => setSelectedDate(dateKey)}
               >
                 <span>{date.getDate()}</span>
-                {dayLeaves.length > 0 && (
+                {calendarLeaves.length > 0 && (
                   <span className="staff-leave-badges">
-                    {dayLeaves.slice(0, 2).map((leave, index) => (
+                    {calendarLeaves.slice(0, 2).map((leave, index) => (
                       <span className={`staff-leave-badge ${toMonthlyLeaveBadgeClassName(leave)}`} key={`${leave.leaveDate}-${leave.label}-${leave.source}-${index}`}>
                         {toCalendarLeaveLabel(leave)}
                       </span>
@@ -195,51 +197,39 @@ export function StaffLeaveRequestPanel() {
       </button>
       {message && <p className={`staff-leave-message ${message.type}`}>{message.text}</p>}
 
-      <section className="staff-leave-history">
+      <section className="member-list-box">
         {loading ? (
-          <p className="staff-leave-empty">휴무 내역을 불러오는 중입니다.</p>
+          <p>휴무 내역을 불러오는 중입니다.</p>
         ) : visibleMonthLeaves.length === 0 ? (
-          <p className="staff-leave-empty">이번 달 휴무 신청 내역이 없습니다.</p>
+          <p>내역이 없습니다.</p>
         ) : (
-          visibleMonthLeaves.map((leave, index) => {
-            const normalLeave = findNormalLeave(normalLeavesByDate.get(leave.leaveDate) || [], leave);
-            const canDelete = leave.source === 'LEAVE' && normalLeave && leave.leaveDate >= today;
-            const showSlots = shouldShowSlots(leave);
-            const isCompact = !canDelete && !showSlots;
+          <div className="leave-history-list">
+            {visibleMonthLeaves.map((leave, index) => {
+              const normalLeave = findNormalLeave(normalLeavesByDate.get(leave.leaveDate) || [], leave);
+              const canDelete = leave.source === 'LEAVE' && normalLeave && leave.leaveDate >= today;
+              const isManagerLeave = leave.source === 'SPECIAL_LEAVE';
 
-            return (
-            <article
-              className={`staff-leave-history-card ${toMonthlyLeaveHistoryClassName(leave)}${isCompact ? ' without-cancel' : ''}`}
-              style={isCompact ? {
-                height: '30px',
-                minHeight: '30px',
-                maxHeight: '30px',
-                padding: '0 12px',
-                gridTemplateColumns: '1fr',
-                gap: 0,
-              } : undefined}
-              key={`${leave.leaveDate}-${leave.label}-${leave.source}-${index}`}
-            >
-              <div>
-                <strong>{formatCompactDate(leave.leaveDate)}</strong>
-                <span className={`staff-leave-history-badge ${toMonthlyLeaveBadgeClassName(leave)}`}>
-                  {toHistoryLeaveLabel(leave)}
-                </span>
-              </div>
-              {(showSlots || canDelete) && (
-                <div>
-                  {showSlots && <span>1, 2, 3, 4, 5, 6, 7교시</span>}
+              return (
+                <article
+                  className={`leave-history-card${canDelete ? '' : ' without-cancel'}${isManagerLeave ? ' manager-leave' : ''}`}
+                  key={`${leave.leaveDate}-${leave.label}-${leave.source}-${index}`}
+                >
+                  <div className="staff-leave-history-summary">
+                    <strong>{formatCompactDate(leave.leaveDate)}</strong>
+                    {leave.slots && <span className="staff-leave-history-slots">{formatSlots(leave.slots)}교시</span>}
+                  </div>
+                  <div className="leave-history-actions">
+                    <span>{toHistoryLeaveLabel(leave)}</span>
                   {canDelete && (
                     <button type="button" disabled={submitting} onClick={() => void deleteLeave(normalLeave)}>
-                      <TrashIcon />
-                      취소
+                      ⊗ 취소
                     </button>
                   )}
-                </div>
-              )}
-            </article>
-            );
-          })
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </section>
     </div>
@@ -315,8 +305,19 @@ function toApiLeaveType(leaveType: StaffLeaveType): ApiLeaveType {
 }
 
 function toCalendarLeaveLabel(leave: MonthlyLeaveCalendarResponse) {
+  const label = leave.label.trim();
+
+  if (label === '오전반차' || label === '오전') {
+    return '오전';
+  }
+  if (label === '오후반차' || label === '오후') {
+    return '오후';
+  }
+  if (label === '월차') {
+    return '월차';
+  }
   if (leave.source !== 'LEAVE') {
-    return leave.label;
+    return Array.from(label).slice(0, 2).join('');
   }
   const leaveType = toApiLeaveTypeFromLabel(leave.label);
   if (leaveType === 'FULL') {
@@ -327,6 +328,46 @@ function toCalendarLeaveLabel(leave: MonthlyLeaveCalendarResponse) {
   }
 
   return '오후';
+}
+
+function getUniqueCalendarLeaves(leaves: MonthlyLeaveCalendarResponse[]) {
+  const seenLabels = new Set<string>();
+
+  return leaves.filter((leave) => {
+    const label = toCalendarLeaveLabel(leave);
+    if (seenLabels.has(label)) {
+      return false;
+    }
+
+    seenLabels.add(label);
+    return true;
+  });
+}
+
+function groupLeaveHistory(leaves: MonthlyLeaveCalendarResponse[]) {
+  const grouped = new Map<string, MonthlyLeaveCalendarResponse>();
+
+  for (const leave of leaves) {
+    const key = `${leave.leaveDate}-${leave.source}-${leave.label}`;
+    const existing = grouped.get(key);
+    grouped.set(key, existing
+      ? { ...existing, slots: mergeSlots(existing.slots, leave.slots) }
+      : leave);
+  }
+
+  return [...grouped.values()];
+}
+
+function mergeSlots(first?: string | null, second?: string | null) {
+  return [...new Set(`${first || ''},${second || ''}`.split(',')
+    .map((slot) => Number(slot.trim()))
+    .filter((slot) => Number.isInteger(slot) && slot >= 1 && slot <= 7))]
+    .sort((left, right) => left - right)
+    .join(',');
+}
+
+function formatSlots(slots: string) {
+  return slots.split(',').join(', ');
 }
 
 function toHistoryLeaveLabel(leave: MonthlyLeaveCalendarResponse) {
@@ -362,17 +403,6 @@ function toMonthlyLeaveBadgeClassName(leave: MonthlyLeaveCalendarResponse) {
   return toLeaveBadgeClassName(toApiLeaveTypeFromLabel(leave.label));
 }
 
-function toMonthlyLeaveHistoryClassName(leave: MonthlyLeaveCalendarResponse) {
-  if (leave.source !== 'LEAVE') {
-    return 'half';
-  }
-  if (toApiLeaveTypeFromLabel(leave.label) === 'FULL') {
-    return 'full';
-  }
-
-  return 'half';
-}
-
 function toApiLeaveTypeFromLabel(label: string): ApiLeaveType {
   if (label === '월차') {
     return 'FULL';
@@ -391,10 +421,6 @@ function findNormalLeave(normalLeaves: LeaveResponse[], monthlyLeave: MonthlyLea
 
   const leaveType = toApiLeaveTypeFromLabel(monthlyLeave.label);
   return normalLeaves.find((leave) => leave.leaveType === leaveType);
-}
-
-function shouldShowSlots(leave: MonthlyLeaveCalendarResponse) {
-  return leave.source !== 'LEAVE';
 }
 
 function toSourceOrder(source: MonthlyLeaveCalendarResponse['source']) {
@@ -428,18 +454,6 @@ function CheckIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M20 6 9 17l-5-5" />
       <circle cx="12" cy="12" r="9" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v5" />
-      <path d="M14 11v5" />
     </svg>
   );
 }

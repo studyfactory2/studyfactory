@@ -12,7 +12,8 @@ public record MemberLeavePlanResponse(
         LocalDate leaveDate,
         LeaveType leaveType,
         String label,
-        String source
+        String source,
+        String slots
 ) {
 
     public static MemberLeavePlanResponse fromLeaveRequest(LeaveRequest leaveRequest, String label) {
@@ -21,7 +22,8 @@ public record MemberLeavePlanResponse(
                 leaveRequest.getLeaveDate(),
                 leaveRequest.getLeaveType(),
                 label,
-                "LEAVE"
+                "LEAVE",
+                slotsForLeaveType(leaveRequest.getLeaveType())
         );
     }
 
@@ -31,7 +33,8 @@ public record MemberLeavePlanResponse(
                 specialLeave.getLeaveDate(),
                 null,
                 label,
-                "SPECIAL_LEAVE"
+                "SPECIAL_LEAVE",
+                specialLeave.getSlots()
         );
     }
 
@@ -41,7 +44,23 @@ public record MemberLeavePlanResponse(
                 leaveDate,
                 null,
                 label,
-                "FIXED_LEAVE"
+                "FIXED_LEAVE",
+                fixedLeave.getSlots()
         );
+    }
+
+    public MemberLeavePlanResponse withSlots(String slots) {
+        return new MemberLeavePlanResponse(id, leaveDate, leaveType, label, source, slots);
+    }
+
+    private static String slotsForLeaveType(LeaveType leaveType) {
+        if (leaveType == LeaveType.FULL) {
+            return "1,2,3,4,5,6,7";
+        }
+        if (leaveType == LeaveType.MORNING) {
+            return "1,2,3,4";
+        }
+
+        return "4,5,6,7";
     }
 }

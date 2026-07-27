@@ -88,9 +88,12 @@ public class LeaveService {
         specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
                 .forEach(specialLeave -> {
                     String label = toSpecialLeaveLabel(specialLeave);
-                    managerLeavesByDateAndReason.putIfAbsent(
-                            specialLeave.getLeaveDate() + "|" + label,
-                            MemberLeavePlanResponse.fromSpecialLeave(specialLeave, label)
+                    String key = specialLeave.getLeaveDate() + "|" + label;
+                    MemberLeavePlanResponse response = MemberLeavePlanResponse.fromSpecialLeave(specialLeave, label);
+                    managerLeavesByDateAndReason.merge(
+                            key,
+                            response,
+                            (existing, candidate) -> existing.withSlots(mergeSlots(existing.slots(), candidate.slots()))
                     );
                 });
         responses.addAll(managerLeavesByDateAndReason.values());
@@ -189,14 +192,16 @@ public class LeaveService {
                 .forEach(leaveRequest -> responses.add(new MonthlyLeaveCalendarResponse(
                         leaveRequest.getLeaveDate(),
                         toLeaveTypeLabel(leaveRequest.getLeaveType()),
-                        "LEAVE"
+                        "LEAVE",
+                        toSlotsForLeaveType(leaveRequest.getLeaveType())
                 )));
 
         specialLeaveRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(memberId, startDate, endDate)
                 .forEach(specialLeave -> responses.add(new MonthlyLeaveCalendarResponse(
                         specialLeave.getLeaveDate(),
                         toSpecialLeaveLabel(specialLeave),
-                        "SPECIAL_LEAVE"
+                        "SPECIAL_LEAVE",
+                        specialLeave.getSlots()
                 )));
 
         return responses;
@@ -452,6 +457,21 @@ public class LeaveService {
                 .collect(Collectors.joining(","));
     }
 
+    private String mergeSlots(String first, String second) {
+        return java.util.stream.Stream.concat(
+                        java.util.Arrays.stream((first == null ? "" : first).split(",")),
+                        java.util.Arrays.stream((second == null ? "" : second).split(","))
+                )
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .map(Integer::valueOf)
+                .filter(slot -> slot >= 1 && slot <= 7)
+                .distinct()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+    }
+
     private String toNullableText(String text) {
         if (text == null || text.isBlank()) {
             return null;
@@ -469,6 +489,17 @@ public class LeaveService {
         }
 
         return "오후";
+    }
+
+    private String toSlotsForLeaveType(LeaveType leaveType) {
+        if (leaveType == LeaveType.FULL) {
+            return "1,2,3,4,5,6,7";
+        }
+        if (leaveType == LeaveType.MORNING) {
+            return "1,2,3,4";
+        }
+
+        return "4,5,6,7";
     }
 
     private String toLeaveHistoryLabel(LeaveType leaveType) {

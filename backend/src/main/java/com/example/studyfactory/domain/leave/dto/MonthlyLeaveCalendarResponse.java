@@ -5,6 +5,7 @@ import java.time.LocalDate;
 public record MonthlyLeaveCalendarResponse(
         LocalDate leaveDate,
         String label,
-        String source
+        String source,
+        String slots
 ) {
 }

@@ -900,6 +900,27 @@
   word-break: keep-all;
 }
 
+.leave-history-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-list-box .leave-history-summary strong {
+  display: inline;
+  white-space: nowrap;
+}
+
+.leave-history-slots {
+  overflow: hidden;
+  color: #71869b;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .leave-history-actions {
   display: grid;
   justify-items: end;

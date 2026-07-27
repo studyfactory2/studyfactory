@@ -100,6 +100,7 @@ export type MemberBeverageResponse = {
   memberName: string;
   role: MemberRole;
   seatNumber?: number | null;
+  joinDate?: string | null;
   drinks: string;
   drinkNotes?: Record<string, string> | null;
   createdAt?: string | null;
@@ -189,12 +190,14 @@ export type MemberLeavePlanResponse = {
   leaveType?: LeaveType | null;
   label: string;
   source: 'LEAVE' | 'FIXED_LEAVE' | 'SPECIAL_LEAVE';
+  slots?: string | null;
 };
 
 export type MonthlyLeaveCalendarResponse = {
   leaveDate: string;
   label: string;
   source: 'LEAVE' | 'FIXED_LEAVE' | 'SPECIAL_LEAVE';
+  slots?: string | null;
 };
 
 export type AttendanceBoardRowResponse = {
@@ -298,4 +301,3 @@ export type StaffScheduleUpdateRequest = {
     workerName: string;
   }>;
 };
-  joinDate?: string | null;
