@@ -7,7 +7,7 @@
 .beverage-serving-title {
   position: relative;
   display: grid;
-  grid-template-columns: 28px minmax(0, auto) 1fr;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
 }
@@ -39,24 +39,16 @@
 }
 
 .beverage-serving-branch {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   width: fit-content;
-  justify-self: end;
   padding: 7px 12px;
   border-radius: 999px;
   background: #3182f6;
   color: #fff;
   font-size: 12px;
   font-weight: 700;
-}
-
-.beverage-making-panel .beverage-serving-title {
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-}
-
-.beverage-making-panel .beverage-serving-branch {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
 }
 
 .beverage-serving-shortcut {

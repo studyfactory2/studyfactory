@@ -222,12 +222,13 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
         </a>
         <h2>{isMakingMode ? '음료 제조' : '음료 서빙'}</h2>
         <span className="beverage-serving-branch">{branch.name}</span>
-        {isMakingMode && (
-          <a className="beverage-serving-shortcut" href="/managerdashboard?view=beverage_serving_sheet">
-            <span>음료 서빙</span>
-            <ForwardIcon />
-          </a>
-        )}
+        <a
+          className="beverage-serving-shortcut"
+          href={isMakingMode ? '/managerdashboard?view=beverage_serving_sheet' : '/managerdashboard?view=beverage_making_sheet'}
+        >
+          <span>{isMakingMode ? '음료 서빙' : '음료 제조'}</span>
+          <ForwardIcon />
+        </a>
       </header>
 
       {message ? (
