@@ -298,3 +298,4 @@ export type StaffScheduleUpdateRequest = {
     workerName: string;
   }>;
 };
+  joinDate?: string | null;

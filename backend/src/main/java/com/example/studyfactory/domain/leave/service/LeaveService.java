@@ -273,6 +273,7 @@ public class LeaveService {
         Member currentMember = findMember(currentMemberId);
         validateAllPermissions(currentMember);
         FixedLeave fixedLeave = fixedLeaveRepository.findById(fixedLeaveId).orElseThrow(LeaveException::leaveNotFound);
+        specialLeaveRepository.deleteByFixedLeaveIdAndLeaveDateGreaterThanEqual(fixedLeave.getId(), LocalDate.now());
         fixedLeaveRepository.delete(fixedLeave);
     }
 
@@ -308,7 +309,8 @@ public class LeaveService {
                             fixedLeave.getReason(),
                             null,
                             true,
-                            createdByMember.getId()
+                            createdByMember.getId(),
+                            fixedLeave.getId()
                     ));
                     createdCount++;
                 }

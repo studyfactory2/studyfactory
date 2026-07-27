@@ -374,6 +374,14 @@ button.beverage-serving-cell:disabled {
   font-weight: 800;
 }
 
+.beverage-summary-column li.is-tumbler small,
+.beverage-summary-column li.is-cup small {
+  display: block;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-line;
+}
+
 .beverage-summary-column li span {
   color: #1b64da;
   font-size: 10px;

@@ -21,5 +21,7 @@ public interface SpecialLeaveRepository extends JpaRepository<SpecialLeave, Long
 
     List<SpecialLeave> findByRecurringTrueAndLeaveDateBetween(LocalDate startDate, LocalDate endDate);
 
+    void deleteByFixedLeaveIdAndLeaveDateGreaterThanEqual(Long fixedLeaveId, LocalDate leaveDate);
+
     void deleteByMemberId(Long memberId);
 }

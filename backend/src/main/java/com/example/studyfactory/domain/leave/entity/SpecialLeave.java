@@ -48,6 +48,13 @@ public class SpecialLeave extends BaseEntity {
     @Column(name = "created_by_member_id", nullable = false)
     private Long createdByMemberId;
 
+    /**
+     * 고정 기타 휴무에서 자동 생성된 경우에만 원본 고정 휴무를 연결한다.
+     * 직접 등록한 기타 휴무와 구분해 고정 휴무 취소 시 안전하게 정리하기 위함이다.
+     */
+    @Column(name = "fixed_leave_id")
+    private Long fixedLeaveId;
+
     public SpecialLeave(
             Long memberId,
             Long branchId,
@@ -66,6 +73,21 @@ public class SpecialLeave extends BaseEntity {
         this.customReason = customReason;
         this.recurring = recurring;
         this.createdByMemberId = createdByMemberId;
+    }
+
+    public SpecialLeave(
+            Long memberId,
+            Long branchId,
+            LocalDate leaveDate,
+            String slots,
+            String reason,
+            String customReason,
+            boolean recurring,
+            Long createdByMemberId,
+            Long fixedLeaveId
+    ) {
+        this(memberId, branchId, leaveDate, slots, reason, customReason, recurring, createdByMemberId);
+        this.fixedLeaveId = fixedLeaveId;
     }
 
     public boolean removeSlot(Integer slot) {
