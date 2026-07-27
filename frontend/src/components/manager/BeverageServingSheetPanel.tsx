@@ -220,7 +220,7 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
         <a className="beverage-serving-back" href="/managerdashboard?view=staff-page" aria-label="스텝페이지로 돌아가기">
           <BackIcon />
         </a>
-        <h2>{isMakingMode ? '음료 제조' : '음료 서빙'}</h2>
+        <h2>스탭페이지</h2>
         <span className="beverage-serving-branch">{branch.name}</span>
         <a
           className="beverage-serving-shortcut"
