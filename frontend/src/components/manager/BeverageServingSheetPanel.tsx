@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { apiRequest } from '../../api/client';
 import { Dropdown, type DropdownOption } from '../common/Dropdown';
 import type {
@@ -79,11 +79,7 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
     [beverages, dailyLeaveStatuses]
   );
 
-  useEffect(() => {
-    void loadSheet();
-  }, [branch.id, mode]);
-
-  const loadSheet = async () => {
+  const loadSheet = useCallback(async () => {
     try {
       const params = new URLSearchParams({ branchId: String(branch.id) });
       const leaveParams = new URLSearchParams({ branchId: String(branch.id), date: toDateKey(new Date()) });
@@ -120,7 +116,39 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
       setDailyLeaveStatuses([]);
       setMessage(error instanceof Error ? error.message : `${isMakingMode ? '음료 제조 정보' : '음료 서빙표'}를 불러오지 못했습니다.`);
     }
-  };
+  }, [branch.id, isMakingMode]);
+
+  useEffect(() => {
+    void loadSheet();
+  }, [loadSheet]);
+
+  useEffect(() => {
+    // 모바일 브라우저가 이전 제조 화면을 BFCache에서 복원해도, 저장된 음료 정보를 다시 받는다.
+    const refresh = () => void loadSheet();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
+      }
+    };
+    const channel = typeof BroadcastChannel === 'undefined'
+      ? null
+      : new BroadcastChannel('studyfactory-beverage-updates');
+
+    window.addEventListener('pageshow', refresh);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('beverage-preferences-updated', refresh);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    channel?.addEventListener('message', refresh);
+
+    return () => {
+      window.removeEventListener('pageshow', refresh);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('beverage-preferences-updated', refresh);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      channel?.removeEventListener('message', refresh);
+      channel?.close();
+    };
+  }, [loadSheet]);
 
   const openBeverageForm = (item: RoomLayoutItemResponse, beverage: MemberBeverageResponse | null) => {
     if (item.number == null) {
@@ -148,6 +176,12 @@ export function BeverageServingSheetPanel({ branches, mode = 'serving' }: Bevera
         ? { ...current, beverage: { ...current.beverage, drinks: response.drinks, drinkNotes: response.drinkNotes, items: response.items, createdAt: response.createdAt, updatedAt: response.updatedAt } }
         : current
     );
+    window.dispatchEvent(new Event('beverage-preferences-updated'));
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('studyfactory-beverage-updates');
+      channel.postMessage({ memberId, updatedAt: response.updatedAt });
+      channel.close();
+    }
   };
 
   const goToServingSheet = () => {
