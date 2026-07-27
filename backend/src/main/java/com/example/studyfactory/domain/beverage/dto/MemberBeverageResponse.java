@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.beverage.dto;
 import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,6 +15,7 @@ public record MemberBeverageResponse(
         String memberName,
         MemberRole role,
         Integer seatNumber,
+        LocalDate joinDate,
         String drinks,
         Map<String, String> drinkNotes,
         LocalDateTime createdAt,
@@ -27,6 +29,7 @@ public record MemberBeverageResponse(
                 member.getName(),
                 member.getRole(),
                 member.getSeatNumber(),
+                member.getJoinDate(),
                 toDrinkText(items),
                 toDrinkNotes(items),
                 items.isEmpty() ? null : items.get(0).getCreatedAt(),

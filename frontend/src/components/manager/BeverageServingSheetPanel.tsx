@@ -785,12 +785,16 @@ function createBeverageSummary(
   dailyLeaveStatuses: DailyLeaveStatusResponse[],
   now: Date
 ): BeverageSummary {
-  const changedMembers = beverages
+  const countableBeverages = beverages.filter((beverage) => isWorkingMember(beverage, now));
+  const countableMemberIds = new Set(countableBeverages.map((beverage) => beverage.memberId));
+  const changedMembers = countableBeverages
     .filter(hasAssignedSeat)
     .map((beverage) => toTodayBeverageChange(beverage, now))
     .filter((change): change is SummaryMember => change !== null)
     .sort(compareSummaryMembers);
-  const afterEightTodayLeaves = dailyLeaveStatuses.filter((status) => isTodayLeaveRequestedAfterEight(status, now));
+  const afterEightTodayLeaves = dailyLeaveStatuses.filter(
+    (status) => countableMemberIds.has(status.memberId) && isTodayLeaveRequestedAfterEight(status, now)
+  );
   const afterEightLeaveMembers = Array.from(
     new Map(
       afterEightTodayLeaves.map((status) => [
@@ -807,7 +811,7 @@ function createBeverageSummary(
   // 제조 수량에서는 제외한다. 오후반차는 오전 음료를 받으므로 제외하지 않는다.
   const beverageLeaveMemberIds = new Set(
     dailyLeaveStatuses
-      .filter((status) => isTodayBeverageLeave(status, now))
+      .filter((status) => countableMemberIds.has(status.memberId) && isTodayBeverageLeave(status, now))
       .map((status) => status.memberId)
   );
   const tumblerCounts = new Map<string, number>();
@@ -816,7 +820,7 @@ function createBeverageSummary(
   const cupDeductions = new Map<string, number>();
   const tumblerMemberNames = new Map<string, string[]>();
 
-  beverages.forEach((beverage) => {
+  countableBeverages.forEach((beverage) => {
     parseDrinks(beverage.drinks).forEach((drink) => {
       const normalizedDrink = normalizeDrinkName(drink);
       const targetCounts = isTumblerDrink(drink) ? tumblerCounts : cupCounts;
@@ -859,6 +863,14 @@ function toTodayBeverageChange(beverage: MemberBeverageResponse, now: Date): Sum
 
 function hasAssignedSeat(beverage: MemberBeverageResponse) {
   return beverage.seatNumber != null && beverage.seatNumber > 0;
+}
+
+function isWorkingMember(beverage: MemberBeverageResponse, now: Date) {
+  if (!beverage.joinDate) {
+    return true;
+  }
+
+  return beverage.joinDate <= toDateKey(now);
 }
 
 function isChangedBeverage(createdAt: Date | null, updatedAt: Date | null) {
