@@ -285,15 +285,15 @@
 }
 
 .vacation-leave-badge.fixed {
-  border-color: #d9ccff;
-  background: #f5f0ff;
-  color: #7658c7;
+  border-color: #d7dee6;
+  background: #f3f5f7;
+  color: #667789;
 }
 
 .vacation-leave-badge.special {
-  border-color: #cfe8df;
-  background: #eefaf5;
-  color: #3182f6;
+  border-color: #d7dee6;
+  background: #f3f5f7;
+  color: #667789;
 }
 
 .vacation-calendar-message {
@@ -954,4 +954,3 @@
     font-size: 16px;
   }
 }
-

@@ -9,7 +9,7 @@ const LEAVE_REASON_SLOTS: Record<string, number[]> = {
   오후반차: [4, 5, 6, 7],
 };
 const OTHER_REASON_OPTIONS = ['지각', '조회', '외출', '이동', '시험', '컨디션'];
-const STRONG_DIVIDER_SEATS = new Set([8, 18, 23, 28, 33, 38, 43, 48, 53, 59, 63, 67, 71, 75, 80, 83, 84, 88, 91, 94, 97, 100]);
+const STRONG_DIVIDER_SEATS = new Set([8, 18, 23, 28, 33, 38, 43, 48, 53, 59, 63, 67, 71, 75, 79, 83, 84, 88, 91, 94, 97, 100]);
 const SOFT_DIVIDER_SEATS = new Set([10, 12, 14, 16, 51]);
 const ROOM_END_DIVIDER_SEATS = new Set([55]);
 const BOTTOM_DIVIDER_SEATS = new Set([102]);
