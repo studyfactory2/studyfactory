@@ -337,6 +337,8 @@ function BeverageSummaryBoard({ summary }: { summary: BeverageSummary }) {
           left: count.name,
           right: formatCountLabel(count),
           deduction: count.deduction > 0 ? `(-${count.deduction})` : undefined,
+          detail: count.memberNames.join('\n'),
+          variant: 'cup',
         }))}
       />
     </section>
@@ -354,7 +356,7 @@ type BeverageSummaryColumnProps = {
     right?: string;
     deduction?: string;
     detail?: string;
-    variant?: 'tumbler';
+    variant?: 'tumbler' | 'cup';
   }>;
 };
 
@@ -780,6 +782,16 @@ function formatTumblerRequester(beverage: MemberBeverageResponse) {
   return `${beverage.memberName} [${note.replace(/\s+/g, ' ')}]`;
 }
 
+function formatCupRequester(beverage: MemberBeverageResponse, drink: string) {
+  const note = beverage.drinkNotes?.[drink]?.trim();
+
+  if (!note) {
+    return null;
+  }
+
+  return `${beverage.memberName} [${note.replace(/\s+/g, ' ')}]`;
+}
+
 function createBeverageSummary(
   beverages: MemberBeverageResponse[],
   dailyLeaveStatuses: DailyLeaveStatusResponse[],
@@ -819,6 +831,7 @@ function createBeverageSummary(
   const tumblerDeductions = new Map<string, number>();
   const cupDeductions = new Map<string, number>();
   const tumblerMemberNames = new Map<string, string[]>();
+  const cupMemberNames = new Map<string, string[]>();
 
   countableBeverages.forEach((beverage) => {
     parseDrinks(beverage.drinks).forEach((drink) => {
@@ -832,6 +845,13 @@ function createBeverageSummary(
         const names = tumblerMemberNames.get(normalizedDrink) || [];
         names.push(formatTumblerRequester(beverage));
         tumblerMemberNames.set(normalizedDrink, names);
+      } else {
+        const requester = formatCupRequester(beverage, drink);
+        if (requester) {
+          const names = cupMemberNames.get(normalizedDrink) || [];
+          names.push(requester);
+          cupMemberNames.set(normalizedDrink, names);
+        }
       }
     });
   });
@@ -840,7 +860,7 @@ function createBeverageSummary(
     changedMembers,
     afterEightLeaveMembers,
     tumblerCounts: toSortedCounts(tumblerCounts, tumblerDeductions, tumblerMemberNames),
-    cupCounts: toSortedCounts(cupCounts, cupDeductions, new Map(), 'cup'),
+    cupCounts: toSortedCounts(cupCounts, cupDeductions, cupMemberNames, 'cup'),
   };
 }
 
