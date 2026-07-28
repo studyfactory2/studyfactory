@@ -7,6 +7,14 @@ import { LoginLayout } from '../layouts/LoginLayout';
 export function LoginScreen() {
   const screen = useLoginScreen();
 
+  if (screen.sessionRestoring) {
+    return (
+      <LoginLayout>
+        <div className="session-restoring" role="status">로그인 정보를 확인하고 있어요.</div>
+      </LoginLayout>
+    );
+  }
+
   return (
     <LoginLayout>
       {screen.mode !== 'login' && (

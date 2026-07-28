@@ -20,11 +20,16 @@ export type LoginResponse = {
   refreshToken: string;
 };
 
+export type AccessTokenResponse = {
+  accessToken: string;
+};
+
 export type TokenPayload = {
   sub?: number | string;
   name?: string;
   branchId?: number | string;
   role?: MemberRole;
+  exp?: number;
 };
 
 export type PreRegistrationVerifyResponse = {

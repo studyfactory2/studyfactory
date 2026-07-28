@@ -8,6 +8,15 @@
     var(--color-background);
 }
 
+.session-restoring {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  color: #6b778c;
+  font-size: 15px;
+  font-weight: 500;
+}
+
 .brand-panel {
   min-height: 100vh;
   padding: clamp(32px, 6vw, 80px);

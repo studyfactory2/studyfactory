@@ -1,7 +1,8 @@
 import type { ChangeEvent, FormEvent } from 'react';
-import { useEffect, useState } from 'react';
-import { apiRequest } from '../api/client';
-import type { Branch, LoginResponse, PreRegistrationVerifyResponse } from '../types/domain';
+import { useEffect, useRef, useState } from 'react';
+import { ApiRequestError, apiRequest } from '../api/client';
+import type { AccessTokenResponse, Branch, LoginResponse, PreRegistrationVerifyResponse } from '../types/domain';
+import { clearSession, dashboardPathForRole, hasUsableAccessToken, restoreSession, saveSession } from '../utils/session';
 import { decodeTokenPayload } from '../utils/token';
 
 export type LoginMode = 'login' | 'verify' | 'password';
@@ -36,6 +37,53 @@ export function useLoginScreen() {
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  const [sessionRestoring, setSessionRestoring] = useState(() => Boolean(localStorage.getItem('refreshToken')));
+  const sessionRestoreAttempted = useRef(false);
+
+  useEffect(() => {
+    if (sessionRestoreAttempted.current) {
+      return;
+    }
+    sessionRestoreAttempted.current = true;
+
+    if (!localStorage.getItem('refreshToken')) {
+      setSessionRestoring(false);
+      return;
+    }
+
+    const restore = async () => {
+      try {
+        const payload = await restoreSession((refreshToken) => apiRequest<AccessTokenResponse>('/api/auth/token/reissue', {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken }),
+        }));
+
+        if (payload) {
+          window.location.replace(dashboardPathForRole(payload.role));
+          return;
+        }
+      } catch (error) {
+        // 서버가 일시적으로 응답하지 않을 때 기존 로그인 정보를 지우면 다시 비밀번호를
+        // 입력해야 한다. 이 경우 아직 유효한 access token이 있으면 그대로 진입시킨다.
+        if (!(error instanceof ApiRequestError) || error.status >= 500) {
+          if (hasUsableAccessToken()) {
+            const payload = decodeTokenPayload(localStorage.getItem('accessToken') || '');
+            window.location.replace(dashboardPathForRole(payload.role));
+            return;
+          }
+          showMessage('로그인 정보를 확인하지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해주세요.', 'error');
+          return;
+        }
+
+        // 401/400은 실제로 만료되었거나 로그아웃된 refresh token이므로 그때만 제거한다.
+        clearSession();
+      } finally {
+        setSessionRestoring(false);
+      }
+    };
+
+    void restore();
+  }, []);
 
   useEffect(() => {
     if (mode !== 'verify' || branches.length > 0 || branchLoading || branchLoaded) {
@@ -127,24 +175,8 @@ export function useLoginScreen() {
           password: form.loginPassword,
         }),
       });
-      const payload = decodeTokenPayload(tokens.accessToken);
-      localStorage.setItem('accessToken', tokens.accessToken);
-      localStorage.setItem('refreshToken', tokens.refreshToken);
-      localStorage.setItem('memberName', payload.name || form.loginName.trim());
-      localStorage.setItem('memberId', payload.sub ? String(payload.sub) : '');
-      localStorage.setItem('branchId', payload.branchId ? String(payload.branchId) : '');
-      localStorage.setItem('memberRole', payload.role || '');
-
-      if (payload.role === 'ADMIN') {
-        window.location.href = '/managerdashboard?view=attendance';
-        return;
-      }
-      if (payload.role === 'STAFF') {
-        window.location.href = '/managerdashboard?view=attendance';
-        return;
-      }
-
-      window.location.href = '/memberdashboard';
+      const payload = saveSession(tokens.accessToken, tokens.refreshToken);
+      window.location.href = dashboardPathForRole(payload.role);
     } catch (error) {
       setLoading(false);
       showMessage(error instanceof Error ? error.message : '로그인에 실패했습니다.', 'error');
@@ -230,6 +262,7 @@ export function useLoginScreen() {
   return {
     branches,
     branchDropdownOpen,
+    sessionRestoring,
     branchLoading,
     changeForm,
     form,

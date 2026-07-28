@@ -1,5 +1,12 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+export class ApiRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
 export async function apiRequest<TResponse>(path: string, options: RequestInit = {}): Promise<TResponse> {
   const accessToken = localStorage.getItem('accessToken');
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -14,7 +21,7 @@ export async function apiRequest<TResponse>(path: string, options: RequestInit =
   });
 
   if (!response.ok) {
-    throw new Error(await resolveErrorMessage(response));
+    throw new ApiRequestError(await resolveErrorMessage(response), response.status);
   }
 
   if (response.status === 204) {
