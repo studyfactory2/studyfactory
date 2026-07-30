@@ -129,6 +129,35 @@ class AttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("오후반차 중 4교시만 출석 처리하면 나머지 반차 교시는 유지된다")
+    void presentOverrideKeepsRemainingAfternoonLeaveSlots() {
+        LocalDate date = LocalDate.of(2026, 7, 30);
+        Member staff = createMember(1L, "최민지", MemberRole.STAFF, 1);
+        Member member = createMember(2L, "김태환", MemberRole.MEMBER, 7);
+        Attendance presentAtFourthSlot = new Attendance(
+                new AttendanceReferenceInformation(2L, 1L, 1L, 1L),
+                new AttendanceSlotInformation(date, 4, null)
+        );
+        LeaveRequest afternoonLeave = new LeaveRequest(2L, 1L, date, LeaveType.AFTERNOON);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L)).willReturn(List.of(staff, member));
+        given(attendanceRepository.findDailyBoardAttendances(1L, date)).willReturn(List.of(presentAtFourthSlot));
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of(afternoonLeave));
+        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of());
+        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
+        given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date)).willReturn(List.of());
+
+        DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, null);
+
+        assertThat(response.rows())
+                .anySatisfy(row -> {
+                    assertThat(row.memberId()).isEqualTo(2L);
+                    assertThat(row.slots()).containsExactly("X", "X", "X", "O", "오후", "오후", "오후");
+                    assertThat(row.slotSources()).containsExactly("NONE", "NONE", "NONE", "NONE", "MEMBER_LEAVE", "MEMBER_LEAVE", "MEMBER_LEAVE");
+                });
+    }
+
+    @Test
     @DisplayName("신규 입사 출석 초기화 기록이 있으면 입사예정일 표시를 제거한다")
     void initializedJoinDateMemberDoesNotShowJoinDateBanner() {
         LocalDate date = LocalDate.of(2026, 7, 7);
@@ -162,7 +191,6 @@ class AttendanceServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(memberRepository.findById(2L)).willReturn(Optional.of(member));
         given(attendanceStatusTypeRepository.findByName("출석")).willReturn(Optional.of(statusType));
-        given(leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
         given(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
 
         attendanceService.updateSlotStatus(1L, new AttendanceSlotStatusUpdateRequest(

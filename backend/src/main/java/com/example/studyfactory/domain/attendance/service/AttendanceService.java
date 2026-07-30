@@ -70,11 +70,13 @@ public class AttendanceService {
         Map<Long, List<String>> statusSourcesByMemberId = initializeStatusSources(members);
 
         List<Attendance> dailyAttendances = attendanceRepository.findDailyBoardAttendances(targetBranchId, targetDate);
-        applyAttendances(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
         applyLeaveRequests(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
         applyFixedLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
         applySpecialLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
         applyFixedLeaveCancellations(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
+        // 관리자가 특정 교시를 출석으로 바꾸면 해당 교시만 휴무보다 우선한다.
+        // 예: 오후반차(4~7교시) 중 4교시만 출석 처리해도 5~7교시는 오후반차로 유지한다.
+        applyAttendances(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
         Set<Long> initializedMemberIds = findInitializedMemberIds(targetBranchId, targetDate);
 
         return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId, statusSourcesByMemberId, initializedMemberIds));
@@ -91,7 +93,11 @@ public class AttendanceService {
 
         boolean cancelsFixedLeave = request.status() == AttendanceSlotStatusUpdateType.ABSENT
                 && hasFixedLeaveAt(member.getId(), request.date(), request.slot());
-        clearSlotStatus(member.getId(), request.date(), request.slot());
+        if (request.status() == AttendanceSlotStatusUpdateType.PRESENT) {
+            clearPresentSlotStatus(member.getId(), request.date(), request.slot());
+        } else {
+            clearSlotStatus(member.getId(), request.date(), request.slot());
+        }
         if (request.status() == AttendanceSlotStatusUpdateType.PRESENT) {
             createPresentAttendance(currentMember, member, request);
         }
@@ -138,6 +144,14 @@ public class AttendanceService {
         attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
         attendanceRepository.flush();
         deleteLeaveRequestsBySlot(memberId, date, slot);
+        deleteSpecialLeavesBySlot(memberId, date, slot);
+    }
+
+    private void clearPresentSlotStatus(Long memberId, LocalDate date, Integer slot) {
+        attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
+        attendanceRepository.flush();
+        // 출석 처리는 해당 교시를 덮어쓰는 개별 기록이다. 반차/월차 요청 자체를 지우면
+        // 나머지 휴무 교시까지 X로 바뀌므로, 회원 휴무 요청은 그대로 둔다.
         deleteSpecialLeavesBySlot(memberId, date, slot);
     }
 
@@ -265,6 +279,9 @@ public class AttendanceService {
             List<Attendance> attendances
     ) {
         for (Attendance attendance : attendances) {
+            if (FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText())) {
+                continue;
+            }
             List<String> statuses = statusesByMemberId.get(attendance.getMemberId());
             List<String> sources = statusSourcesByMemberId.get(attendance.getMemberId());
             if (statuses == null || sources == null) {
