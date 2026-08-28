@@ -4,6 +4,7 @@ import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.studyBreak.service.StudyBreakLifecycleService;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDoorQrResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceManagerSessionResponse;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
@@ -25,6 +26,7 @@ public class StudyPresenceService {
     private final MemberRepository memberRepository;
     private final StudyPresenceQrTokenProvider studyPresenceQrTokenProvider;
     private final StudyPresenceAutoClosePolicy autoClosePolicy;
+    private final StudyBreakLifecycleService studyBreakLifecycleService;
     private final Clock clock;
 
     @Transactional
@@ -39,6 +41,7 @@ public class StudyPresenceService {
             if (!autoClosePolicy.automaticallyCloseIfStale(activeSession.get(), checkedInAt)) {
                 throw StudyPresenceException.alreadyCheckedIn();
             }
+            closeBreakStudyForEndedPresence(activeSession.get());
             studyPresenceSessionRepository.flush();
         }
 
@@ -62,6 +65,7 @@ public class StudyPresenceService {
         if (!autoClosePolicy.automaticallyCloseIfStale(session, checkedOutAt)) {
             session.checkOut(checkedOutAt);
         }
+        closeBreakStudyForEndedPresence(session);
         return session;
     }
 
@@ -99,6 +103,7 @@ public class StudyPresenceService {
         if (!autoClosePolicy.automaticallyCloseIfStale(session, checkedOutAt)) {
             session.managerCheckOut(checkedOutAt, currentMemberId);
         }
+        closeBreakStudyForEndedPresence(session);
         Member targetMember = memberRepository.findById(session.getMemberId()).orElse(null);
 
         return StudyPresenceManagerSessionResponse.from(
@@ -119,7 +124,16 @@ public class StudyPresenceService {
                     if (!autoClosePolicy.automaticallyCloseIfStale(session, checkedOutAt)) {
                         session.closeForMemberDeletion(checkedOutAt);
                     }
+                    closeBreakStudyForEndedPresence(session);
                 });
+    }
+
+    private void closeBreakStudyForEndedPresence(StudyPresenceSession session) {
+        studyBreakLifecycleService.closeForPresenceEnd(
+                session.getMemberId(),
+                session.getId(),
+                session.getCheckedOutAt()
+        );
     }
 
     private Member findMemberForUpdate(Long memberId) {

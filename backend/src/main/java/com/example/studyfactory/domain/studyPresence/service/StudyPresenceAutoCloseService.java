@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.studyPresence.service;
 
+import com.example.studyfactory.domain.studyBreak.service.StudyBreakLifecycleService;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
 import com.example.studyfactory.domain.studyPresence.repository.StudyPresenceSessionRepository;
 import java.time.Clock;
@@ -15,6 +16,7 @@ public class StudyPresenceAutoCloseService {
 
     private final StudyPresenceSessionRepository studyPresenceSessionRepository;
     private final StudyPresenceAutoClosePolicy autoClosePolicy;
+    private final StudyBreakLifecycleService studyBreakLifecycleService;
     private final Clock clock;
 
     @Transactional
@@ -27,6 +29,11 @@ public class StudyPresenceAutoCloseService {
         int closedSessionCount = 0;
         for (StudyPresenceSession session : staleSessions) {
             if (autoClosePolicy.automaticallyCloseIfStale(session, now)) {
+                studyBreakLifecycleService.closeForPresenceEnd(
+                        session.getMemberId(),
+                        session.getId(),
+                        session.getCheckedOutAt()
+                );
                 closedSessionCount++;
             }
         }

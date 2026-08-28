@@ -5,8 +5,13 @@ on:
     branches:
       - deploy
 
+concurrency:
+  group: studyfactory-production-deploy
+  cancel-in-progress: false
+
 jobs:
   frontend:
+    needs: backend
     runs-on: ubuntu-latest
 
     defaults:
@@ -75,9 +80,10 @@ jobs:
       - name: Prepare backend deploy files
         run: |
           rm -rf deploy
-          mkdir -p deploy
+          mkdir -p deploy/migrations
           cp Dockerfile compose.prod.yml deploy/
           cp build/libs/*.jar deploy/app.jar
+          cp db/migrations/*.sql deploy/migrations/
 
       - name: Prepare backend directory on EC2
         uses: appleboy/ssh-action@v1.2.0
@@ -86,6 +92,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -eu
             rm -rf /home/${{ secrets.EC2_USER }}/studyfactory/backend
             mkdir -p /home/${{ secrets.EC2_USER }}/studyfactory/backend
 
@@ -106,6 +113,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -eu
             cd /home/${{ secrets.EC2_USER }}/studyfactory/backend
             cat > .env <<'EOF'
             DB_NAME=${{ secrets.DB_NAME }}
@@ -116,13 +124,65 @@ jobs:
             STUDY_PRESENCE_QR_SECRET=${{ secrets.STUDY_PRESENCE_QR_SECRET }}
             STUDY_PRESENCE_AUTO_CLOSE_ENABLED=${{ vars.STUDY_PRESENCE_AUTO_CLOSE_ENABLED }}
             EOF
-            docker compose --env-file .env -f compose.prod.yml up -d --build --remove-orphans
+            chmod 600 .env
+            docker compose --env-file .env -f compose.prod.yml up -d postgres
             for attempt in $(seq 1 30); do
-              if curl --fail --silent http://127.0.0.1:8080/api/branches > /dev/null; then
+              if docker compose --env-file .env -f compose.prod.yml exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > /dev/null; then
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "PostgreSQL did not become ready in time."
+                exit 1
+              fi
+              sleep 2
+            done
+            mkdir -p /home/${{ secrets.EC2_USER }}/studyfactory/backups
+            backup_file="/home/${{ secrets.EC2_USER }}/studyfactory/backups/pre-deploy-${{ github.run_id }}-${{ github.run_attempt }}.dump"
+            docker compose --env-file .env -f compose.prod.yml exec -T postgres sh -c 'pg_dump --format=custom -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > "$backup_file"
+            test -s "$backup_file"
+            chmod 600 "$backup_file"
+            echo "PostgreSQL backup created: $backup_file"
+            if docker image inspect studyfactory-backend:latest > /dev/null 2>&1; then
+              docker tag studyfactory-backend:latest studyfactory-backend:rollback
+            fi
+            restore_previous_backend() {
+              if ! docker image inspect studyfactory-backend:rollback > /dev/null 2>&1; then
+                echo "No previous backend image is available for rollback."
+                return 1
+              fi
+              echo "Restoring previous backend image."
+              docker tag studyfactory-backend:rollback studyfactory-backend:latest
+              if ! docker compose --env-file .env -f compose.prod.yml up -d --no-build --force-recreate backend; then
+                echo "Previous backend image could not be recreated."
+                return 1
+              fi
+              for attempt in $(seq 1 30); do
+                if curl --fail --silent --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/api/branches > /dev/null; then
+                  echo "Previous backend image restored successfully."
+                  return 0
+                fi
+                sleep 2
+              done
+              echo "Previous backend image also failed its health check."
+              docker compose --env-file .env -f compose.prod.yml logs --tail=100 backend
+              return 1
+            }
+            for migration in migrations/*.sql; do
+              echo "Applying database migration: $migration"
+              docker compose --env-file .env -f compose.prod.yml exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < "$migration"
+            done
+            if ! docker compose --env-file .env -f compose.prod.yml up -d --build --remove-orphans; then
+              echo "Backend replacement failed before health verification."
+              restore_previous_backend || true
+              exit 1
+            fi
+            for attempt in $(seq 1 30); do
+              if curl --fail --silent --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/api/branches > /dev/null; then
                 exit 0
               fi
               sleep 2
             done
             echo "Backend did not become healthy in time."
             docker compose --env-file .env -f compose.prod.yml logs --tail=100 backend
+            restore_previous_backend || true
             exit 1

@@ -19,6 +19,14 @@ public interface StudyPresenceSessionRepository extends JpaRepository<StudyPrese
             select session
             from StudyPresenceSession session
             where session.id = :sessionId
+            """)
+    Optional<StudyPresenceSession> findByIdForUpdate(@Param("sessionId") Long sessionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select session
+            from StudyPresenceSession session
+            where session.id = :sessionId
               and session.branchId = :branchId
             """)
     Optional<StudyPresenceSession> findByIdAndBranchIdForUpdate(

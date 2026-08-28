@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import com.example.studyfactory.domain.studyBreak.service.StudyBreakLifecycleService;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceCloseReason;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
 import com.example.studyfactory.domain.studyPresence.repository.StudyPresenceSessionRepository;
@@ -27,6 +28,9 @@ class StudyPresenceAutoCloseServiceTest {
     @Mock
     private StudyPresenceSessionRepository studyPresenceSessionRepository;
 
+    @Mock
+    private StudyBreakLifecycleService studyBreakLifecycleService;
+
     @Test
     @DisplayName("지연 실행되어도 각 기록을 입실 다음 서울 자정으로 종료한다")
     void closeEachSessionAtItsFirstFollowingMidnight() {
@@ -35,11 +39,13 @@ class StudyPresenceAutoCloseServiceTest {
                 2L,
                 Instant.parse("2026-08-28T14:59:00Z")
         );
+        org.springframework.test.util.ReflectionTestUtils.setField(previousDay, "id", 10L);
         StudyPresenceSession severalDaysOld = new StudyPresenceSession(
                 2L,
                 3L,
                 Instant.parse("2026-08-25T03:00:00Z")
         );
+        org.springframework.test.util.ReflectionTestUtils.setField(severalDaysOld, "id", 20L);
         given(studyPresenceSessionRepository.findStaleActiveSessionsForUpdate(CURRENT_SEOUL_DAY_STARTED_AT))
                 .willReturn(List.of(severalDaysOld, previousDay));
         StudyPresenceAutoCloseService service = serviceAt(RUN_AT);
@@ -49,6 +55,10 @@ class StudyPresenceAutoCloseServiceTest {
         assertThat(closedSessionCount).isEqualTo(2);
         assertAutomaticallyClosed(previousDay, Instant.parse("2026-08-28T15:00:00Z"));
         assertAutomaticallyClosed(severalDaysOld, Instant.parse("2026-08-25T15:00:00Z"));
+        then(studyBreakLifecycleService).should()
+                .closeForPresenceEnd(1L, 10L, Instant.parse("2026-08-28T15:00:00Z"));
+        then(studyBreakLifecycleService).should()
+                .closeForPresenceEnd(2L, 20L, Instant.parse("2026-08-25T15:00:00Z"));
     }
 
     @Test
@@ -84,12 +94,14 @@ class StudyPresenceAutoCloseServiceTest {
         assertThat(closedSessionCount).isZero();
         assertThat(session.getCheckedOutAt()).isEqualTo(Instant.parse("2026-08-28T14:30:00Z"));
         assertThat(session.isAutomaticallyClosed()).isFalse();
+        then(studyBreakLifecycleService).shouldHaveNoInteractions();
     }
 
     private StudyPresenceAutoCloseService serviceAt(Instant instant) {
         return new StudyPresenceAutoCloseService(
                 studyPresenceSessionRepository,
                 new StudyPresenceAutoClosePolicy(true),
+                studyBreakLifecycleService,
                 Clock.fixed(instant, ZoneOffset.UTC)
         );
     }

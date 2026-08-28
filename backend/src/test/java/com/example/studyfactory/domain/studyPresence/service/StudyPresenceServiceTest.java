@@ -10,6 +10,7 @@ import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.studyBreak.service.StudyBreakLifecycleService;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceCheckoutMethod;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDoorQrResponse;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceCloseReason;
@@ -54,6 +55,9 @@ class StudyPresenceServiceTest {
 
     @Spy
     private StudyPresenceAutoClosePolicy autoClosePolicy = new StudyPresenceAutoClosePolicy(true);
+
+    @Mock
+    private StudyBreakLifecycleService studyBreakLifecycleService;
 
     @Mock
     private Clock clock;
@@ -177,6 +181,7 @@ class StudyPresenceServiceTest {
                 2L,
                 PREVIOUS_SEOUL_DAY_CHECK_IN
         );
+        ReflectionTestUtils.setField(staleSession, "id", 10L);
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
@@ -191,6 +196,8 @@ class StudyPresenceServiceTest {
         assertThat(staleSession.isAutomaticallyClosed()).isTrue();
         assertThat(newSession.getCheckedInAt()).isEqualTo(AFTER_SEOUL_MIDNIGHT);
         assertThat(newSession.isActive()).isTrue();
+        then(studyBreakLifecycleService).should()
+                .closeForPresenceEnd(1L, 10L, SEOUL_MIDNIGHT);
         then(studyPresenceSessionRepository).should().flush();
         then(studyPresenceSessionRepository).should().save(newSession);
     }
@@ -200,6 +207,7 @@ class StudyPresenceServiceTest {
     void checkOut() {
         Member member = createMember(1L, 2L);
         StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        ReflectionTestUtils.setField(activeSession, "id", 10L);
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
@@ -212,6 +220,7 @@ class StudyPresenceServiceTest {
         assertThat(session.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
         assertThat(session.getActiveMemberId()).isNull();
         assertThat(session.isActive()).isFalse();
+        then(studyBreakLifecycleService).should().closeForPresenceEnd(1L, 10L, NOW);
         then(memberRepository).should().findByIdForUpdate(1L);
     }
 
@@ -224,6 +233,7 @@ class StudyPresenceServiceTest {
                 2L,
                 PREVIOUS_SEOUL_DAY_CHECK_IN
         );
+        ReflectionTestUtils.setField(staleSession, "id", 10L);
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
@@ -236,6 +246,8 @@ class StudyPresenceServiceTest {
         assertThat(session.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
         assertThat(session.getClosedByMemberId()).isNull();
         assertThat(session.isAutomaticallyClosed()).isTrue();
+        then(studyBreakLifecycleService).should()
+                .closeForPresenceEnd(1L, 10L, SEOUL_MIDNIGHT);
     }
 
     @Test
@@ -351,6 +363,7 @@ class StudyPresenceServiceTest {
     void closeActiveSessionForMemberDeletion() {
         Member member = createMember(1L, 2L);
         StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        ReflectionTestUtils.setField(activeSession, "id", 10L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
                 .willReturn(Optional.of(activeSession));
@@ -361,6 +374,7 @@ class StudyPresenceServiceTest {
         assertThat(activeSession.getCheckedOutAt()).isEqualTo(NOW);
         assertThat(activeSession.getCloseReason()).isEqualTo(StudyPresenceCloseReason.MEMBER_DELETED);
         assertThat(activeSession.isActive()).isFalse();
+        then(studyBreakLifecycleService).should().closeForPresenceEnd(1L, 10L, NOW);
         then(memberRepository).should().findByIdForUpdate(1L);
         then(studyPresenceSessionRepository).should().findActiveByMemberIdForUpdate(1L);
         then(studyPresenceSessionRepository).shouldHaveNoMoreInteractions();
@@ -375,6 +389,7 @@ class StudyPresenceServiceTest {
                 2L,
                 PREVIOUS_SEOUL_DAY_CHECK_IN
         );
+        ReflectionTestUtils.setField(staleSession, "id", 10L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
                 .willReturn(Optional.of(staleSession));
@@ -385,6 +400,8 @@ class StudyPresenceServiceTest {
         assertThat(staleSession.getCheckedOutAt()).isEqualTo(SEOUL_MIDNIGHT);
         assertThat(staleSession.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
         assertThat(staleSession.isAutomaticallyClosed()).isTrue();
+        then(studyBreakLifecycleService).should()
+                .closeForPresenceEnd(1L, 10L, SEOUL_MIDNIGHT);
     }
 
     @Test
@@ -409,6 +426,7 @@ class StudyPresenceServiceTest {
         assertThat(response.checkedOutAt()).isEqualTo(NOW);
         assertThat(response.presenceDuration().totalSeconds()).isEqualTo(27_738);
         assertThat(response.presenceDuration().formatted()).isEqualTo("07:42:18");
+        then(studyBreakLifecycleService).should().closeForPresenceEnd(1L, 10L, NOW);
     }
 
     @Test
@@ -434,6 +452,8 @@ class StudyPresenceServiceTest {
         assertThat(response.closedByMemberId()).isNull();
         assertThat(response.checkoutMethod()).isEqualTo(StudyPresenceCheckoutMethod.AUTO_MIDNIGHT);
         assertThat(response.currentlyActive()).isFalse();
+        then(studyBreakLifecycleService).should()
+                .closeForPresenceEnd(1L, 10L, SEOUL_MIDNIGHT);
     }
 
     @Test

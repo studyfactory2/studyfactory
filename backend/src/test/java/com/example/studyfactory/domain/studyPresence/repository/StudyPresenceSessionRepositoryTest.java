@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @DataJpaTest
@@ -62,6 +64,23 @@ class StudyPresenceSessionRepositoryTest {
 
         assertThat(studyPresenceSessionRepository.findByActiveMemberId(1L)).isPresent();
         assertThat(studyPresenceSessionRepository.findByActiveMemberId(2L)).isPresent();
+    }
+
+    @Test
+    @DisplayName("입실 기록 ID 조회는 비관적 쓰기 잠금을 사용한다")
+    void findPresenceByIdForUpdate() throws NoSuchMethodException {
+        StudyPresenceSession session = studyPresenceSessionRepository.saveAndFlush(
+                new StudyPresenceSession(1L, 2L, WINDOW_START)
+        );
+
+        assertThat(studyPresenceSessionRepository.findByIdForUpdate(session.getId()))
+                .contains(session);
+
+        Lock lock = StudyPresenceSessionRepository.class
+                .getMethod("findByIdForUpdate", Long.class)
+                .getAnnotation(Lock.class);
+        assertThat(lock).isNotNull();
+        assertThat(lock.value()).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
     }
 
     @Test
