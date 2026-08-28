@@ -213,6 +213,7 @@ class StudyPresenceControllerTest {
         assertThat(studyPresenceSessionRepository.findByActiveMemberId(member.getId())).isEmpty();
         StudyPresenceSession savedSession = studyPresenceSessionRepository.findAll().get(0);
         assertThat(savedSession.getCheckedOutAt()).isEqualTo(now);
+        assertThat(savedSession.getClosedByMemberId()).isNull();
     }
 
     @Test
@@ -321,6 +322,164 @@ class StudyPresenceControllerTest {
 
         assertThat(studyPresenceSessionRepository.findByActiveMemberId(checkedInMember.getId())).isPresent();
         assertThat(studyPresenceSessionRepository.findByActiveMemberId(otherMember.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("스태프는 현재 지점의 실시간 입실, 일별 이력, 회원 이력과 수동 퇴실을 관리한다")
+    void manageBranchPresence() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member staff = memberRepository.save(createMember("이스태프", branch.getId(), MemberRole.STAFF));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        StudyPresenceSession session = studyPresenceSessionRepository.save(
+                new StudyPresenceSession(member.getId(), branch.getId(), now.minusSeconds(27_738))
+        );
+        String accessToken = jwtTokenProvider.createAccessToken(staff);
+
+        mockMvc.perform(get("/api/study-presence/live")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
+                .andExpect(jsonPath("$.branchId").value(branch.getId()))
+                .andExpect(jsonPath("$.zoneId").value("Asia/Seoul"))
+                .andExpect(jsonPath("$.asOf").value("2026-08-28T00:00:00Z"))
+                .andExpect(jsonPath("$.memberCount").value(1))
+                .andExpect(jsonPath("$.sessions[0].memberId").value(member.getId()))
+                .andExpect(jsonPath("$.sessions[0].memberName").value("김회원"))
+                .andExpect(jsonPath("$.sessions[0].presenceDuration.totalSeconds").value(27_738))
+                .andExpect(jsonPath("$.sessions[0].presenceDuration.hours").value(7))
+                .andExpect(jsonPath("$.sessions[0].presenceDuration.minutes").value(42))
+                .andExpect(jsonPath("$.sessions[0].presenceDuration.seconds").value(18))
+                .andExpect(jsonPath("$.sessions[0].presenceDuration.formatted").value("07:42:18"))
+                .andExpect(jsonPath("$.qrToken").doesNotExist());
+
+        mockMvc.perform(get("/api/study-presence/history")
+                        .queryParam("date", "2026-08-28")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
+                .andExpect(jsonPath("$.fromDate").value("2026-08-28"))
+                .andExpect(jsonPath("$.toDate").value("2026-08-28"))
+                .andExpect(jsonPath("$.sessionCount").value(1))
+                .andExpect(jsonPath("$.totalPresenceDuration.totalSeconds").value(27_738))
+                .andExpect(jsonPath("$.totalPresenceDuration.formatted").value("07:42:18"));
+
+        mockMvc.perform(get("/api/study-presence/members/{memberId}/history", member.getId())
+                        .queryParam("from", "2026-08-28")
+                        .queryParam("to", "2026-08-28")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
+                .andExpect(jsonPath("$.sessionCount").value(1))
+                .andExpect(jsonPath("$.sessions[0].sessionId").value(session.getId()));
+
+        mockMvc.perform(post("/api/study-presence/sessions/{sessionId}/manual-check-out", session.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionId").value(session.getId()))
+                .andExpect(jsonPath("$.memberId").value(member.getId()))
+                .andExpect(jsonPath("$.checkedOutAt").value("2026-08-28T00:00:00Z"))
+                .andExpect(jsonPath("$.closeReason").value("CHECK_OUT"))
+                .andExpect(jsonPath("$.closedByMemberId").value(staff.getId()))
+                .andExpect(jsonPath("$.checkoutMethod").value("MANAGER"))
+                .andExpect(jsonPath("$.currentlyActive").value(false))
+                .andExpect(jsonPath("$.presenceDuration.formatted").value("07:42:18"));
+
+        mockMvc.perform(post("/api/study-presence/sessions/{sessionId}/manual-check-out", session.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이미 퇴실 처리된 기록입니다."));
+
+        mockMvc.perform(post("/api/study-presence/sessions/{sessionId}/manual-check-out", Long.MAX_VALUE)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("존재하지 않는 입퇴실 기록입니다."));
+
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(member.getId())).isEmpty();
+        StudyPresenceSession manuallyClosedSession = studyPresenceSessionRepository.findById(session.getId())
+                .orElseThrow();
+        assertThat(manuallyClosedSession.getClosedByMemberId()).isEqualTo(staff.getId());
+    }
+
+    @Test
+    @DisplayName("일반 회원은 운영용 입실 조회와 수동 퇴실을 사용할 수 없다")
+    void rejectPresenceOperationsForMember() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        StudyPresenceSession session = studyPresenceSessionRepository.save(
+                new StudyPresenceSession(member.getId(), branch.getId(), now.minusSeconds(60))
+        );
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(get("/api/study-presence/live")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("권한이 없습니다."));
+
+        mockMvc.perform(get("/api/study-presence/history")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("권한이 없습니다."));
+
+        mockMvc.perform(post("/api/study-presence/sessions/{sessionId}/manual-check-out", session.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("권한이 없습니다."));
+
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(member.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("운영용 입실 기능은 로그인한 관리자와 같은 지점으로 제한한다")
+    void isolatePresenceOperationsByManagerBranch() throws Exception {
+        Branch managerBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch otherBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member admin = memberRepository.save(
+                createMember("김관리자", managerBranch.getId(), MemberRole.ADMIN)
+        );
+        Member otherMember = memberRepository.save(createMember("김회원", otherBranch.getId()));
+        StudyPresenceSession otherSession = studyPresenceSessionRepository.save(
+                new StudyPresenceSession(otherMember.getId(), otherBranch.getId(), now.minusSeconds(60))
+        );
+        String accessToken = jwtTokenProvider.createAccessToken(admin);
+
+        mockMvc.perform(get("/api/study-presence/live")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(managerBranch.getId()))
+                .andExpect(jsonPath("$.memberCount").value(0));
+
+        mockMvc.perform(get("/api/study-presence/members/{memberId}/history", otherMember.getId())
+                        .queryParam("from", "2026-08-28")
+                        .queryParam("to", "2026-08-28")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberId").value(otherMember.getId()))
+                .andExpect(jsonPath("$.sessionCount").value(0));
+
+        mockMvc.perform(post("/api/study-presence/sessions/{sessionId}/manual-check-out", otherSession.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("존재하지 않는 입퇴실 기록입니다."));
+
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(otherMember.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("JWT가 없으면 모든 운영용 입실 엔드포인트를 거절한다")
+    void rejectPresenceOperationsWithoutJwt() throws Exception {
+        mockMvc.perform(get("/api/study-presence/live"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/study-presence/history"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/study-presence/members/{memberId}/history", 1L)
+                        .queryParam("from", "2026-08-28")
+                        .queryParam("to", "2026-08-28"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/study-presence/sessions/{sessionId}/manual-check-out", 1L))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -71,6 +71,9 @@ public class StudyPresenceSession extends BaseEntity {
     @Column(name = "active_member_id")
     private Long activeMemberId;
 
+    @Column(name = "closed_by_member_id")
+    private Long closedByMemberId;
+
     public StudyPresenceSession(Long memberId, Long branchId, Instant checkedInAt) {
         this.memberId = memberId;
         this.branchId = branchId;
@@ -84,6 +87,14 @@ public class StudyPresenceSession extends BaseEntity {
 
     public void checkOut(Instant checkedOutAt) {
         close(checkedOutAt, StudyPresenceCloseReason.CHECK_OUT);
+    }
+
+    public void managerCheckOut(Instant checkedOutAt, Long managerMemberId) {
+        if (managerMemberId == null) {
+            throw new IllegalArgumentException("managerMemberId must not be null");
+        }
+        close(checkedOutAt, StudyPresenceCloseReason.CHECK_OUT);
+        this.closedByMemberId = managerMemberId;
     }
 
     public void closeForMemberDeletion(Instant checkedOutAt) {

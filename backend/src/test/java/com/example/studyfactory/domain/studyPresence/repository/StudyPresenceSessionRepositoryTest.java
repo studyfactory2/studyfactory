@@ -121,6 +121,56 @@ class StudyPresenceSessionRepositoryTest {
         assertThat(sessions).containsExactly(crossesWindowStart, openInsideWindow);
     }
 
+    @Test
+    @DisplayName("지점의 활성 입실 기록만 입실 시간순으로 찾는다")
+    void findActiveSessionsByBranch() {
+        StudyPresenceSession first = new StudyPresenceSession(
+                1L,
+                2L,
+                WINDOW_START.minusSeconds(60)
+        );
+        StudyPresenceSession second = new StudyPresenceSession(2L, 2L, WINDOW_START);
+        StudyPresenceSession otherBranch = new StudyPresenceSession(3L, 3L, WINDOW_START);
+        StudyPresenceSession closed = closedSession(
+                4L,
+                WINDOW_START.minusSeconds(120),
+                WINDOW_START.minusSeconds(60)
+        );
+        studyPresenceSessionRepository.saveAllAndFlush(List.of(second, otherBranch, closed, first));
+
+        List<StudyPresenceSession> sessions = studyPresenceSessionRepository.findActiveByBranchId(2L);
+
+        assertThat(sessions).containsExactly(first, second);
+    }
+
+    @Test
+    @DisplayName("지점과 회원이 모두 일치하며 조회 구간과 겹치는 이력만 찾는다")
+    void findOverlappingSessionsByBranchAndMember() {
+        StudyPresenceSession matching = closedSession(
+                1L,
+                WINDOW_START.minusSeconds(60),
+                WINDOW_START.plusSeconds(60)
+        );
+        StudyPresenceSession otherMember = closedSession(
+                2L,
+                WINDOW_START,
+                WINDOW_START.plusSeconds(60)
+        );
+        StudyPresenceSession otherBranch = new StudyPresenceSession(1L, 3L, WINDOW_START);
+        otherBranch.checkOut(WINDOW_START.plusSeconds(60));
+        studyPresenceSessionRepository.saveAllAndFlush(List.of(matching, otherMember, otherBranch));
+
+        List<StudyPresenceSession> sessions =
+                studyPresenceSessionRepository.findOverlappingByBranchIdAndMemberId(
+                        2L,
+                        1L,
+                        WINDOW_START,
+                        WINDOW_END
+                );
+
+        assertThat(sessions).containsExactly(matching);
+    }
+
     private StudyPresenceSession closedSession(Long memberId, Instant checkedInAt, Instant checkedOutAt) {
         StudyPresenceSession session = new StudyPresenceSession(memberId, 2L, checkedInAt);
         session.checkOut(checkedOutAt);

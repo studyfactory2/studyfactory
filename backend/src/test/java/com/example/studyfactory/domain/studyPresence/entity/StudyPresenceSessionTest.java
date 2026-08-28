@@ -24,6 +24,7 @@ class StudyPresenceSessionTest {
         assertThat(session.getCheckedOutAt()).isNull();
         assertThat(session.getCloseReason()).isNull();
         assertThat(session.getActiveMemberId()).isEqualTo(1L);
+        assertThat(session.getClosedByMemberId()).isNull();
         assertThat(session.isActive()).isTrue();
     }
 
@@ -37,6 +38,21 @@ class StudyPresenceSessionTest {
 
         assertThat(session.getCheckedOutAt()).isEqualTo(checkedOutAt);
         assertThat(session.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
+        assertThat(session.getActiveMemberId()).isNull();
+        assertThat(session.isActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("관리자 수동 퇴실은 처리한 관리자 식별자를 감사 정보로 남긴다")
+    void managerCheckOut() {
+        StudyPresenceSession session = new StudyPresenceSession(1L, 2L, CHECKED_IN_AT);
+        Instant checkedOutAt = CHECKED_IN_AT.plusSeconds(60);
+
+        session.managerCheckOut(checkedOutAt, 9L);
+
+        assertThat(session.getCheckedOutAt()).isEqualTo(checkedOutAt);
+        assertThat(session.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
+        assertThat(session.getClosedByMemberId()).isEqualTo(9L);
         assertThat(session.getActiveMemberId()).isNull();
         assertThat(session.isActive()).isFalse();
     }
@@ -70,6 +86,7 @@ class StudyPresenceSessionTest {
         session.closeForMemberDeletion(CHECKED_IN_AT.plusSeconds(1));
 
         assertThat(session.getCloseReason()).isEqualTo(StudyPresenceCloseReason.MEMBER_DELETED);
+        assertThat(session.getClosedByMemberId()).isNull();
         assertThat(session.isActive()).isFalse();
     }
 }

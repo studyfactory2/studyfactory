@@ -21,8 +21,20 @@ public class StudyPresenceException extends BaseException {
         return new StudyPresenceException(HttpStatus.CONFLICT, "이미 퇴실 처리된 기록입니다.");
     }
 
+    public static StudyPresenceException sessionNotFound() {
+        return new StudyPresenceException(HttpStatus.NOT_FOUND, "존재하지 않는 입퇴실 기록입니다.");
+    }
+
     public static StudyPresenceException invalidCheckoutTime() {
         return new StudyPresenceException(HttpStatus.BAD_REQUEST, "퇴실 시간은 입실 시간보다 빠를 수 없습니다.");
+    }
+
+    public static StudyPresenceException invalidDateRange() {
+        return new StudyPresenceException(HttpStatus.BAD_REQUEST, "조회 시작일은 종료일보다 늦을 수 없습니다.");
+    }
+
+    public static StudyPresenceException dateRangeTooLarge() {
+        return new StudyPresenceException(HttpStatus.BAD_REQUEST, "입퇴실 이력은 최대 1년까지 조회할 수 있습니다.");
     }
 
     public static StudyPresenceException invalidQrToken() {

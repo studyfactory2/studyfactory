@@ -5,6 +5,7 @@ import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDoorQrResponse;
+import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceManagerSessionResponse;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
 import com.example.studyfactory.domain.studyPresence.exception.StudyPresenceException;
 import com.example.studyfactory.domain.studyPresence.qr.StudyPresenceQrTokenProvider;
@@ -47,7 +48,7 @@ public class StudyPresenceService {
     public StudyPresenceSession checkOut(Long memberId, String qrToken) {
         Long qrBranchId = studyPresenceQrTokenProvider.getBranchId(qrToken);
         findMemberForUpdate(memberId);
-        StudyPresenceSession session = studyPresenceSessionRepository.findByActiveMemberId(memberId)
+        StudyPresenceSession session = studyPresenceSessionRepository.findActiveByMemberIdForUpdate(memberId)
                 .orElseThrow(StudyPresenceException::notCheckedIn);
         validateSessionQrBranch(session.getBranchId(), qrBranchId);
 
@@ -74,9 +75,32 @@ public class StudyPresenceService {
     }
 
     @Transactional
+    public StudyPresenceManagerSessionResponse managerCheckOut(Long currentMemberId, Long sessionId) {
+        Member manager = findMember(currentMemberId);
+        validateOperations(manager);
+        StudyPresenceSession session = studyPresenceSessionRepository.findByIdAndBranchIdForUpdate(
+                        sessionId,
+                        manager.getBranchId()
+                )
+                .orElseThrow(StudyPresenceException::sessionNotFound);
+
+        Instant checkedOutAt = clock.instant();
+        session.managerCheckOut(checkedOutAt, currentMemberId);
+        Member targetMember = memberRepository.findById(session.getMemberId()).orElse(null);
+
+        return StudyPresenceManagerSessionResponse.from(
+                session,
+                targetMember,
+                session.getCheckedInAt(),
+                checkedOutAt,
+                checkedOutAt
+        );
+    }
+
+    @Transactional
     public void closeActiveSessionForMemberDeletion(Long memberId) {
         findMemberForUpdate(memberId);
-        studyPresenceSessionRepository.findByActiveMemberId(memberId)
+        studyPresenceSessionRepository.findActiveByMemberIdForUpdate(memberId)
                 .ifPresent(session -> session.closeForMemberDeletion(clock.instant()));
     }
 
@@ -92,6 +116,12 @@ public class StudyPresenceService {
 
     private void validateAdmin(Member member) {
         if (member.getRole() != MemberRole.ADMIN) {
+            throw MemberException.forbidden();
+        }
+    }
+
+    private void validateOperations(Member member) {
+        if (!member.hasAllPermissions()) {
             throw MemberException.forbidden();
         }
     }
