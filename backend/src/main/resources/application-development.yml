@@ -17,3 +17,5 @@ app:
 study-presence:
   qr:
     secret: ${STUDY_PRESENCE_QR_SECRET:c3R1ZHlmYWN0b3J5LWRldmVsb3BtZW50LXFyLXNlY3JldC1rZXktMjAyNg==}
+  auto-close:
+    enabled: ${STUDY_PRESENCE_AUTO_CLOSE_ENABLED:true}

@@ -32,15 +32,18 @@ public class StudyPresenceQueryService {
 
     private final StudyPresenceSessionRepository studyPresenceSessionRepository;
     private final MemberRepository memberRepository;
+    private final StudyPresenceAutoClosePolicy autoClosePolicy;
     private final Clock clock;
 
     @Transactional(readOnly = true)
     public StudyPresenceLiveResponse findLive(Long currentMemberId) {
         Member manager = findOperationsMember(currentMemberId);
         Instant asOf = clock.instant();
-        List<StudyPresenceSession> sessions = studyPresenceSessionRepository.findActiveByBranchId(
-                manager.getBranchId()
-        );
+        List<StudyPresenceSession> sessions = studyPresenceSessionRepository
+                .findActiveByBranchId(manager.getBranchId())
+                .stream()
+                .filter(session -> !autoClosePolicy.shouldAutomaticallyClose(session, asOf))
+                .toList();
         Map<Long, Member> membersById = findMembersById(sessions);
 
         List<StudyPresenceManagerSessionResponse> responses = sessions.stream()
@@ -111,10 +114,13 @@ public class StudyPresenceQueryService {
                     queryEnd
             );
         }
+        sessions = sessions.stream()
+                .filter(session -> overlapsHistoryWindow(session, windowStart, asOf))
+                .toList();
 
         Map<Long, Member> membersById = findMembersById(sessions);
         List<StudyPresenceManagerSessionResponse> responses = sessions.stream()
-                .map(session -> StudyPresenceManagerSessionResponse.from(
+                .map(session -> toHistoryResponse(
                         session,
                         membersById.get(session.getMemberId()),
                         windowStart,
@@ -165,5 +171,36 @@ public class StudyPresenceQueryService {
                 .toList();
         return memberRepository.findAllById(memberIds).stream()
                 .collect(Collectors.toMap(Member::getId, Function.identity()));
+    }
+
+    private StudyPresenceManagerSessionResponse toHistoryResponse(
+            StudyPresenceSession session,
+            Member member,
+            Instant windowStart,
+            Instant windowEnd,
+            Instant asOf
+    ) {
+        Instant pendingAutomaticCheckoutAt = autoClosePolicy.shouldAutomaticallyClose(session, asOf)
+                ? autoClosePolicy.firstMidnightAfter(session.getCheckedInAt())
+                : null;
+        return StudyPresenceManagerSessionResponse.from(
+                session,
+                member,
+                windowStart,
+                windowEnd,
+                asOf,
+                pendingAutomaticCheckoutAt
+        );
+    }
+
+    private boolean overlapsHistoryWindow(
+            StudyPresenceSession session,
+            Instant windowStart,
+            Instant asOf
+    ) {
+        if (!autoClosePolicy.shouldAutomaticallyClose(session, asOf)) {
+            return true;
+        }
+        return autoClosePolicy.firstMidnightAfter(session.getCheckedInAt()).isAfter(windowStart);
     }
 }

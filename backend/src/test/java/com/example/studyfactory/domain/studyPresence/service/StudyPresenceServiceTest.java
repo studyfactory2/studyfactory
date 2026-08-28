@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -34,6 +35,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 class StudyPresenceServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
+    private static final Instant AFTER_SEOUL_MIDNIGHT = Instant.parse("2026-08-28T15:00:05Z");
+    private static final Instant PREVIOUS_SEOUL_DAY_CHECK_IN = Instant.parse("2026-08-28T14:00:00Z");
+    private static final Instant SEOUL_MIDNIGHT = Instant.parse("2026-08-28T15:00:00Z");
     private static final String QR_TOKEN = "signed-qr-token";
 
     @InjectMocks
@@ -47,6 +51,9 @@ class StudyPresenceServiceTest {
 
     @Mock
     private StudyPresenceQrTokenProvider studyPresenceQrTokenProvider;
+
+    @Spy
+    private StudyPresenceAutoClosePolicy autoClosePolicy = new StudyPresenceAutoClosePolicy(true);
 
     @Mock
     private Clock clock;
@@ -114,7 +121,7 @@ class StudyPresenceServiceTest {
         Member member = createMember(1L, 2L);
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
-        given(studyPresenceSessionRepository.findByActiveMemberId(1L)).willReturn(Optional.empty());
+        given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L)).willReturn(Optional.empty());
         given(clock.instant()).willReturn(NOW);
         given(studyPresenceSessionRepository.save(any(StudyPresenceSession.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
@@ -149,14 +156,43 @@ class StudyPresenceServiceTest {
         StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
-        given(studyPresenceSessionRepository.findByActiveMemberId(1L)).willReturn(Optional.of(activeSession));
+        given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
+                .willReturn(Optional.of(activeSession));
+        given(clock.instant()).willReturn(NOW);
 
         assertThatThrownBy(() -> studyPresenceService.checkIn(1L, QR_TOKEN))
                 .isInstanceOf(StudyPresenceException.class)
                 .hasMessageContaining("이미 입실 처리된 회원입니다.");
 
-        then(studyPresenceSessionRepository).should().findByActiveMemberId(1L);
+        then(studyPresenceSessionRepository).should().findActiveByMemberIdForUpdate(1L);
         then(studyPresenceSessionRepository).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    @DisplayName("새 날짜의 입실은 어제 미퇴실 기록을 자정으로 닫은 뒤 새 기록을 만든다")
+    void checkInAfterAutomaticallyClosingPreviousDaySession() {
+        Member member = createMember(1L, 2L);
+        StudyPresenceSession staleSession = new StudyPresenceSession(
+                1L,
+                2L,
+                PREVIOUS_SEOUL_DAY_CHECK_IN
+        );
+        given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
+                .willReturn(Optional.of(staleSession));
+        given(clock.instant()).willReturn(AFTER_SEOUL_MIDNIGHT);
+        given(studyPresenceSessionRepository.save(any(StudyPresenceSession.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        StudyPresenceSession newSession = studyPresenceService.checkIn(1L, QR_TOKEN);
+
+        assertThat(staleSession.getCheckedOutAt()).isEqualTo(SEOUL_MIDNIGHT);
+        assertThat(staleSession.isAutomaticallyClosed()).isTrue();
+        assertThat(newSession.getCheckedInAt()).isEqualTo(AFTER_SEOUL_MIDNIGHT);
+        assertThat(newSession.isActive()).isTrue();
+        then(studyPresenceSessionRepository).should().flush();
+        then(studyPresenceSessionRepository).should().save(newSession);
     }
 
     @Test
@@ -177,6 +213,29 @@ class StudyPresenceServiceTest {
         assertThat(session.getActiveMemberId()).isNull();
         assertThat(session.isActive()).isFalse();
         then(memberRepository).should().findByIdForUpdate(1L);
+    }
+
+    @Test
+    @DisplayName("자정이 지난 어제 기록은 QR 요청이 먼저 와도 자정 자동 퇴실로 정규화한다")
+    void normalizeStaleQrCheckoutToMidnight() {
+        Member member = createMember(1L, 2L);
+        StudyPresenceSession staleSession = new StudyPresenceSession(
+                1L,
+                2L,
+                PREVIOUS_SEOUL_DAY_CHECK_IN
+        );
+        given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
+                .willReturn(Optional.of(staleSession));
+        given(clock.instant()).willReturn(AFTER_SEOUL_MIDNIGHT);
+
+        StudyPresenceSession session = studyPresenceService.checkOut(1L, QR_TOKEN);
+
+        assertThat(session.getCheckedOutAt()).isEqualTo(SEOUL_MIDNIGHT);
+        assertThat(session.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
+        assertThat(session.getClosedByMemberId()).isNull();
+        assertThat(session.isAutomaticallyClosed()).isTrue();
     }
 
     @Test
@@ -262,10 +321,29 @@ class StudyPresenceServiceTest {
         StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
         given(memberRepository.findById(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findByActiveMemberId(1L)).willReturn(Optional.of(activeSession));
+        given(clock.instant()).willReturn(NOW);
 
         Optional<StudyPresenceSession> session = studyPresenceService.findActive(1L);
 
         assertThat(session).contains(activeSession);
+    }
+
+    @Test
+    @DisplayName("자동 종료 대기 중인 어제 기록은 현재 입실 상태로 노출하지 않는다")
+    void hideStaleSessionFromCurrentStatus() {
+        Member member = createMember(1L, 2L);
+        StudyPresenceSession staleSession = new StudyPresenceSession(
+                1L,
+                2L,
+                PREVIOUS_SEOUL_DAY_CHECK_IN
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(studyPresenceSessionRepository.findByActiveMemberId(1L)).willReturn(Optional.of(staleSession));
+        given(clock.instant()).willReturn(AFTER_SEOUL_MIDNIGHT);
+
+        Optional<StudyPresenceSession> session = studyPresenceService.findActive(1L);
+
+        assertThat(session).isEmpty();
     }
 
     @Test
@@ -286,6 +364,27 @@ class StudyPresenceServiceTest {
         then(memberRepository).should().findByIdForUpdate(1L);
         then(studyPresenceSessionRepository).should().findActiveByMemberIdForUpdate(1L);
         then(studyPresenceSessionRepository).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    @DisplayName("자정이 지난 어제 기록은 회원 삭제보다 자정 자동 퇴실을 우선 보존한다")
+    void normalizeStaleDeletionClosureToMidnight() {
+        Member member = createMember(1L, 2L);
+        StudyPresenceSession staleSession = new StudyPresenceSession(
+                1L,
+                2L,
+                PREVIOUS_SEOUL_DAY_CHECK_IN
+        );
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
+                .willReturn(Optional.of(staleSession));
+        given(clock.instant()).willReturn(AFTER_SEOUL_MIDNIGHT);
+
+        studyPresenceService.closeActiveSessionForMemberDeletion(1L);
+
+        assertThat(staleSession.getCheckedOutAt()).isEqualTo(SEOUL_MIDNIGHT);
+        assertThat(staleSession.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
+        assertThat(staleSession.isAutomaticallyClosed()).isTrue();
     }
 
     @Test
@@ -310,6 +409,31 @@ class StudyPresenceServiceTest {
         assertThat(response.checkedOutAt()).isEqualTo(NOW);
         assertThat(response.presenceDuration().totalSeconds()).isEqualTo(27_738);
         assertThat(response.presenceDuration().formatted()).isEqualTo("07:42:18");
+    }
+
+    @Test
+    @DisplayName("자정이 지난 어제 기록은 관리자 요청이 먼저 와도 자정 자동 퇴실로 정규화한다")
+    void normalizeStaleManagerCheckoutToMidnight() {
+        Member manager = createMember(9L, 2L, MemberRole.STAFF);
+        Member targetMember = createMember(1L, 2L);
+        StudyPresenceSession staleSession = new StudyPresenceSession(
+                1L,
+                2L,
+                PREVIOUS_SEOUL_DAY_CHECK_IN
+        );
+        ReflectionTestUtils.setField(staleSession, "id", 10L);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
+        given(studyPresenceSessionRepository.findByIdAndBranchIdForUpdate(10L, 2L))
+                .willReturn(Optional.of(staleSession));
+        given(clock.instant()).willReturn(AFTER_SEOUL_MIDNIGHT);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(targetMember));
+
+        var response = studyPresenceService.managerCheckOut(9L, 10L);
+
+        assertThat(response.checkedOutAt()).isEqualTo(SEOUL_MIDNIGHT);
+        assertThat(response.closedByMemberId()).isNull();
+        assertThat(response.checkoutMethod()).isEqualTo(StudyPresenceCheckoutMethod.AUTO_MIDNIGHT);
+        assertThat(response.currentlyActive()).isFalse();
     }
 
     @Test

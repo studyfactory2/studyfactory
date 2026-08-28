@@ -43,6 +43,16 @@ public interface StudyPresenceSessionRepository extends JpaRepository<StudyPrese
             """)
     List<StudyPresenceSession> findActiveByBranchId(@Param("branchId") Long branchId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select session
+            from StudyPresenceSession session
+            where session.activeMemberId is not null
+              and session.checkedInAt < :staleBefore
+            order by session.checkedInAt asc, session.id asc
+            """)
+    List<StudyPresenceSession> findStaleActiveSessionsForUpdate(@Param("staleBefore") Instant staleBefore);
+
     @Query("""
             select session
             from StudyPresenceSession session

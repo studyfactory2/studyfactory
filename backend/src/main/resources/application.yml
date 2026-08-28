@@ -26,3 +26,5 @@ app:
 study-presence:
   qr:
     secret: ${STUDY_PRESENCE_QR_SECRET}
+  auto-close:
+    enabled: ${STUDY_PRESENCE_AUTO_CLOSE_ENABLED:false}

@@ -75,4 +75,26 @@ class StudyPresenceDurationContractTest {
         assertThat(response.overlapEndedAt()).isEqualTo(asOf);
         assertThat(response.presenceDuration().totalSeconds()).isEqualTo(3_600);
     }
+
+    @Test
+    @DisplayName("자정 자동 퇴실은 QR 퇴실과 구별해 반환한다")
+    void distinguishAutomaticMidnightCheckout() {
+        Instant checkedInAt = Instant.parse("2026-08-28T12:00:00Z");
+        Instant midnight = Instant.parse("2026-08-28T15:00:00Z");
+        StudyPresenceSession session = new StudyPresenceSession(1L, 2L, checkedInAt);
+        session.automaticallyCheckOut(midnight);
+
+        StudyPresenceManagerSessionResponse response = StudyPresenceManagerSessionResponse.from(
+                session,
+                null,
+                checkedInAt,
+                midnight,
+                midnight
+        );
+
+        assertThat(response.checkedOutAt()).isEqualTo(midnight);
+        assertThat(response.closedByMemberId()).isNull();
+        assertThat(response.checkoutMethod()).isEqualTo(StudyPresenceCheckoutMethod.AUTO_MIDNIGHT);
+        assertThat(response.currentlyActive()).isFalse();
+    }
 }

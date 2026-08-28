@@ -144,6 +144,43 @@ class StudyPresenceSessionRepositoryTest {
     }
 
     @Test
+    @DisplayName("현재 서울 날짜 이전에 입실한 활성 기록만 자동 퇴실 대상으로 잠금 조회한다")
+    void findStaleActiveSessionsForUpdate() {
+        Instant currentSeoulDayStartedAt = Instant.parse("2026-08-28T15:00:00Z");
+        StudyPresenceSession firstStale = new StudyPresenceSession(
+                1L,
+                2L,
+                currentSeoulDayStartedAt.minusSeconds(3600)
+        );
+        StudyPresenceSession secondStale = new StudyPresenceSession(
+                2L,
+                3L,
+                currentSeoulDayStartedAt.minusSeconds(1)
+        );
+        StudyPresenceSession exactlyAtBoundary = new StudyPresenceSession(
+                3L,
+                2L,
+                currentSeoulDayStartedAt
+        );
+        StudyPresenceSession alreadyClosed = closedSession(
+                4L,
+                currentSeoulDayStartedAt.minusSeconds(7200),
+                currentSeoulDayStartedAt.minusSeconds(60)
+        );
+        studyPresenceSessionRepository.saveAllAndFlush(List.of(
+                exactlyAtBoundary,
+                secondStale,
+                alreadyClosed,
+                firstStale
+        ));
+
+        List<StudyPresenceSession> sessions =
+                studyPresenceSessionRepository.findStaleActiveSessionsForUpdate(currentSeoulDayStartedAt);
+
+        assertThat(sessions).containsExactly(firstStale, secondStale);
+    }
+
+    @Test
     @DisplayName("지점과 회원이 모두 일치하며 조회 구간과 겹치는 이력만 찾는다")
     void findOverlappingSessionsByBranchAndMember() {
         StudyPresenceSession matching = closedSession(

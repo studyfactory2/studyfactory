@@ -74,6 +74,9 @@ public class StudyPresenceSession extends BaseEntity {
     @Column(name = "closed_by_member_id")
     private Long closedByMemberId;
 
+    @Column(name = "automatically_closed")
+    private Boolean automaticallyClosed;
+
     public StudyPresenceSession(Long memberId, Long branchId, Instant checkedInAt) {
         this.memberId = memberId;
         this.branchId = branchId;
@@ -83,6 +86,10 @@ public class StudyPresenceSession extends BaseEntity {
 
     public boolean isActive() {
         return checkedOutAt == null;
+    }
+
+    public boolean isAutomaticallyClosed() {
+        return Boolean.TRUE.equals(automaticallyClosed);
     }
 
     public void checkOut(Instant checkedOutAt) {
@@ -95,6 +102,11 @@ public class StudyPresenceSession extends BaseEntity {
         }
         close(checkedOutAt, StudyPresenceCloseReason.CHECK_OUT);
         this.closedByMemberId = managerMemberId;
+    }
+
+    public void automaticallyCheckOut(Instant checkedOutAt) {
+        close(checkedOutAt, StudyPresenceCloseReason.CHECK_OUT);
+        this.automaticallyClosed = true;
     }
 
     public void closeForMemberDeletion(Instant checkedOutAt) {

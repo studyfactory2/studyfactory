@@ -31,7 +31,22 @@ public record StudyPresenceManagerSessionResponse(
             Instant windowEnd,
             Instant asOf
     ) {
-        Instant rawSessionEnd = session.getCheckedOutAt() == null ? asOf : session.getCheckedOutAt();
+        return from(session, member, windowStart, windowEnd, asOf, null);
+    }
+
+    public static StudyPresenceManagerSessionResponse from(
+            StudyPresenceSession session,
+            Member member,
+            Instant windowStart,
+            Instant windowEnd,
+            Instant asOf,
+            Instant pendingAutomaticCheckoutAt
+    ) {
+        boolean virtuallyAutomaticallyClosed = session.isActive() && pendingAutomaticCheckoutAt != null;
+        Instant effectiveCheckedOutAt = virtuallyAutomaticallyClosed
+                ? pendingAutomaticCheckoutAt
+                : session.getCheckedOutAt();
+        Instant rawSessionEnd = effectiveCheckedOutAt == null ? asOf : effectiveCheckedOutAt;
         Instant sessionEnd = rawSessionEnd.isAfter(asOf) ? asOf : rawSessionEnd;
         Instant overlapStartedAt = laterOf(session.getCheckedInAt(), windowStart);
         Instant overlapEndedAt = earlierOf(sessionEnd, windowEnd);
@@ -50,18 +65,24 @@ public record StudyPresenceManagerSessionResponse(
                 sessionBranchMember == null ? null : sessionBranchMember.getSeatNumber(),
                 session.getBranchId(),
                 session.getCheckedInAt(),
-                session.getCheckedOutAt(),
-                session.getCloseReason(),
-                session.getClosedByMemberId(),
-                checkoutMethodOf(session),
-                session.isActive(),
+                effectiveCheckedOutAt,
+                virtuallyAutomaticallyClosed ? StudyPresenceCloseReason.CHECK_OUT : session.getCloseReason(),
+                virtuallyAutomaticallyClosed ? null : session.getClosedByMemberId(),
+                checkoutMethodOf(session, virtuallyAutomaticallyClosed),
+                session.isActive() && !virtuallyAutomaticallyClosed,
                 overlapStartedAt,
                 overlapEndedAt,
                 StudyPresenceDurationResponse.between(overlapStartedAt, overlapEndedAt)
         );
     }
 
-    private static StudyPresenceCheckoutMethod checkoutMethodOf(StudyPresenceSession session) {
+    private static StudyPresenceCheckoutMethod checkoutMethodOf(
+            StudyPresenceSession session,
+            boolean virtuallyAutomaticallyClosed
+    ) {
+        if (virtuallyAutomaticallyClosed || session.isAutomaticallyClosed()) {
+            return StudyPresenceCheckoutMethod.AUTO_MIDNIGHT;
+        }
         if (session.isActive()) {
             return null;
         }

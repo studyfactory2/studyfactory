@@ -24,6 +24,7 @@ public class StudyPresenceService {
     private final StudyPresenceSessionRepository studyPresenceSessionRepository;
     private final MemberRepository memberRepository;
     private final StudyPresenceQrTokenProvider studyPresenceQrTokenProvider;
+    private final StudyPresenceAutoClosePolicy autoClosePolicy;
     private final Clock clock;
 
     @Transactional
@@ -31,11 +32,16 @@ public class StudyPresenceService {
         Long qrBranchId = studyPresenceQrTokenProvider.getBranchId(qrToken);
         Member member = findMemberForUpdate(memberId);
         validateMemberQrBranch(member.getBranchId(), qrBranchId);
-        if (studyPresenceSessionRepository.findByActiveMemberId(memberId).isPresent()) {
-            throw StudyPresenceException.alreadyCheckedIn();
+        Optional<StudyPresenceSession> activeSession =
+                studyPresenceSessionRepository.findActiveByMemberIdForUpdate(memberId);
+        Instant checkedInAt = clock.instant();
+        if (activeSession.isPresent()) {
+            if (!autoClosePolicy.automaticallyCloseIfStale(activeSession.get(), checkedInAt)) {
+                throw StudyPresenceException.alreadyCheckedIn();
+            }
+            studyPresenceSessionRepository.flush();
         }
 
-        Instant checkedInAt = clock.instant();
         StudyPresenceSession session = new StudyPresenceSession(
                 member.getId(),
                 member.getBranchId(),
@@ -52,14 +58,19 @@ public class StudyPresenceService {
                 .orElseThrow(StudyPresenceException::notCheckedIn);
         validateSessionQrBranch(session.getBranchId(), qrBranchId);
 
-        session.checkOut(clock.instant());
+        Instant checkedOutAt = clock.instant();
+        if (!autoClosePolicy.automaticallyCloseIfStale(session, checkedOutAt)) {
+            session.checkOut(checkedOutAt);
+        }
         return session;
     }
 
     @Transactional(readOnly = true)
     public Optional<StudyPresenceSession> findActive(Long memberId) {
         findMember(memberId);
-        return studyPresenceSessionRepository.findByActiveMemberId(memberId);
+        Instant now = clock.instant();
+        return studyPresenceSessionRepository.findByActiveMemberId(memberId)
+                .filter(session -> !autoClosePolicy.shouldAutomaticallyClose(session, now));
     }
 
     @Transactional(readOnly = true)
@@ -85,7 +96,9 @@ public class StudyPresenceService {
                 .orElseThrow(StudyPresenceException::sessionNotFound);
 
         Instant checkedOutAt = clock.instant();
-        session.managerCheckOut(checkedOutAt, currentMemberId);
+        if (!autoClosePolicy.automaticallyCloseIfStale(session, checkedOutAt)) {
+            session.managerCheckOut(checkedOutAt, currentMemberId);
+        }
         Member targetMember = memberRepository.findById(session.getMemberId()).orElse(null);
 
         return StudyPresenceManagerSessionResponse.from(
@@ -101,7 +114,12 @@ public class StudyPresenceService {
     public void closeActiveSessionForMemberDeletion(Long memberId) {
         findMemberForUpdate(memberId);
         studyPresenceSessionRepository.findActiveByMemberIdForUpdate(memberId)
-                .ifPresent(session -> session.closeForMemberDeletion(clock.instant()));
+                .ifPresent(session -> {
+                    Instant checkedOutAt = clock.instant();
+                    if (!autoClosePolicy.automaticallyCloseIfStale(session, checkedOutAt)) {
+                        session.closeForMemberDeletion(checkedOutAt);
+                    }
+                });
     }
 
     private Member findMemberForUpdate(Long memberId) {

@@ -25,6 +25,7 @@ class StudyPresenceSessionTest {
         assertThat(session.getCloseReason()).isNull();
         assertThat(session.getActiveMemberId()).isEqualTo(1L);
         assertThat(session.getClosedByMemberId()).isNull();
+        assertThat(session.isAutomaticallyClosed()).isFalse();
         assertThat(session.isActive()).isTrue();
     }
 
@@ -53,6 +54,22 @@ class StudyPresenceSessionTest {
         assertThat(session.getCheckedOutAt()).isEqualTo(checkedOutAt);
         assertThat(session.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
         assertThat(session.getClosedByMemberId()).isEqualTo(9L);
+        assertThat(session.getActiveMemberId()).isNull();
+        assertThat(session.isActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("자정 자동 퇴실은 시스템 처리 여부를 감사 정보로 남긴다")
+    void automaticallyCheckOut() {
+        StudyPresenceSession session = new StudyPresenceSession(1L, 2L, CHECKED_IN_AT);
+        Instant midnight = CHECKED_IN_AT.plusSeconds(60);
+
+        session.automaticallyCheckOut(midnight);
+
+        assertThat(session.getCheckedOutAt()).isEqualTo(midnight);
+        assertThat(session.getCloseReason()).isEqualTo(StudyPresenceCloseReason.CHECK_OUT);
+        assertThat(session.getClosedByMemberId()).isNull();
+        assertThat(session.isAutomaticallyClosed()).isTrue();
         assertThat(session.getActiveMemberId()).isNull();
         assertThat(session.isActive()).isFalse();
     }

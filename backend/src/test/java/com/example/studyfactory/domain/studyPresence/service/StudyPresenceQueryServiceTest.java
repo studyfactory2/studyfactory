@@ -32,6 +32,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class StudyPresenceQueryServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-08-28T06:00:00Z");
+    private static final Instant AFTER_SEOUL_MIDNIGHT = Instant.parse("2026-08-28T15:00:05Z");
 
     @Mock
     private StudyPresenceSessionRepository studyPresenceSessionRepository;
@@ -46,6 +47,7 @@ class StudyPresenceQueryServiceTest {
         studyPresenceQueryService = new StudyPresenceQueryService(
                 studyPresenceSessionRepository,
                 memberRepository,
+                new StudyPresenceAutoClosePolicy(true),
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -75,6 +77,27 @@ class StudyPresenceQueryServiceTest {
             assertThat(item.presenceDuration().formatted()).isEqualTo("07:42:18");
         });
         then(studyPresenceSessionRepository).should().findActiveByBranchId(2L);
+    }
+
+    @Test
+    @DisplayName("스케줄러 저장 직전의 어제 미퇴실 기록은 실시간 입실자에서 숨긴다")
+    void hidePendingAutomaticCheckoutFromLivePresence() {
+        Member manager = createMember(9L, 2L, "이스태프", MemberRole.STAFF, null);
+        StudyPresenceSession staleSession = activeSession(
+                10L,
+                1L,
+                2L,
+                Instant.parse("2026-08-28T14:00:00Z")
+        );
+        given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
+        given(studyPresenceSessionRepository.findActiveByBranchId(2L)).willReturn(List.of(staleSession));
+        StudyPresenceQueryService queryService = queryServiceAt(AFTER_SEOUL_MIDNIGHT);
+
+        var response = queryService.findLive(9L);
+
+        assertThat(response.memberCount()).isZero();
+        assertThat(response.sessions()).isEmpty();
+        then(memberRepository).should().findAllById(List.of());
     }
 
     @Test
@@ -164,6 +187,99 @@ class StudyPresenceQueryServiceTest {
             assertThat(item.seatNumber()).isNull();
             assertThat(item.checkoutMethod()).isEqualTo(StudyPresenceCheckoutMethod.MEMBER_DELETED);
         });
+    }
+
+    @Test
+    @DisplayName("스케줄러 저장 직전에도 어제 이력은 자정 자동 퇴실로 일관되게 계산한다")
+    void representPendingAutomaticCheckoutInHistory() {
+        Member manager = createMember(9L, 2L, "김관리자", MemberRole.ADMIN, null);
+        Member target = createMember(1L, 2L, "김회원", MemberRole.MEMBER, 10);
+        StudyPresenceSession staleSession = activeSession(
+                10L,
+                1L,
+                2L,
+                Instant.parse("2026-08-28T14:00:00Z")
+        );
+        Instant previousDayStart = Instant.parse("2026-08-27T15:00:00Z");
+        Instant previousDayEnd = Instant.parse("2026-08-28T15:00:00Z");
+        given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
+        given(studyPresenceSessionRepository.findOverlappingByBranchId(
+                2L,
+                previousDayStart,
+                previousDayEnd
+        )).willReturn(List.of(staleSession));
+        given(memberRepository.findAllById(List.of(1L))).willReturn(List.of(target));
+        StudyPresenceQueryService queryService = queryServiceAt(AFTER_SEOUL_MIDNIGHT);
+
+        var response = queryService.findDailyHistory(9L, LocalDate.of(2026, 8, 28));
+
+        assertThat(response.totalPresenceDuration().formatted()).isEqualTo("01:00:00");
+        assertThat(response.sessions()).singleElement().satisfies(item -> {
+            assertThat(item.checkedOutAt()).isEqualTo(previousDayEnd);
+            assertThat(item.checkoutMethod()).isEqualTo(StudyPresenceCheckoutMethod.AUTO_MIDNIGHT);
+            assertThat(item.currentlyActive()).isFalse();
+            assertThat(item.presenceDuration().formatted()).isEqualTo("01:00:00");
+        });
+    }
+
+    @Test
+    @DisplayName("스케줄러 저장 직전의 어제 기록은 새 날짜 일별 이력에 0초 행으로 남기지 않는다")
+    void excludePendingAutomaticCheckoutFromNewDayHistory() {
+        Member manager = createMember(9L, 2L, "김관리자", MemberRole.ADMIN, null);
+        StudyPresenceSession staleSession = activeSession(
+                10L,
+                1L,
+                2L,
+                Instant.parse("2026-08-28T14:00:00Z")
+        );
+        Instant currentDayStart = Instant.parse("2026-08-28T15:00:00Z");
+        given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
+        given(studyPresenceSessionRepository.findOverlappingByBranchId(
+                2L,
+                currentDayStart,
+                AFTER_SEOUL_MIDNIGHT
+        )).willReturn(List.of(staleSession));
+        StudyPresenceQueryService queryService = queryServiceAt(AFTER_SEOUL_MIDNIGHT);
+
+        var response = queryService.findDailyHistory(9L, LocalDate.of(2026, 8, 29));
+
+        assertThat(response.sessionCount()).isZero();
+        assertThat(response.totalPresenceDuration().totalSeconds()).isZero();
+        assertThat(response.sessions()).isEmpty();
+        then(memberRepository).should().findAllById(List.of());
+    }
+
+    @Test
+    @DisplayName("스케줄러 저장 직전의 어제 기록은 새 날짜 회원 이력에도 남기지 않는다")
+    void excludePendingAutomaticCheckoutFromNewDayMemberHistory() {
+        Member manager = createMember(9L, 2L, "이스태프", MemberRole.STAFF, null);
+        StudyPresenceSession staleSession = activeSession(
+                10L,
+                1L,
+                2L,
+                Instant.parse("2026-08-28T14:00:00Z")
+        );
+        Instant currentDayStart = Instant.parse("2026-08-28T15:00:00Z");
+        given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
+        given(studyPresenceSessionRepository.findOverlappingByBranchIdAndMemberId(
+                2L,
+                1L,
+                currentDayStart,
+                AFTER_SEOUL_MIDNIGHT
+        )).willReturn(List.of(staleSession));
+        StudyPresenceQueryService queryService = queryServiceAt(AFTER_SEOUL_MIDNIGHT);
+
+        var response = queryService.findMemberHistory(
+                9L,
+                1L,
+                LocalDate.of(2026, 8, 29),
+                LocalDate.of(2026, 8, 29)
+        );
+
+        assertThat(response.sessionCount()).isZero();
+        assertThat(response.totalPresenceDuration().totalSeconds()).isZero();
+        assertThat(response.sessions()).isEmpty();
+        then(memberRepository).should().findAllById(List.of());
     }
 
     @Test
@@ -326,5 +442,14 @@ class StudyPresenceQueryServiceTest {
         );
         ReflectionTestUtils.setField(member, "id", id);
         return member;
+    }
+
+    private StudyPresenceQueryService queryServiceAt(Instant instant) {
+        return new StudyPresenceQueryService(
+                studyPresenceSessionRepository,
+                memberRepository,
+                new StudyPresenceAutoClosePolicy(true),
+                Clock.fixed(instant, ZoneOffset.UTC)
+        );
     }
 }
