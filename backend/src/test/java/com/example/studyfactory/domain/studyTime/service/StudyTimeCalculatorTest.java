@@ -3,15 +3,19 @@ package com.example.studyfactory.domain.studyTime.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.example.studyfactory.domain.studyTime.model.BreakStudyInterval;
 import com.example.studyfactory.domain.studyTime.model.DailyStudyTime;
+import com.example.studyfactory.domain.studyTime.model.StudyBreak;
 import com.example.studyfactory.domain.studyTime.model.StudyInterval;
 import com.example.studyfactory.domain.studyTime.model.StudyPeriod;
+import com.example.studyfactory.domain.studyTime.model.StudyTimeCalculationInput;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +44,23 @@ class StudyTimeCalculatorTest {
     }
 
     @Test
+    void exposesEveryCanonicalBreakBetweenStudyPeriods() {
+        assertEquals(6, StudyBreak.values().length);
+        assertBreak(StudyBreak.AFTER_FIRST, StudyPeriod.FIRST, StudyPeriod.SECOND, LocalTime.of(10, 30), LocalTime.of(10, 45));
+        assertBreak(StudyBreak.LUNCH, StudyPeriod.SECOND, StudyPeriod.THIRD, LocalTime.of(12, 5), LocalTime.of(13, 20));
+        assertBreak(StudyBreak.AFTER_THIRD, StudyPeriod.THIRD, StudyPeriod.FOURTH, LocalTime.of(14, 30), LocalTime.of(14, 45));
+        assertBreak(StudyBreak.AFTER_FOURTH, StudyPeriod.FOURTH, StudyPeriod.FIFTH, LocalTime.of(16, 15), LocalTime.of(16, 30));
+        assertBreak(StudyBreak.DINNER, StudyPeriod.FIFTH, StudyPeriod.SIXTH, LocalTime.of(17, 50), LocalTime.of(19, 5));
+        assertBreak(StudyBreak.AFTER_SIXTH, StudyPeriod.SIXTH, StudyPeriod.SEVENTH, LocalTime.of(20, 25), LocalTime.of(20, 40));
+
+        Duration totalBreakDuration = Arrays.stream(StudyBreak.values())
+                .map(StudyBreak::getDuration)
+                .reduce(Duration.ZERO, Duration::plus);
+
+        assertEquals(Duration.ofMinutes(210), totalBreakDuration);
+    }
+
+    @Test
     void countsAFullDayWithoutCountingScheduledBreaks() {
         DailyStudyTime result = calculator.calculate(
                 STUDY_DATE,
@@ -47,6 +68,10 @@ class StudyTimeCalculatorTest {
         );
 
         assertEquals(Duration.ofMinutes(570), result.totalDuration());
+        assertEquals(Duration.ofMinutes(570), result.periodDuration());
+        assertEquals(Duration.ZERO, result.breakDuration());
+        assertEquals(6, result.breaks().size());
+        result.breaks().forEach(studyBreak -> assertEquals(Duration.ZERO, studyBreak.duration()));
         assertEquals(Duration.ofMinutes(90), periodDuration(result, StudyPeriod.FIRST));
         assertEquals(Duration.ofMinutes(80), periodDuration(result, StudyPeriod.SECOND));
         assertEquals(Duration.ofMinutes(70), periodDuration(result, StudyPeriod.THIRD));
@@ -94,6 +119,258 @@ class StudyTimeCalculatorTest {
 
         assertEquals(Duration.ZERO, breakOnly.totalDuration());
         assertEquals(Duration.ZERO, zeroLength.totalDuration());
+    }
+
+    @Test
+    void countsOnlyTheExplicitBreakStudyTimeThatOverlapsPresence() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 10, 30),
+                                atSeoul(STUDY_DATE, 10, 45)
+                        )),
+                        List.of(new BreakStudyInterval(
+                                StudyBreak.AFTER_FIRST,
+                                new StudyInterval(
+                                        atSeoul(STUDY_DATE, 10, 35),
+                                        atSeoul(STUDY_DATE, 10, 42)
+                                )
+                        )),
+                        EnumSet.noneOf(StudyPeriod.class)
+                )
+        );
+
+        assertEquals(Duration.ZERO, result.periodDuration());
+        assertEquals(Duration.ofMinutes(7), result.breakDuration());
+        assertEquals(Duration.ofMinutes(7), result.totalDuration());
+        assertEquals(Duration.ofMinutes(7), breakDuration(result, StudyBreak.AFTER_FIRST));
+    }
+
+    @Test
+    void stopsBreakStudyCountingAtTheMemberCheckoutTime() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 9, 0),
+                                atSeoul(STUDY_DATE, 10, 40)
+                        )),
+                        List.of(new BreakStudyInterval(
+                                StudyBreak.AFTER_FIRST,
+                                new StudyInterval(
+                                        atSeoul(STUDY_DATE, 10, 35),
+                                        atSeoul(STUDY_DATE, 10, 45)
+                                )
+                        )),
+                        EnumSet.noneOf(StudyPeriod.class)
+                )
+        );
+
+        assertEquals(Duration.ofMinutes(90), result.periodDuration());
+        assertEquals(Duration.ofMinutes(5), result.breakDuration());
+        assertEquals(Duration.ofMinutes(95), result.totalDuration());
+    }
+
+    @Test
+    void mergesRestartedBreakActivationsWithoutDoubleCounting() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 10, 30),
+                                atSeoul(STUDY_DATE, 10, 45)
+                        )),
+                        List.of(
+                                new BreakStudyInterval(
+                                        StudyBreak.AFTER_FIRST,
+                                        new StudyInterval(
+                                                atSeoul(STUDY_DATE, 10, 30),
+                                                atSeoul(STUDY_DATE, 10, 40)
+                                        )
+                                ),
+                                new BreakStudyInterval(
+                                        StudyBreak.AFTER_FIRST,
+                                        new StudyInterval(
+                                                atSeoul(STUDY_DATE, 10, 35),
+                                                atSeoul(STUDY_DATE, 10, 45)
+                                        )
+                                )
+                        ),
+                        EnumSet.noneOf(StudyPeriod.class)
+                )
+        );
+
+        assertEquals(Duration.ofMinutes(15), result.breakDuration());
+        assertEquals(Duration.ofMinutes(15), result.totalDuration());
+    }
+
+    @Test
+    void excludesABreakWhenBothNeighboringPeriodsAreOnLeave() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 10, 30),
+                                atSeoul(STUDY_DATE, 10, 45)
+                        )),
+                        List.of(new BreakStudyInterval(
+                                StudyBreak.AFTER_FIRST,
+                                new StudyInterval(
+                                        atSeoul(STUDY_DATE, 10, 30),
+                                        atSeoul(STUDY_DATE, 10, 45)
+                                )
+                        )),
+                        EnumSet.of(StudyPeriod.FIRST, StudyPeriod.SECOND)
+                )
+        );
+
+        assertEquals(Duration.ZERO, result.breakDuration());
+        assertEquals(Duration.ZERO, result.totalDuration());
+    }
+
+    @Test
+    void countsEveryExplicitlyStudiedBreakForAFullAuthorizedDay() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 8, 0),
+                                atSeoul(STUDY_DATE, 23, 0)
+                        )),
+                        Arrays.stream(StudyBreak.values())
+                                .map(studyBreak -> new BreakStudyInterval(
+                                        studyBreak,
+                                        new StudyInterval(
+                                                atSeoul(STUDY_DATE, 9, 0),
+                                                atSeoul(STUDY_DATE, 22, 0)
+                                        )
+                                ))
+                                .toList(),
+                        EnumSet.noneOf(StudyPeriod.class)
+                )
+        );
+
+        assertEquals(Duration.ofMinutes(570), result.periodDuration());
+        assertEquals(Duration.ofMinutes(210), result.breakDuration());
+        assertEquals(Duration.ofMinutes(780), result.totalDuration());
+    }
+
+    @Test
+    void excludesAllNormalAndBreakStudyTimeOnFullLeave() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 8, 0),
+                                atSeoul(STUDY_DATE, 23, 0)
+                        )),
+                        Arrays.stream(StudyBreak.values())
+                                .map(studyBreak -> new BreakStudyInterval(
+                                        studyBreak,
+                                        new StudyInterval(
+                                                atSeoul(STUDY_DATE, 9, 0),
+                                                atSeoul(STUDY_DATE, 22, 0)
+                                        )
+                                ))
+                                .toList(),
+                        EnumSet.allOf(StudyPeriod.class)
+                )
+        );
+
+        assertEquals(Duration.ZERO, result.periodDuration());
+        assertEquals(Duration.ZERO, result.breakDuration());
+        assertEquals(Duration.ZERO, result.totalDuration());
+    }
+
+    @Test
+    void preservesMorningLeavePeriodsOneThroughFourAndAllowsTheTransitionBreak() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 8, 0),
+                                atSeoul(STUDY_DATE, 23, 0)
+                        )),
+                        List.of(new BreakStudyInterval(
+                                StudyBreak.AFTER_FOURTH,
+                                new StudyInterval(
+                                        atSeoul(STUDY_DATE, 16, 15),
+                                        atSeoul(STUDY_DATE, 16, 30)
+                                )
+                        )),
+                        EnumSet.of(
+                                StudyPeriod.FIRST,
+                                StudyPeriod.SECOND,
+                                StudyPeriod.THIRD,
+                                StudyPeriod.FOURTH
+                        )
+                )
+        );
+
+        assertEquals(Duration.ofMinutes(240), result.periodDuration());
+        assertEquals(Duration.ofMinutes(15), result.breakDuration());
+        assertEquals(Duration.ofMinutes(255), result.totalDuration());
+        assertEquals(Duration.ZERO, periodDuration(result, StudyPeriod.FOURTH));
+        assertEquals(Duration.ofMinutes(80), periodDuration(result, StudyPeriod.FIFTH));
+    }
+
+    @Test
+    void preservesAfternoonLeavePeriodsFourThroughSevenAndAllowsTheTransitionBreak() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 8, 0),
+                                atSeoul(STUDY_DATE, 23, 0)
+                        )),
+                        List.of(new BreakStudyInterval(
+                                StudyBreak.AFTER_THIRD,
+                                new StudyInterval(
+                                        atSeoul(STUDY_DATE, 14, 30),
+                                        atSeoul(STUDY_DATE, 14, 45)
+                                )
+                        )),
+                        EnumSet.of(
+                                StudyPeriod.FOURTH,
+                                StudyPeriod.FIFTH,
+                                StudyPeriod.SIXTH,
+                                StudyPeriod.SEVENTH
+                        )
+                )
+        );
+
+        assertEquals(Duration.ofMinutes(240), result.periodDuration());
+        assertEquals(Duration.ofMinutes(15), result.breakDuration());
+        assertEquals(Duration.ofMinutes(255), result.totalDuration());
+        assertEquals(Duration.ofMinutes(70), periodDuration(result, StudyPeriod.THIRD));
+        assertEquals(Duration.ZERO, periodDuration(result, StudyPeriod.FOURTH));
+    }
+
+    @Test
+    void anUnclosedBreakActivationCannotCreditLaterBreaks() {
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyTimeCalculationInput(
+                        List.of(new StudyInterval(
+                                atSeoul(STUDY_DATE, 8, 0),
+                                atSeoul(STUDY_DATE, 23, 0)
+                        )),
+                        List.of(new BreakStudyInterval(
+                                StudyBreak.AFTER_FIRST,
+                                new StudyInterval(
+                                        atSeoul(STUDY_DATE, 10, 35),
+                                        atSeoul(STUDY_DATE, 19, 5)
+                                )
+                        )),
+                        EnumSet.noneOf(StudyPeriod.class)
+                )
+        );
+
+        assertEquals(Duration.ofMinutes(10), result.breakDuration());
+        assertEquals(Duration.ofMinutes(10), breakDuration(result, StudyBreak.AFTER_FIRST));
+        assertEquals(Duration.ZERO, breakDuration(result, StudyBreak.LUNCH));
+        assertEquals(Duration.ZERO, breakDuration(result, StudyBreak.DINNER));
     }
 
     @Test
@@ -147,6 +424,14 @@ class StudyTimeCalculatorTest {
                 .duration();
     }
 
+    private Duration breakDuration(DailyStudyTime result, StudyBreak studyBreak) {
+        return result.breaks().stream()
+                .filter(breakStudyTime -> breakStudyTime.studyBreak() == studyBreak)
+                .findFirst()
+                .orElseThrow()
+                .duration();
+    }
+
     private void assertPeriod(
             StudyPeriod period,
             int periodNumber,
@@ -158,6 +443,19 @@ class StudyTimeCalculatorTest {
         assertEquals(weeklyPlanIndex, period.getWeeklyPlanIndex());
         assertEquals(startTime, period.getStartTime());
         assertEquals(endTime, period.getEndTime());
+    }
+
+    private void assertBreak(
+            StudyBreak studyBreak,
+            StudyPeriod previousPeriod,
+            StudyPeriod nextPeriod,
+            LocalTime startTime,
+            LocalTime endTime
+    ) {
+        assertEquals(previousPeriod, studyBreak.getPreviousPeriod());
+        assertEquals(nextPeriod, studyBreak.getNextPeriod());
+        assertEquals(startTime, studyBreak.getStartTime());
+        assertEquals(endTime, studyBreak.getEndTime());
     }
 
     private Instant atSeoul(LocalDate date, int hour, int minute) {
