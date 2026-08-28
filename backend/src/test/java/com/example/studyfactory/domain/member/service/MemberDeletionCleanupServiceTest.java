@@ -12,6 +12,7 @@ import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.room.repository.SeatRepository;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
+import com.example.studyfactory.domain.studyTime.service.StudyPresenceService;
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
 import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
 import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
@@ -58,6 +59,9 @@ class MemberDeletionCleanupServiceTest {
     private SideDishRequestRepository sideDishRequestRepository;
 
     @Mock
+    private StudyPresenceService studyPresenceService;
+
+    @Mock
     private SeatRepository seatRepository;
 
     @Mock
@@ -91,6 +95,7 @@ class MemberDeletionCleanupServiceTest {
         then(weeklyPlanService).should().deleteAllByMemberId(1L);
         then(suggestionRepository).should().deleteByReferenceInformationMemberId(1L);
         then(sideDishRequestRepository).should().deleteByReferenceInformationMemberId(1L);
+        then(studyPresenceService).should().closeActiveSessionForMemberDeletion(1L);
         then(seatRepository).should().clearMemberAssignment(1L);
         then(refreshTokenRepository).should().deleteByMemberId(1L);
     }

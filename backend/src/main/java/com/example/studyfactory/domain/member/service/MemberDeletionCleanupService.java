@@ -10,6 +10,7 @@ import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.room.repository.SeatRepository;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
+import com.example.studyfactory.domain.studyTime.service.StudyPresenceService;
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
 import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
 import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
@@ -30,6 +31,7 @@ public class MemberDeletionCleanupService {
     private final FixedLeaveRepository fixedLeaveRepository;
     private final SuggestionRepository suggestionRepository;
     private final SideDishRequestRepository sideDishRequestRepository;
+    private final StudyPresenceService studyPresenceService;
     private final SeatRepository seatRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TodoItemRepository todoItemRepository;
@@ -51,6 +53,7 @@ public class MemberDeletionCleanupService {
         weeklyPlanService.deleteAllByMemberId(memberId);
         suggestionRepository.deleteByReferenceInformationMemberId(memberId);
         sideDishRequestRepository.deleteByReferenceInformationMemberId(memberId);
+        studyPresenceService.closeActiveSessionForMemberDeletion(memberId);
         seatRepository.clearMemberAssignment(memberId);
         refreshTokenRepository.deleteByMemberId(memberId);
     }

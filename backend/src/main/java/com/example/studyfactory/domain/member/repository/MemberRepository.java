@@ -2,14 +2,20 @@ package com.example.studyfactory.domain.member.repository;
 
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select member from Member member where member.id = :memberId")
+    Optional<Member> findByIdForUpdate(@Param("memberId") Long memberId);
 
     @Query("""
             select count(m) > 0

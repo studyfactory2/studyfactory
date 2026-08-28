@@ -64,7 +64,7 @@ public class MemberService {
     public void delete(Long currentMemberId, Long memberId) {
         Member currentMember = findMember(currentMemberId);
         validateAllPermissions(currentMember);
-        Member member = findMember(memberId);
+        Member member = findMemberForUpdate(memberId);
         memberDeletionCleanupService.cleanup(member.getId());
         memberRepository.delete(member);
     }
@@ -96,6 +96,10 @@ public class MemberService {
 
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+    }
+
+    private Member findMemberForUpdate(Long memberId) {
+        return memberRepository.findByIdForUpdate(memberId).orElseThrow(MemberException::memberNotFound);
     }
 
     private String toSearchName(String name) {

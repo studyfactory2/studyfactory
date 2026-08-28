@@ -160,11 +160,12 @@ class MemberServiceTest {
         Member member = createRegisteredMember();
         ReflectionTestUtils.setField(staff, "id", 2L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
 
         memberService.delete(2L, 1L);
 
         then(memberDeletionCleanupService).should().cleanup(1L);
+        then(memberRepository).should().findByIdForUpdate(1L);
         then(memberRepository).should().delete(member);
     }
 
