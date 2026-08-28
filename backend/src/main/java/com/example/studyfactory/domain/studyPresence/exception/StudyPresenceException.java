@@ -1,4 +1,4 @@
-package com.example.studyfactory.domain.studyTime.exception;
+package com.example.studyfactory.domain.studyPresence.exception;
 
 import com.example.studyfactory.common.exception.BaseException;
 import org.springframework.http.HttpStatus;
@@ -23,5 +23,17 @@ public class StudyPresenceException extends BaseException {
 
     public static StudyPresenceException invalidCheckoutTime() {
         return new StudyPresenceException(HttpStatus.BAD_REQUEST, "퇴실 시간은 입실 시간보다 빠를 수 없습니다.");
+    }
+
+    public static StudyPresenceException invalidQrToken() {
+        return new StudyPresenceException(HttpStatus.FORBIDDEN, "유효하지 않은 출입 QR 코드입니다.");
+    }
+
+    public static StudyPresenceException memberQrBranchMismatch() {
+        return new StudyPresenceException(HttpStatus.FORBIDDEN, "소속 지점의 출입 QR 코드만 사용할 수 있습니다.");
+    }
+
+    public static StudyPresenceException sessionQrBranchMismatch() {
+        return new StudyPresenceException(HttpStatus.FORBIDDEN, "입실한 지점의 출입 QR 코드만 사용할 수 있습니다.");
     }
 }

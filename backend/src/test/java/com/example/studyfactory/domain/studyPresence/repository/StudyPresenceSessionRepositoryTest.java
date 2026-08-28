@@ -1,9 +1,9 @@
-package com.example.studyfactory.domain.studyTime.repository;
+package com.example.studyfactory.domain.studyPresence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.example.studyfactory.domain.studyTime.entity.StudyPresenceSession;
+import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;

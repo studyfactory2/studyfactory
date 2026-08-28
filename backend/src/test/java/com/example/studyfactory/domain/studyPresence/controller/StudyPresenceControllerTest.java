@@ -1,0 +1,356 @@
+package com.example.studyfactory.domain.studyPresence.controller;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
+import com.example.studyfactory.domain.branch.entity.Branch;
+import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
+import com.example.studyfactory.domain.studyPresence.qr.StudyPresenceQrTokenProvider;
+import com.example.studyfactory.domain.studyPresence.repository.StudyPresenceSessionRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Isolated("공유 테스트 DB와 변경 가능한 서버 시계를 사용한다")
+@DisplayName("학습실 QR 입퇴실 컨트롤러 테스트")
+class StudyPresenceControllerTest {
+
+    private static Instant now = Instant.parse("2026-08-28T00:00:00Z");
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private StudyPresenceQrTokenProvider studyPresenceQrTokenProvider;
+
+    @Autowired
+    private StudyPresenceSessionRepository studyPresenceSessionRepository;
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private BranchRepository branchRepository;
+
+    @BeforeEach
+    void setUp() {
+        now = Instant.parse("2026-08-28T00:00:00Z");
+        studyPresenceSessionRepository.deleteAll();
+        memberRepository.deleteAll();
+        branchRepository.deleteAll();
+    }
+
+    @Test
+    @DisplayName("인증된 사원이 소속 지점 QR로 입실하고 현재 상태를 조회한다")
+    void checkInAndFindActiveStatus() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String qrToken = studyPresenceQrTokenProvider.createToken(branch.getId());
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sessionId").isNumber())
+                .andExpect(jsonPath("$.branchId").value(branch.getId()))
+                .andExpect(jsonPath("$.checkedInAt").value("2026-08-28T00:00:00Z"))
+                .andExpect(jsonPath("$.checkedOutAt").doesNotExist())
+                .andExpect(jsonPath("$.closeReason").doesNotExist())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.memberId").doesNotExist())
+                .andExpect(jsonPath("$.activeMemberId").doesNotExist());
+
+        mockMvc.perform(get("/api/study-presence/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkedIn").value(true))
+                .andExpect(jsonPath("$.session.branchId").value(branch.getId()))
+                .andExpect(jsonPath("$.session.active").value(true));
+
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(member.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("입실하지 않은 사원의 현재 상태를 명시적으로 반환한다")
+    void findInactiveStatus() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(get("/api/study-presence/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkedIn").value(false))
+                .andExpect(jsonPath("$.session").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("인증된 사원이 입실한 지점 QR로 퇴실한다")
+    void checkOut() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String qrToken = studyPresenceQrTokenProvider.createToken(branch.getId());
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isCreated());
+
+        now = Instant.parse("2026-08-28T09:00:00Z");
+        mockMvc.perform(post("/api/study-presence/check-out")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(branch.getId()))
+                .andExpect(jsonPath("$.checkedInAt").value("2026-08-28T00:00:00Z"))
+                .andExpect(jsonPath("$.checkedOutAt").value("2026-08-28T09:00:00Z"))
+                .andExpect(jsonPath("$.closeReason").value("CHECK_OUT"))
+                .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(get("/api/study-presence/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkedIn").value(false))
+                .andExpect(jsonPath("$.session").doesNotExist());
+
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(member.getId())).isEmpty();
+        StudyPresenceSession savedSession = studyPresenceSessionRepository.findAll().get(0);
+        assertThat(savedSession.getCheckedOutAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("변조된 QR은 거절하고 입실 기록을 만들지 않는다")
+    void rejectTamperedQr() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String qrToken = studyPresenceQrTokenProvider.createToken(branch.getId());
+        String tamperedToken = changeFirstSignatureCharacter(qrToken);
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(tamperedToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("유효하지 않은 출입 QR 코드입니다."));
+
+        assertThat(studyPresenceSessionRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("입실 상태에 맞지 않는 중복 입실과 선행 퇴실은 409 응답을 반환한다")
+    void rejectInvalidStateTransitions() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String qrToken = studyPresenceQrTokenProvider.createToken(branch.getId());
+
+        mockMvc.perform(post("/api/study-presence/check-out")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("입실 중인 기록이 없습니다."));
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("이미 입실 처리된 회원입니다."));
+
+        assertThat(studyPresenceSessionRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("입실한 지점과 다른 지점 QR로 퇴실할 수 없다")
+    void rejectCheckoutAtAnotherBranch() throws Exception {
+        Branch memberBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch otherBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member member = memberRepository.save(createMember("김회원", memberBranch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String checkInQrToken = studyPresenceQrTokenProvider.createToken(memberBranch.getId());
+        String otherBranchQrToken = studyPresenceQrTokenProvider.createToken(otherBranch.getId());
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(checkInQrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/study-presence/check-out")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(otherBranchQrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("입실한 지점의 출입 QR 코드만 사용할 수 있습니다."));
+
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(member.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("다른 사원의 JWT로 입실 상태를 조회하거나 퇴실시킬 수 없다")
+    void isolatePresenceByAuthenticatedMember() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member checkedInMember = memberRepository.save(createMember("김회원", branch.getId()));
+        Member otherMember = memberRepository.save(createMember("이회원", branch.getId()));
+        String checkedInAccessToken = jwtTokenProvider.createAccessToken(checkedInMember);
+        String otherAccessToken = jwtTokenProvider.createAccessToken(otherMember);
+        String qrToken = studyPresenceQrTokenProvider.createToken(branch.getId());
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + checkedInAccessToken))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/study-presence/me")
+                        .header("Authorization", "Bearer " + otherAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkedIn").value(false));
+
+        mockMvc.perform(post("/api/study-presence/check-out")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + otherAccessToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("입실 중인 기록이 없습니다."));
+
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(checkedInMember.getId())).isPresent();
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(otherMember.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("다른 지점 QR은 거절하고 입실 기록을 만들지 않는다")
+    void rejectAnotherBranchQr() throws Exception {
+        Branch memberBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch otherBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member member = memberRepository.save(createMember("김회원", memberBranch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String qrToken = studyPresenceQrTokenProvider.createToken(otherBranch.getId());
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(qrToken))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("소속 지점의 출입 QR 코드만 사용할 수 있습니다."));
+
+        assertThat(studyPresenceSessionRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("QR 토큰이 비어 있으면 400 응답을 반환한다")
+    void rejectBlankQrToken() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest(" "))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("JWT가 없으면 QR 입실 요청을 거절한다")
+    void rejectCheckInWithoutJwt() throws Exception {
+        mockMvc.perform(post("/api/study-presence/check-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(qrRequest("any-token")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String qrRequest(String qrToken) throws Exception {
+        return objectMapper.writeValueAsString(Map.of("qrToken", qrToken));
+    }
+
+    private String changeFirstSignatureCharacter(String token) {
+        int signatureStart = token.lastIndexOf('.') + 1;
+        char replacement = token.charAt(signatureStart) == 'A' ? 'B' : 'A';
+        return token.substring(0, signatureStart) + replacement + token.substring(signatureStart + 1);
+    }
+
+    private Member createMember(String name, Long branchId) {
+        return new Member(
+                branchId,
+                name,
+                "password123",
+                12,
+                LocalDate.of(2026, 8, 1),
+                3L
+        );
+    }
+
+    private static Clock mutableClock(ZoneId zone) {
+        return new Clock() {
+            @Override
+            public ZoneId getZone() {
+                return zone;
+            }
+
+            @Override
+            public Clock withZone(ZoneId newZone) {
+                return mutableClock(newZone);
+            }
+
+            @Override
+            public Instant instant() {
+                return now;
+            }
+        };
+    }
+
+    @TestConfiguration
+    static class FixedClockConfig {
+
+        @Bean
+        @Primary
+        Clock studyPresenceTestClock() {
+            return mutableClock(ZoneOffset.UTC);
+        }
+    }
+}

@@ -1,7 +1,7 @@
-package com.example.studyfactory.domain.studyTime.entity;
+package com.example.studyfactory.domain.studyPresence.entity;
 
 import com.example.studyfactory.common.BaseEntity;
-import com.example.studyfactory.domain.studyTime.exception.StudyPresenceException;
+import com.example.studyfactory.domain.studyPresence.exception.StudyPresenceException;
 import jakarta.persistence.CheckConstraint;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -16,3 +16,7 @@ jwt:
   secret: studyfactory-test-secret-key-for-jwt-token-generation
   access-expiration-millis: 3153600000000
   refresh-expiration-millis: 3153600000000
+
+study-presence:
+  qr:
+    secret: c3R1ZHlmYWN0b3J5LXRlc3QtcXItc2VjcmV0LWtleS0yMDI2LXRlc3Rz

@@ -13,3 +13,7 @@ spring:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5174,http://127.0.0.1:5174}
+
+study-presence:
+  qr:
+    secret: ${STUDY_PRESENCE_QR_SECRET:c3R1ZHlmYWN0b3J5LWRldmVsb3BtZW50LXFyLXNlY3JldC1rZXktMjAyNg==}
