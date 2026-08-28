@@ -1,13 +1,16 @@
 package com.example.studyfactory.domain.studyPresence.controller;
 
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
+import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDoorQrResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceQrRequest;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceStatusResponse;
 import com.example.studyfactory.domain.studyPresence.service.StudyPresenceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,6 +28,13 @@ public class StudyPresenceController {
     @GetMapping("/me")
     public StudyPresenceStatusResponse findMine(@CurrentMember Long memberId) {
         return StudyPresenceStatusResponse.from(studyPresenceService.findActive(memberId));
+    }
+
+    @GetMapping("/door-qr")
+    public ResponseEntity<StudyPresenceDoorQrResponse> findDoorQr(@CurrentMember Long currentMemberId) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore().mustRevalidate())
+                .body(studyPresenceService.findDoorQr(currentMemberId));
     }
 
     @PostMapping("/check-in")

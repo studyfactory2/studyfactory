@@ -1,8 +1,10 @@
 package com.example.studyfactory.domain.studyPresence.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -10,6 +12,7 @@ import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
 import com.example.studyfactory.domain.studyPresence.qr.StudyPresenceQrTokenProvider;
@@ -115,6 +118,64 @@ class StudyPresenceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkedIn").value(false))
                 .andExpect(jsonPath("$.session").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("관리자는 요청 지점 파라미터와 관계없이 현재 소속 지점의 영구 QR을 조회한다")
+    void findPermanentDoorQrForAdminBranch() throws Exception {
+        Branch adminBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch otherBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member admin = memberRepository.save(
+                createMember("김관리자", adminBranch.getId(), MemberRole.ADMIN)
+        );
+        String accessToken = jwtTokenProvider.createAccessToken(admin);
+        String expectedQrToken = studyPresenceQrTokenProvider.createToken(adminBranch.getId());
+
+        mockMvc.perform(get("/api/study-presence/door-qr")
+                        .queryParam("branchId", otherBranch.getId().toString())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
+                .andExpect(jsonPath("$.branchId").value(adminBranch.getId()))
+                .andExpect(jsonPath("$.qrToken").value(expectedQrToken))
+                .andExpect(jsonPath("$.expiresAt").doesNotExist());
+
+        mockMvc.perform(get("/api/study-presence/door-qr")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(adminBranch.getId()))
+                .andExpect(jsonPath("$.qrToken").value(expectedQrToken));
+    }
+
+    @Test
+    @DisplayName("스태프와 일반 회원은 관리자용 출입 QR을 조회할 수 없다")
+    void rejectDoorQrForStaffAndMember() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member staff = memberRepository.save(
+                createMember("이스태프", branch.getId(), MemberRole.STAFF)
+        );
+        Member member = memberRepository.save(
+                createMember("김회원", branch.getId(), MemberRole.MEMBER)
+        );
+        String staffAccessToken = jwtTokenProvider.createAccessToken(staff);
+        String memberAccessToken = jwtTokenProvider.createAccessToken(member);
+
+        mockMvc.perform(get("/api/study-presence/door-qr")
+                        .header("Authorization", "Bearer " + staffAccessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("권한이 없습니다."));
+
+        mockMvc.perform(get("/api/study-presence/door-qr")
+                        .header("Authorization", "Bearer " + memberAccessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("권한이 없습니다."));
+    }
+
+    @Test
+    @DisplayName("JWT가 없으면 관리자용 출입 QR 조회를 거절한다")
+    void rejectDoorQrWithoutJwt() throws Exception {
+        mockMvc.perform(get("/api/study-presence/door-qr"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -315,10 +376,15 @@ class StudyPresenceControllerTest {
     }
 
     private Member createMember(String name, Long branchId) {
+        return createMember(name, branchId, MemberRole.MEMBER);
+    }
+
+    private Member createMember(String name, Long branchId, MemberRole role) {
         return new Member(
                 branchId,
                 name,
                 "password123",
+                role,
                 12,
                 LocalDate.of(2026, 8, 1),
                 3L

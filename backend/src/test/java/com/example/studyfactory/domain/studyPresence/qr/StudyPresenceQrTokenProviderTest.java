@@ -34,6 +34,15 @@ class StudyPresenceQrTokenProviderTest {
     }
 
     @Test
+    @DisplayName("같은 지점과 비밀키에는 만료되지 않는 동일한 QR 토큰을 반환한다")
+    void keepTokenStableForSameBranchAndSecret() {
+        String firstToken = tokenProvider.createToken(2L);
+        String secondToken = tokenProvider.createToken(2L);
+
+        assertThat(secondToken).isEqualTo(firstToken);
+    }
+
+    @Test
     @DisplayName("지점 ID나 서명을 변경한 QR 토큰을 거절한다")
     void rejectTamperedToken() {
         String token = tokenProvider.createToken(2L);

@@ -7,8 +7,10 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDoorQrResponse;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceCloseReason;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
 import com.example.studyfactory.domain.studyPresence.exception.StudyPresenceException;
@@ -47,6 +49,63 @@ class StudyPresenceServiceTest {
 
     @Mock
     private Clock clock;
+
+    @Test
+    @DisplayName("관리자는 현재 소속 지점의 영구 출입 QR을 조회한다")
+    void findDoorQrForAdminBranch() {
+        Member admin = createMember(1L, 2L, MemberRole.ADMIN);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(studyPresenceQrTokenProvider.createToken(2L)).willReturn(QR_TOKEN);
+
+        StudyPresenceDoorQrResponse response = studyPresenceService.findDoorQr(1L);
+
+        assertThat(response.branchId()).isEqualTo(2L);
+        assertThat(response.qrToken()).isEqualTo(QR_TOKEN);
+        then(memberRepository).should().findById(1L);
+        then(studyPresenceQrTokenProvider).should().createToken(2L);
+        then(studyPresenceSessionRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("스태프는 관리자용 출입 QR을 조회할 수 없다")
+    void rejectDoorQrForStaff() {
+        Member staff = createMember(1L, 2L, MemberRole.STAFF);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+
+        assertThatThrownBy(() -> studyPresenceService.findDoorQr(1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+
+        then(studyPresenceQrTokenProvider).shouldHaveNoInteractions();
+        then(studyPresenceSessionRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("일반 회원은 관리자용 출입 QR을 조회할 수 없다")
+    void rejectDoorQrForMember() {
+        Member member = createMember(1L, 2L, MemberRole.MEMBER);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> studyPresenceService.findDoorQr(1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+
+        then(studyPresenceQrTokenProvider).shouldHaveNoInteractions();
+        then(studyPresenceSessionRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("삭제되었거나 존재하지 않는 관리자는 출입 QR을 조회할 수 없다")
+    void rejectDoorQrForMissingMember() {
+        given(memberRepository.findById(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studyPresenceService.findDoorQr(1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("존재하지 않는 사원입니다.");
+
+        then(studyPresenceQrTokenProvider).shouldHaveNoInteractions();
+        then(studyPresenceSessionRepository).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("회원 행을 잠그고 서버 시간과 현재 지점으로 입실 기록을 만든다")
@@ -225,10 +284,15 @@ class StudyPresenceServiceTest {
     }
 
     private Member createMember(Long id, Long branchId) {
+        return createMember(id, branchId, MemberRole.MEMBER);
+    }
+
+    private Member createMember(Long id, Long branchId, MemberRole role) {
         Member member = new Member(
                 branchId,
                 "김회원",
                 "password",
+                role,
                 10,
                 LocalDate.of(2026, 8, 1),
                 3L
