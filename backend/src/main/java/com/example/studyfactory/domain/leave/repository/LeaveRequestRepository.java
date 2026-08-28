@@ -17,6 +17,10 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
             Long memberId, LocalDate startDate, LocalDate endDate
     );
 
+    List<LeaveRequest> findByMemberIdAndBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
+            Long memberId, Long branchId, LocalDate startDate, LocalDate endDate
+    );
+
     List<LeaveRequest> findByBranchIdAndLeaveDateOrderByCreatedAtAsc(Long branchId, LocalDate leaveDate);
 
     List<LeaveRequest> findByMemberIdAndLeaveDateOrderByCreatedAtAsc(Long memberId, LocalDate leaveDate);

@@ -7,6 +7,8 @@ import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDurationRe
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceHistoryResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceLiveResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceManagerSessionResponse;
+import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceSelfHistoryResponse;
+import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceSelfSessionResponse;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
 import com.example.studyfactory.domain.studyPresence.exception.StudyPresenceException;
 import com.example.studyfactory.domain.studyPresence.repository.StudyPresenceSessionRepository;
@@ -70,6 +72,52 @@ public class StudyPresenceQueryService {
         Member manager = findOperationsMember(currentMemberId);
         LocalDate requestedDate = date == null ? LocalDate.now(clock.withZone(PRESENCE_ZONE)) : date;
         return findHistory(manager.getBranchId(), null, requestedDate, requestedDate);
+    }
+
+    @Transactional(readOnly = true)
+    public StudyPresenceSelfHistoryResponse findMyHistory(
+            Long memberId,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        findMember(memberId);
+        validateDateRange(fromDate, toDate);
+        Instant asOf = clock.instant();
+        Instant windowStart = fromDate.atStartOfDay(PRESENCE_ZONE).toInstant();
+        Instant windowEnd = toDate.plusDays(1).atStartOfDay(PRESENCE_ZONE).toInstant();
+        Instant queryEnd = asOf.isBefore(windowEnd) ? asOf : windowEnd;
+
+        List<StudyPresenceSession> sessions = !queryEnd.isAfter(windowStart)
+                ? List.of()
+                : studyPresenceSessionRepository.findOverlappingByMemberId(
+                        memberId,
+                        windowStart,
+                        queryEnd
+                );
+        List<StudyPresenceSelfSessionResponse> responses = sessions.stream()
+                .filter(session -> overlapsHistoryWindow(session, windowStart, asOf))
+                .map(session -> toSelfHistoryResponse(
+                        session,
+                        windowStart,
+                        windowEnd,
+                        asOf
+                ))
+                .toList();
+        long totalSeconds = responses.stream()
+                .map(StudyPresenceSelfSessionResponse::presenceDuration)
+                .mapToLong(StudyPresenceDurationResponse::totalSeconds)
+                .sum();
+
+        return new StudyPresenceSelfHistoryResponse(
+                memberId,
+                fromDate,
+                toDate,
+                PRESENCE_ZONE.getId(),
+                asOf,
+                responses.size(),
+                StudyPresenceDurationResponse.fromTotalSeconds(totalSeconds),
+                responses
+        );
     }
 
     @Transactional(readOnly = true)
@@ -147,12 +195,15 @@ public class StudyPresenceQueryService {
     }
 
     private Member findOperationsMember(Long currentMemberId) {
-        Member currentMember = memberRepository.findById(currentMemberId)
-                .orElseThrow(MemberException::memberNotFound);
+        Member currentMember = findMember(currentMemberId);
         if (!currentMember.hasAllPermissions()) {
             throw MemberException.forbidden();
         }
         return currentMember;
+    }
+
+    private Member findMember(Long memberId) {
+        return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
     }
 
     private void validateDateRange(LocalDate fromDate, LocalDate toDate) {
@@ -186,6 +237,24 @@ public class StudyPresenceQueryService {
         return StudyPresenceManagerSessionResponse.from(
                 session,
                 member,
+                windowStart,
+                windowEnd,
+                asOf,
+                pendingAutomaticCheckoutAt
+        );
+    }
+
+    private StudyPresenceSelfSessionResponse toSelfHistoryResponse(
+            StudyPresenceSession session,
+            Instant windowStart,
+            Instant windowEnd,
+            Instant asOf
+    ) {
+        Instant pendingAutomaticCheckoutAt = autoClosePolicy.shouldAutomaticallyClose(session, asOf)
+                ? autoClosePolicy.firstMidnightAfter(session.getCheckedInAt())
+                : null;
+        return StudyPresenceSelfSessionResponse.from(
+                session,
                 windowStart,
                 windowEnd,
                 asOf,

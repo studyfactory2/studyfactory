@@ -8,6 +8,8 @@ public interface FixedLeaveRepository extends JpaRepository<FixedLeave, Long> {
 
     List<FixedLeave> findByMemberIdAndActiveTrueOrderByCreatedAtAsc(Long memberId);
 
+    List<FixedLeave> findByMemberIdAndBranchIdAndActiveTrueOrderByCreatedAtAsc(Long memberId, Long branchId);
+
     List<FixedLeave> findByBranchIdAndActiveTrueOrderByCreatedAtAsc(Long branchId);
 
     List<FixedLeave> findByActiveTrueOrderByCreatedAtAsc();

@@ -99,6 +99,7 @@ class StudyPresenceControllerTest {
         mockMvc.perform(get("/api/study-presence/me")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.checkedIn").value(true))
                 .andExpect(jsonPath("$.session.branchId").value(branch.getId()))
                 .andExpect(jsonPath("$.session.active").value(true));
@@ -116,8 +117,55 @@ class StudyPresenceControllerTest {
         mockMvc.perform(get("/api/study-presence/me")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.checkedIn").value(false))
                 .andExpect(jsonPath("$.session").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("회원은 종료된 자기 입퇴실 이력을 운영 감사정보 없이 조회한다")
+    void findSanitizedOwnPresenceHistory() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("김회원", branch.getId()));
+        Member otherMember = memberRepository.save(createMember("이회원", branch.getId()));
+        StudyPresenceSession session = new StudyPresenceSession(
+                member.getId(),
+                branch.getId(),
+                now.minusSeconds(3_600)
+        );
+        session.checkOut(now);
+        studyPresenceSessionRepository.saveAndFlush(session);
+
+        mockMvc.perform(get("/api/study-presence/me/history")
+                        .queryParam("from", "2026-08-28")
+                        .queryParam("to", "2026-08-28")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(member)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
+                .andExpect(jsonPath("$.memberId").value(member.getId()))
+                .andExpect(jsonPath("$.zoneId").value("Asia/Seoul"))
+                .andExpect(jsonPath("$.sessionCount").value(1))
+                .andExpect(jsonPath("$.totalPresenceDuration.formatted").value("01:00:00"))
+                .andExpect(jsonPath("$.sessions[0].sessionId").value(session.getId()))
+                .andExpect(jsonPath("$.sessions[0].branchId").value(branch.getId()))
+                .andExpect(jsonPath("$.sessions[0].checkedInAt").value(now.minusSeconds(3_600).toString()))
+                .andExpect(jsonPath("$.sessions[0].checkedOutAt").value(now.toString()))
+                .andExpect(jsonPath("$.sessions[0].currentlyActive").value(false))
+                .andExpect(jsonPath("$.sessions[0].presenceDuration.formatted").value("01:00:00"))
+                .andExpect(jsonPath("$.sessions[0].memberId").doesNotExist())
+                .andExpect(jsonPath("$.sessions[0].memberName").doesNotExist())
+                .andExpect(jsonPath("$.sessions[0].memberRole").doesNotExist())
+                .andExpect(jsonPath("$.sessions[0].seatNumber").doesNotExist())
+                .andExpect(jsonPath("$.sessions[0].closedByMemberId").doesNotExist())
+                .andExpect(jsonPath("$.sessions[0].checkoutMethod").doesNotExist());
+
+        mockMvc.perform(get("/api/study-presence/me/history")
+                        .queryParam("from", "2026-08-28")
+                        .queryParam("to", "2026-08-28")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(otherMember)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberId").value(otherMember.getId()))
+                .andExpect(jsonPath("$.sessionCount").value(0));
     }
 
     @Test
@@ -467,6 +515,11 @@ class StudyPresenceControllerTest {
     @Test
     @DisplayName("JWT가 없으면 모든 운영용 입실 엔드포인트를 거절한다")
     void rejectPresenceOperationsWithoutJwt() throws Exception {
+        mockMvc.perform(get("/api/study-presence/me/history")
+                        .queryParam("from", "2026-08-28")
+                        .queryParam("to", "2026-08-28"))
+                .andExpect(status().isUnauthorized());
+
         mockMvc.perform(get("/api/study-presence/live"))
                 .andExpect(status().isUnauthorized());
 

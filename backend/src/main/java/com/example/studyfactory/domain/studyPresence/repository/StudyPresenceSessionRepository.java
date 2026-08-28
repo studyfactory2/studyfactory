@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.studyPresence.repository;
 
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
+import com.example.studyfactory.domain.studyPresence.model.StudyPresenceIntervalRow;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
@@ -100,6 +101,48 @@ public interface StudyPresenceSessionRepository extends JpaRepository<StudyPrese
             order by session.checkedInAt asc, session.id asc
             """)
     List<StudyPresenceSession> findOverlappingByMemberId(
+            @Param("memberId") Long memberId,
+            @Param("windowStart") Instant windowStart,
+            @Param("windowEnd") Instant windowEnd
+    );
+
+    @Query("""
+            select new com.example.studyfactory.domain.studyPresence.model.StudyPresenceIntervalRow(
+                session.id,
+                session.memberId,
+                session.branchId,
+                session.checkedInAt,
+                session.checkedOutAt
+            )
+            from StudyPresenceSession session
+            where session.memberId = :memberId
+              and session.checkedInAt < :windowEnd
+              and (session.checkedOutAt is null or session.checkedOutAt > :windowStart)
+            order by session.checkedInAt asc, session.id asc
+            """)
+    List<StudyPresenceIntervalRow> findIntervalRowsByMemberId(
+            @Param("memberId") Long memberId,
+            @Param("windowStart") Instant windowStart,
+            @Param("windowEnd") Instant windowEnd
+    );
+
+    @Query("""
+            select new com.example.studyfactory.domain.studyPresence.model.StudyPresenceIntervalRow(
+                session.id,
+                session.memberId,
+                session.branchId,
+                session.checkedInAt,
+                session.checkedOutAt
+            )
+            from StudyPresenceSession session
+            where session.branchId = :branchId
+              and session.memberId = :memberId
+              and session.checkedInAt < :windowEnd
+              and (session.checkedOutAt is null or session.checkedOutAt > :windowStart)
+            order by session.checkedInAt asc, session.id asc
+            """)
+    List<StudyPresenceIntervalRow> findIntervalRowsByBranchIdAndMemberId(
+            @Param("branchId") Long branchId,
             @Param("memberId") Long memberId,
             @Param("windowStart") Instant windowStart,
             @Param("windowEnd") Instant windowEnd

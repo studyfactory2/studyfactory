@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
+import com.example.studyfactory.domain.studyPresence.model.StudyPresenceIntervalRow;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
@@ -227,8 +228,140 @@ class StudyPresenceSessionRepositoryTest {
         assertThat(sessions).containsExactly(matching);
     }
 
+    @Test
+    @DisplayName("회원 보고서 구간 행을 지점과 무관하게 반열린 경계와 안정된 시간순으로 투영한다")
+    void projectMemberIntervalRowsAcrossBranches() {
+        StudyPresenceSession endsAtWindowStart = closedSession(
+                1L,
+                2L,
+                WINDOW_START.minusSeconds(3600),
+                WINDOW_START
+        );
+        StudyPresenceSession crossesWindowStart = closedSession(
+                1L,
+                3L,
+                WINDOW_START.minusSeconds(1800),
+                WINDOW_START.plusSeconds(60)
+        );
+        Instant tiedCheckedInAt = WINDOW_START.plusSeconds(600);
+        StudyPresenceSession tiedFirst = closedSession(
+                1L,
+                2L,
+                tiedCheckedInAt,
+                tiedCheckedInAt.plusSeconds(60)
+        );
+        StudyPresenceSession tiedSecond = closedSession(
+                1L,
+                3L,
+                tiedCheckedInAt,
+                tiedCheckedInAt.plusSeconds(120)
+        );
+        StudyPresenceSession activeInsideWindow = new StudyPresenceSession(
+                1L,
+                4L,
+                WINDOW_START.plusSeconds(3600)
+        );
+        StudyPresenceSession startsAtWindowEnd = closedSession(
+                1L,
+                2L,
+                WINDOW_END,
+                WINDOW_END.plusSeconds(60)
+        );
+        StudyPresenceSession otherMember = closedSession(
+                2L,
+                2L,
+                WINDOW_START.plusSeconds(60),
+                WINDOW_START.plusSeconds(120)
+        );
+        studyPresenceSessionRepository.saveAllAndFlush(List.of(
+                startsAtWindowEnd,
+                tiedFirst,
+                otherMember,
+                endsAtWindowStart,
+                activeInsideWindow,
+                tiedSecond,
+                crossesWindowStart
+        ));
+
+        List<StudyPresenceIntervalRow> rows =
+                studyPresenceSessionRepository.findIntervalRowsByMemberId(
+                        1L,
+                        WINDOW_START,
+                        WINDOW_END
+                );
+
+        assertThat(rows)
+                .extracting(StudyPresenceIntervalRow::sessionId)
+                .containsExactly(
+                        crossesWindowStart.getId(),
+                        tiedFirst.getId(),
+                        tiedSecond.getId(),
+                        activeInsideWindow.getId()
+                );
+        assertThat(rows.getFirst()).isEqualTo(new StudyPresenceIntervalRow(
+                crossesWindowStart.getId(),
+                1L,
+                3L,
+                crossesWindowStart.getCheckedInAt(),
+                crossesWindowStart.getCheckedOutAt()
+        ));
+        assertThat(rows.getLast().checkedOutAt()).isNull();
+        assertThat(rows.getLast().branchId()).isEqualTo(4L);
+    }
+
+    @Test
+    @DisplayName("지점 회원 보고서 구간 행은 다른 지점과 다른 회원을 제외한다")
+    void projectBranchMemberIntervalRowsWithBranchIsolation() {
+        StudyPresenceSession matching = closedSession(
+                1L,
+                2L,
+                WINDOW_START.plusSeconds(60),
+                WINDOW_START.plusSeconds(120)
+        );
+        StudyPresenceSession otherBranch = closedSession(
+                1L,
+                3L,
+                WINDOW_START.plusSeconds(180),
+                WINDOW_START.plusSeconds(240)
+        );
+        StudyPresenceSession otherMember = closedSession(
+                2L,
+                2L,
+                WINDOW_START.plusSeconds(300),
+                WINDOW_START.plusSeconds(360)
+        );
+        studyPresenceSessionRepository.saveAllAndFlush(List.of(
+                otherBranch,
+                otherMember,
+                matching
+        ));
+
+        List<StudyPresenceIntervalRow> rows =
+                studyPresenceSessionRepository.findIntervalRowsByBranchIdAndMemberId(
+                        2L,
+                        1L,
+                        WINDOW_START,
+                        WINDOW_END
+                );
+
+        assertThat(rows)
+                .extracting(StudyPresenceIntervalRow::sessionId)
+                .containsExactly(matching.getId());
+        assertThat(rows.getFirst().branchId()).isEqualTo(2L);
+        assertThat(rows.getFirst().memberId()).isEqualTo(1L);
+    }
+
     private StudyPresenceSession closedSession(Long memberId, Instant checkedInAt, Instant checkedOutAt) {
-        StudyPresenceSession session = new StudyPresenceSession(memberId, 2L, checkedInAt);
+        return closedSession(memberId, 2L, checkedInAt, checkedOutAt);
+    }
+
+    private StudyPresenceSession closedSession(
+            Long memberId,
+            Long branchId,
+            Instant checkedInAt,
+            Instant checkedOutAt
+    ) {
+        StudyPresenceSession session = new StudyPresenceSession(memberId, branchId, checkedInAt);
         session.checkOut(checkedOutAt);
         return session;
     }

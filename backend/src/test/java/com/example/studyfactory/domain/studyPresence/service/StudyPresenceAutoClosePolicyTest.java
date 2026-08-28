@@ -84,4 +84,17 @@ class StudyPresenceAutoClosePolicyTest {
         assertThat(session.isActive()).isTrue();
         assertThat(session.isAutomaticallyClosed()).isFalse();
     }
+
+    @Test
+    @DisplayName("리포트의 활성 입실 종료 시각도 설정에 따라 현재 시각 또는 첫 자정으로 제한한다")
+    void resolveEffectiveActiveEndForReports() {
+        Instant checkedInAt = Instant.parse("2026-08-28T14:00:00Z");
+        Instant afterMidnight = Instant.parse("2026-08-28T15:00:05Z");
+        StudyPresenceAutoClosePolicy disabledPolicy = new StudyPresenceAutoClosePolicy(false);
+
+        assertThat(policy.effectiveActiveEndAt(checkedInAt, afterMidnight))
+                .isEqualTo(Instant.parse("2026-08-28T15:00:00Z"));
+        assertThat(disabledPolicy.effectiveActiveEndAt(checkedInAt, afterMidnight))
+                .isEqualTo(afterMidnight);
+    }
 }

@@ -34,6 +34,15 @@ public class StudyPresenceAutoClosePolicy {
                 .toInstant();
     }
 
+    public Instant effectiveActiveEndAt(Instant checkedInAt, Instant asOf) {
+        if (!enabled) {
+            return asOf;
+        }
+
+        Instant automaticCheckoutAt = firstMidnightAfter(checkedInAt);
+        return automaticCheckoutAt.isBefore(asOf) ? automaticCheckoutAt : asOf;
+    }
+
     public boolean shouldAutomaticallyClose(StudyPresenceSession session, Instant now) {
         return enabled
                 && session.isActive()

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.studyfactory.domain.studyBreak.entity.StudyBreakSession;
+import com.example.studyfactory.domain.studyBreak.model.StudyBreakIntervalRow;
 import com.example.studyfactory.domain.studyBreak.model.StudyBreakReconciliationCandidate;
 import com.example.studyfactory.domain.studyTime.model.StudyBreak;
 import jakarta.persistence.LockModeType;
@@ -176,12 +177,189 @@ class StudyBreakSessionRepositoryTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    @DisplayName("회원 휴식 공부 구간 행을 지점과 무관하게 날짜 및 반열린 경계와 안정된 시간순으로 투영한다")
+    void projectMemberIntervalRowsAcrossBranchesAndStudyDates() {
+        StudyBreakSession endsAtWindowStart = closedSession(
+                101L,
+                1L,
+                2L,
+                STUDY_DATE,
+                BREAK_STARTED_AT.plusSeconds(60),
+                QUERY_STARTED_AT
+        );
+        StudyBreakSession crossesWindowStart = closedSession(
+                102L,
+                1L,
+                3L,
+                STUDY_DATE,
+                QUERY_STARTED_AT.minusSeconds(60),
+                QUERY_STARTED_AT.plusSeconds(60)
+        );
+        Instant tiedStartedAt = QUERY_STARTED_AT.plusSeconds(120);
+        StudyBreakSession tiedFirst = closedSession(
+                103L,
+                1L,
+                2L,
+                STUDY_DATE,
+                tiedStartedAt,
+                tiedStartedAt.plusSeconds(30)
+        );
+        StudyBreakSession tiedSecond = closedSession(
+                104L,
+                1L,
+                3L,
+                STUDY_DATE,
+                tiedStartedAt,
+                tiedStartedAt.plusSeconds(60)
+        );
+        StudyBreakSession activeInsideWindow = session(
+                105L,
+                1L,
+                4L,
+                STUDY_DATE,
+                QUERY_STARTED_AT.plusSeconds(300)
+        );
+        StudyBreakSession startsAtWindowEnd = closedSession(
+                106L,
+                1L,
+                2L,
+                STUDY_DATE,
+                QUERY_ENDED_AT,
+                QUERY_ENDED_AT.plusSeconds(30)
+        );
+        StudyBreakSession outsideStoredDate = closedSession(
+                107L,
+                1L,
+                2L,
+                STUDY_DATE.minusDays(1),
+                QUERY_STARTED_AT.plusSeconds(30),
+                QUERY_STARTED_AT.plusSeconds(90)
+        );
+        StudyBreakSession otherMember = closedSession(
+                108L,
+                2L,
+                2L,
+                STUDY_DATE,
+                QUERY_STARTED_AT.plusSeconds(60),
+                QUERY_STARTED_AT.plusSeconds(120)
+        );
+        studyBreakSessionRepository.saveAllAndFlush(List.of(
+                startsAtWindowEnd,
+                tiedFirst,
+                otherMember,
+                endsAtWindowStart,
+                activeInsideWindow,
+                outsideStoredDate,
+                tiedSecond,
+                crossesWindowStart
+        ));
+
+        List<StudyBreakIntervalRow> rows = studyBreakSessionRepository.findIntervalRowsByMemberId(
+                1L,
+                STUDY_DATE,
+                STUDY_DATE,
+                QUERY_STARTED_AT,
+                QUERY_ENDED_AT
+        );
+
+        assertThat(rows)
+                .extracting(StudyBreakIntervalRow::sessionId)
+                .containsExactly(
+                        crossesWindowStart.getId(),
+                        tiedFirst.getId(),
+                        tiedSecond.getId(),
+                        activeInsideWindow.getId()
+                );
+        assertThat(rows.getFirst()).isEqualTo(new StudyBreakIntervalRow(
+                crossesWindowStart.getId(),
+                102L,
+                1L,
+                3L,
+                STUDY_DATE,
+                StudyBreak.AFTER_FIRST,
+                crossesWindowStart.getStartedAt(),
+                crossesWindowStart.getEndedAt(),
+                BREAK_ENDED_AT
+        ));
+        assertThat(rows.getLast().endedAt()).isNull();
+        assertThat(rows.getLast().windowEndedAt()).isEqualTo(BREAK_ENDED_AT);
+
+        assertThat(studyBreakSessionRepository.findIntervalRowsByMemberId(
+                1L,
+                STUDY_DATE,
+                STUDY_DATE,
+                BREAK_ENDED_AT,
+                BREAK_ENDED_AT.plusSeconds(60)
+        )).isEmpty();
+    }
+
+    @Test
+    @DisplayName("지점 회원 휴식 공부 구간 행은 다른 지점과 다른 회원을 제외한다")
+    void projectBranchMemberIntervalRowsWithBranchIsolation() {
+        StudyBreakSession matching = closedSession(
+                201L,
+                1L,
+                2L,
+                STUDY_DATE,
+                QUERY_STARTED_AT.plusSeconds(60),
+                QUERY_STARTED_AT.plusSeconds(120)
+        );
+        StudyBreakSession otherBranch = closedSession(
+                202L,
+                1L,
+                3L,
+                STUDY_DATE,
+                QUERY_STARTED_AT.plusSeconds(180),
+                QUERY_STARTED_AT.plusSeconds(240)
+        );
+        StudyBreakSession otherMember = closedSession(
+                203L,
+                2L,
+                2L,
+                STUDY_DATE,
+                QUERY_STARTED_AT.plusSeconds(300),
+                QUERY_STARTED_AT.plusSeconds(360)
+        );
+        studyBreakSessionRepository.saveAllAndFlush(List.of(
+                otherBranch,
+                otherMember,
+                matching
+        ));
+
+        List<StudyBreakIntervalRow> rows =
+                studyBreakSessionRepository.findIntervalRowsByBranchIdAndMemberId(
+                        2L,
+                        1L,
+                        STUDY_DATE,
+                        STUDY_DATE,
+                        QUERY_STARTED_AT,
+                        QUERY_ENDED_AT
+                );
+
+        assertThat(rows)
+                .extracting(StudyBreakIntervalRow::sessionId)
+                .containsExactly(matching.getId());
+        assertThat(rows.getFirst().branchId()).isEqualTo(2L);
+        assertThat(rows.getFirst().memberId()).isEqualTo(1L);
+    }
+
     private StudyBreakSession session(Long presenceSessionId, Long memberId, Instant startedAt) {
+        return session(presenceSessionId, memberId, 2L, STUDY_DATE, startedAt);
+    }
+
+    private StudyBreakSession session(
+            Long presenceSessionId,
+            Long memberId,
+            Long branchId,
+            LocalDate studyDate,
+            Instant startedAt
+    ) {
         return new StudyBreakSession(
                 presenceSessionId,
                 memberId,
-                2L,
-                STUDY_DATE,
+                branchId,
+                studyDate,
                 StudyBreak.AFTER_FIRST,
                 BREAK_STARTED_AT,
                 BREAK_ENDED_AT,
@@ -195,7 +373,31 @@ class StudyBreakSessionRepositoryTest {
             Instant startedAt,
             Instant endedAt
     ) {
-        StudyBreakSession session = session(presenceSessionId, memberId, startedAt);
+        return closedSession(
+                presenceSessionId,
+                memberId,
+                2L,
+                STUDY_DATE,
+                startedAt,
+                endedAt
+        );
+    }
+
+    private StudyBreakSession closedSession(
+            Long presenceSessionId,
+            Long memberId,
+            Long branchId,
+            LocalDate studyDate,
+            Instant startedAt,
+            Instant endedAt
+    ) {
+        StudyBreakSession session = session(
+                presenceSessionId,
+                memberId,
+                branchId,
+                studyDate,
+                startedAt
+        );
         session.stopByMember(endedAt);
         return session;
     }

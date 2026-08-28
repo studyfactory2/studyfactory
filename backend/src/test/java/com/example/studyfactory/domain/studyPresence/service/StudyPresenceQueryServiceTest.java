@@ -318,6 +318,99 @@ class StudyPresenceQueryServiceTest {
     }
 
     @Test
+    @DisplayName("회원은 지점 이동 전후의 자기 입퇴실 시각과 범위 체류시간을 함께 조회한다")
+    void findOwnHistoryAcrossBranches() {
+        Member member = createMember(1L, 3L, "김회원", MemberRole.MEMBER, 10);
+        StudyPresenceSession oldBranchSession = activeSession(
+                10L,
+                1L,
+                2L,
+                Instant.parse("2026-08-27T14:00:00Z")
+        );
+        oldBranchSession.checkOut(Instant.parse("2026-08-27T16:00:00Z"));
+        StudyPresenceSession currentBranchSession = activeSession(
+                11L,
+                1L,
+                3L,
+                Instant.parse("2026-08-28T05:00:00Z")
+        );
+        Instant rangeStart = Instant.parse("2026-08-27T15:00:00Z");
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(studyPresenceSessionRepository.findOverlappingByMemberId(
+                1L,
+                rangeStart,
+                NOW
+        )).willReturn(List.of(oldBranchSession, currentBranchSession));
+
+        var response = studyPresenceQueryService.findMyHistory(
+                1L,
+                LocalDate.of(2026, 8, 28),
+                LocalDate.of(2026, 8, 28)
+        );
+
+        assertThat(response.memberId()).isEqualTo(1L);
+        assertThat(response.zoneId()).isEqualTo("Asia/Seoul");
+        assertThat(response.asOf()).isEqualTo(NOW);
+        assertThat(response.sessionCount()).isEqualTo(2);
+        assertThat(response.totalPresenceDuration().formatted()).isEqualTo("02:00:00");
+        assertThat(response.sessions()).satisfiesExactly(
+                oldSession -> {
+                    assertThat(oldSession.branchId()).isEqualTo(2L);
+                    assertThat(oldSession.checkedInAt()).isEqualTo(Instant.parse("2026-08-27T14:00:00Z"));
+                    assertThat(oldSession.checkedOutAt()).isEqualTo(Instant.parse("2026-08-27T16:00:00Z"));
+                    assertThat(oldSession.overlapStartedAt()).isEqualTo(rangeStart);
+                    assertThat(oldSession.presenceDuration().formatted()).isEqualTo("01:00:00");
+                    assertThat(oldSession.currentlyActive()).isFalse();
+                },
+                currentSession -> {
+                    assertThat(currentSession.branchId()).isEqualTo(3L);
+                    assertThat(currentSession.checkedOutAt()).isNull();
+                    assertThat(currentSession.overlapEndedAt()).isEqualTo(NOW);
+                    assertThat(currentSession.presenceDuration().formatted()).isEqualTo("01:00:00");
+                    assertThat(currentSession.currentlyActive()).isTrue();
+                }
+        );
+        then(studyPresenceSessionRepository).should().findOverlappingByMemberId(
+                1L,
+                rangeStart,
+                NOW
+        );
+    }
+
+    @Test
+    @DisplayName("회원 자기 이력도 스케줄러 저장 전의 오래된 활성 기록을 서울 자정에 종료해 보여준다")
+    void representPendingAutomaticCheckoutInOwnHistory() {
+        Member member = createMember(1L, 2L, "김회원", MemberRole.MEMBER, 10);
+        StudyPresenceSession staleSession = activeSession(
+                10L,
+                1L,
+                2L,
+                Instant.parse("2026-08-28T14:00:00Z")
+        );
+        Instant windowStart = Instant.parse("2026-08-27T15:00:00Z");
+        Instant automaticCheckoutAt = Instant.parse("2026-08-28T15:00:00Z");
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(studyPresenceSessionRepository.findOverlappingByMemberId(
+                1L,
+                windowStart,
+                automaticCheckoutAt
+        )).willReturn(List.of(staleSession));
+        StudyPresenceQueryService queryService = queryServiceAt(AFTER_SEOUL_MIDNIGHT);
+
+        var response = queryService.findMyHistory(
+                1L,
+                LocalDate.of(2026, 8, 28),
+                LocalDate.of(2026, 8, 28)
+        );
+
+        assertThat(response.sessions()).singleElement().satisfies(session -> {
+            assertThat(session.checkedOutAt()).isEqualTo(automaticCheckoutAt);
+            assertThat(session.currentlyActive()).isFalse();
+            assertThat(session.presenceDuration().formatted()).isEqualTo("01:00:00");
+        });
+    }
+
+    @Test
     @DisplayName("회원이 지점을 옮겨도 이전 지점은 그 지점에서 생성된 이력만 조회한다")
     void findTransferredMemberHistoryWithinManagerBranch() {
         Member manager = createMember(9L, 2L, "김관리자", MemberRole.ADMIN, null);

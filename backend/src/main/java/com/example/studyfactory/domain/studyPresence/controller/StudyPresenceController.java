@@ -7,6 +7,7 @@ import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceLiveRespon
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceManagerSessionResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceQrRequest;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceResponse;
+import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceSelfHistoryResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceStatusResponse;
 import com.example.studyfactory.domain.studyPresence.service.StudyPresenceQueryService;
 import com.example.studyfactory.domain.studyPresence.service.StudyPresenceService;
@@ -35,8 +36,21 @@ public class StudyPresenceController {
     private final StudyPresenceQueryService studyPresenceQueryService;
 
     @GetMapping("/me")
-    public StudyPresenceStatusResponse findMine(@CurrentMember Long memberId) {
-        return StudyPresenceStatusResponse.from(studyPresenceService.findActive(memberId));
+    public ResponseEntity<StudyPresenceStatusResponse> findMine(@CurrentMember Long memberId) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(StudyPresenceStatusResponse.from(studyPresenceService.findActive(memberId)));
+    }
+
+    @GetMapping("/me/history")
+    public ResponseEntity<StudyPresenceSelfHistoryResponse> findMyHistory(
+            @CurrentMember Long memberId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(studyPresenceQueryService.findMyHistory(memberId, from, to));
     }
 
     @GetMapping("/door-qr")
