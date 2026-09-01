@@ -36,7 +36,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             where m.name = :name
               and m.password = :password
             """)
-    Optional<Member> findByNameAndPassword(
+    List<Member> findAllByNameAndPassword(
             @Param("name") String name,
             @Param("password") String password
     );
@@ -49,7 +49,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             where m.name = :name
               and m.referenceInformation.branchId = :branchId
             """)
-    Optional<Member> findByNameAndBranchId(
+    List<Member> findAllByNameAndBranchId(
             @Param("name") String name,
             @Param("branchId") Long branchId
     );

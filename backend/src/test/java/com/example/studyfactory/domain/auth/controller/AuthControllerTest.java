@@ -72,6 +72,67 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("지점과 로그인 정보가 일치하면 해당 지점 회원의 JWT 토큰을 반환한다")
+    void branchLogin() throws Exception {
+        memberRepository.save(createMember(1L, "hong"));
+        Member selectedMember = memberRepository.save(createMember(2L, "hong"));
+        String requestBody = """
+                {
+                  "branchId": 2,
+                  "name": "hong",
+                  "password": "password123"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists());
+
+        assertThat(refreshTokenRepository.findAll())
+                .singleElement()
+                .extracting(RefreshToken::getMemberId)
+                .isEqualTo(selectedMember.getId());
+    }
+
+    @Test
+    @DisplayName("회원이 속하지 않은 지점으로 로그인하면 401 응답을 반환한다")
+    void branchLoginFailedForWrongBranch() throws Exception {
+        memberRepository.save(createMember(1L, "hong"));
+        String requestBody = """
+                {
+                  "branchId": 2,
+                  "name": "hong",
+                  "password": "password123"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("지점 ID가 양수가 아니면 400 응답을 반환한다")
+    void branchLoginRejectsInvalidBranchId() throws Exception {
+        String requestBody = """
+                {
+                  "branchId": 0,
+                  "name": "hong",
+                  "password": "password123"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("로그인 정보가 일치하지 않으면 401 응답을 반환한다")
     void loginFailed() throws Exception {
         String requestBody = """
@@ -125,9 +186,13 @@ class AuthControllerTest {
     }
 
     private Member createMember() {
+        return createMember(1L, "hong");
+    }
+
+    private Member createMember(Long branchId, String name) {
         Member member = new Member(
-                1L,
-                "hong",
+                branchId,
+                name,
                 "password123",
                 12,
                 LocalDate.of(2026, 7, 1),

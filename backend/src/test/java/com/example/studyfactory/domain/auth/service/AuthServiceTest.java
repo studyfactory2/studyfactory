@@ -16,6 +16,7 @@ import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,14 +44,13 @@ class AuthServiceTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Test
-    @DisplayName("회원 정보가 일치하면 JWT 토큰을 발급하고 리프레시 토큰을 저장한다")
-    void login() {
-        LoginRequest request = new LoginRequest(" hong ", "password123");
+    @DisplayName("지점 로그인 정보가 일치하면 JWT 토큰을 발급하고 리프레시 토큰을 저장한다")
+    void branchLogin() {
+        LoginRequest request = new LoginRequest(" hong ", "password123", 1L);
         Member member = createMember();
         ReflectionTestUtils.setField(member, "id", 1L);
-        given(memberRepository.existsByName("hong")).willReturn(true);
-        given(memberRepository.findByNameAndPassword("hong", "password123"))
-                .willReturn(Optional.of(member));
+        given(memberRepository.findAllByNameAndBranchId("hong", 1L))
+                .willReturn(List.of(member));
         given(jwtTokenProvider.createAccessToken(member)).willReturn("access-token");
         given(jwtTokenProvider.createRefreshToken(member)).willReturn("refresh-token");
 
@@ -64,6 +64,24 @@ class AuthServiceTest {
         then(refreshTokenRepository).should().save(refreshTokenCaptor.capture());
         assertThat(refreshTokenCaptor.getValue().getMemberId()).isEqualTo(1L);
         assertThat(refreshTokenCaptor.getValue().getToken()).isEqualTo("refresh-token");
+    }
+
+    @Test
+    @DisplayName("지점 ID가 없으면 기존 로그인 방식을 지원한다")
+    void legacyLogin() {
+        LoginRequest request = new LoginRequest(" hong ", "password123");
+        Member member = createMember();
+        ReflectionTestUtils.setField(member, "id", 1L);
+        given(memberRepository.existsByName("hong")).willReturn(true);
+        given(memberRepository.findAllByNameAndPassword("hong", "password123"))
+                .willReturn(List.of(member));
+        given(jwtTokenProvider.createAccessToken(member)).willReturn("access-token");
+        given(jwtTokenProvider.createRefreshToken(member)).willReturn("refresh-token");
+
+        LoginResponse response = authService.login(request);
+
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-token");
     }
 
     @Test
@@ -82,12 +100,49 @@ class AuthServiceTest {
     void throwExceptionWhenPasswordMismatch() {
         LoginRequest request = new LoginRequest("hong", "wrong-password");
         given(memberRepository.existsByName("hong")).willReturn(true);
-        given(memberRepository.findByNameAndPassword("hong", "wrong-password"))
-                .willReturn(Optional.empty());
+        given(memberRepository.findAllByNameAndPassword("hong", "wrong-password"))
+                .willReturn(List.of());
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(AuthException.class)
                 .hasMessageContaining("비밀번호가 일치하지 않습니다.");
+    }
+
+    @Test
+    @DisplayName("선택한 지점에 회원이 없으면 예외가 발생한다")
+    void throwExceptionWhenMemberIsNotInSelectedBranch() {
+        LoginRequest request = new LoginRequest("hong", "password123", 2L);
+        given(memberRepository.findAllByNameAndBranchId("hong", 2L))
+                .willReturn(List.of());
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("존재하지 않는 ID입니다.");
+    }
+
+    @Test
+    @DisplayName("선택한 지점 회원의 비밀번호가 일치하지 않으면 예외가 발생한다")
+    void throwExceptionWhenBranchLoginPasswordMismatch() {
+        LoginRequest request = new LoginRequest("hong", "wrong-password", 1L);
+        Member member = createMember();
+        given(memberRepository.findAllByNameAndBranchId("hong", 1L))
+                .willReturn(List.of(member));
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("비밀번호가 일치하지 않습니다.");
+    }
+
+    @Test
+    @DisplayName("같은 지점에서 동일한 등록 이름이 중복되면 로그인에 실패한다")
+    void rejectAmbiguousBranchLogin() {
+        LoginRequest request = new LoginRequest("hong", "password123", 1L);
+        given(memberRepository.findAllByNameAndBranchId("hong", 1L))
+                .willReturn(List.of(createMember(), createMember()));
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("이름 또는 비밀번호가 일치하지 않습니다.");
     }
 
     @Test
