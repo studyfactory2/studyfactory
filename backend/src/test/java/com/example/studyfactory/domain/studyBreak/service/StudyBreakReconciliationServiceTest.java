@@ -207,7 +207,7 @@ class StudyBreakReconciliationServiceTest {
     }
 
     private StudyPresenceSession newActivePresence(Long id, Instant checkedInAt) {
-        StudyPresenceSession session = new StudyPresenceSession(MEMBER_ID, 2L, checkedInAt);
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(MEMBER_ID, 2L, checkedInAt);
         ReflectionTestUtils.setField(session, "id", id);
         return session;
     }

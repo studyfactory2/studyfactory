@@ -297,7 +297,7 @@ class StudyBreakControllerTest {
     }
 
     private StudyPresenceSession checkIn(TestMember testMember, Instant checkedInAt) {
-        return studyPresenceSessionRepository.saveAndFlush(new StudyPresenceSession(
+        return studyPresenceSessionRepository.saveAndFlush(StudyPresenceSession.qrCheckIn(
                 testMember.member().getId(),
                 testMember.branch().getId(),
                 checkedInAt

@@ -48,4 +48,24 @@ public class StudyPresenceException extends BaseException {
     public static StudyPresenceException sessionQrBranchMismatch() {
         return new StudyPresenceException(HttpStatus.FORBIDDEN, "입실한 지점의 출입 QR 코드만 사용할 수 있습니다.");
     }
+
+    public static StudyPresenceException manualCheckInReasonRequired() {
+        return new StudyPresenceException(HttpStatus.BAD_REQUEST, "수동 입실 사유는 필수입니다.");
+    }
+
+    public static StudyPresenceException manualCheckInReasonTooLong() {
+        return new StudyPresenceException(HttpStatus.BAD_REQUEST, "수동 입실 사유는 200자를 넘을 수 없습니다.");
+    }
+
+    public static StudyPresenceException futureManualCheckInTime() {
+        return new StudyPresenceException(HttpStatus.BAD_REQUEST, "수동 입실 시각은 미래일 수 없습니다.");
+    }
+
+    public static StudyPresenceException manualCheckInOutsideCurrentDay() {
+        return new StudyPresenceException(HttpStatus.BAD_REQUEST, "수동 입실은 오늘 날짜의 시각만 등록할 수 있습니다.");
+    }
+
+    public static StudyPresenceException overlappingSession() {
+        return new StudyPresenceException(HttpStatus.CONFLICT, "해당 시간대에 이미 입퇴실 기록이 있습니다.");
+    }
 }

@@ -87,7 +87,7 @@ class StudyTimeReportControllerTest {
     @DisplayName("회원은 자기 입실을 시간표와 교차한 시분초 리포트를 조회한다")
     void findOwnRecognizedStudyTimeReport() throws Exception {
         TestMembers members = createMembers();
-        StudyPresenceSession presence = new StudyPresenceSession(
+        StudyPresenceSession presence = StudyPresenceSession.qrCheckIn(
                 members.member().getId(),
                 members.branch().getId(),
                 Instant.parse("2026-08-28T00:00:00Z")

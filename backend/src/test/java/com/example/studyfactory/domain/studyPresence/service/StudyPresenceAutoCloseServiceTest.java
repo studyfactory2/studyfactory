@@ -34,13 +34,13 @@ class StudyPresenceAutoCloseServiceTest {
     @Test
     @DisplayName("지연 실행되어도 각 기록을 입실 다음 서울 자정으로 종료한다")
     void closeEachSessionAtItsFirstFollowingMidnight() {
-        StudyPresenceSession previousDay = new StudyPresenceSession(
+        StudyPresenceSession previousDay = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 Instant.parse("2026-08-28T14:59:00Z")
         );
         org.springframework.test.util.ReflectionTestUtils.setField(previousDay, "id", 10L);
-        StudyPresenceSession severalDaysOld = new StudyPresenceSession(
+        StudyPresenceSession severalDaysOld = StudyPresenceSession.qrCheckIn(
                 2L,
                 3L,
                 Instant.parse("2026-08-25T03:00:00Z")
@@ -79,7 +79,7 @@ class StudyPresenceAutoCloseServiceTest {
     @Test
     @DisplayName("재시도 목록에 이미 닫힌 기록이 있어도 덮어쓰지 않아 멱등성을 지킨다")
     void skipAlreadyClosedSessionDuringRetry() {
-        StudyPresenceSession session = new StudyPresenceSession(
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 Instant.parse("2026-08-28T14:00:00Z")

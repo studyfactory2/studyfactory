@@ -93,7 +93,7 @@ class StudyBreakConcurrencyTest {
                 LocalDate.of(2026, 8, 1),
                 3L
         ));
-        presenceSession = studyPresenceSessionRepository.saveAndFlush(new StudyPresenceSession(
+        presenceSession = studyPresenceSessionRepository.saveAndFlush(StudyPresenceSession.qrCheckIn(
                 member.getId(),
                 branch.getId(),
                 BREAK_START.minusSeconds(3_600)

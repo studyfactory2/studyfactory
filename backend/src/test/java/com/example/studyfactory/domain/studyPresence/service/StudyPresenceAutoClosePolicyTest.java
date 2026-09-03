@@ -35,7 +35,7 @@ class StudyPresenceAutoClosePolicyTest {
     @Test
     @DisplayName("자정 직전에는 유지하고 정확히 자정부터 자동 종료 대상으로 본다")
     void applyExactMidnightBoundary() {
-        StudyPresenceSession session = new StudyPresenceSession(
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 Instant.parse("2026-08-28T14:00:00Z")
@@ -54,7 +54,7 @@ class StudyPresenceAutoClosePolicyTest {
     @Test
     @DisplayName("이미 닫힌 기록은 자동 종료 대상으로 다시 보지 않는다")
     void ignoreClosedSession() {
-        StudyPresenceSession session = new StudyPresenceSession(
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 Instant.parse("2026-08-28T14:00:00Z")
@@ -71,7 +71,7 @@ class StudyPresenceAutoClosePolicyTest {
     @DisplayName("기능이 비활성화되면 자정이 지나도 자동 종료하지 않는다")
     void keepSessionWhenPolicyIsDisabled() {
         StudyPresenceAutoClosePolicy disabledPolicy = new StudyPresenceAutoClosePolicy(false);
-        StudyPresenceSession session = new StudyPresenceSession(
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 Instant.parse("2026-08-28T14:00:00Z")

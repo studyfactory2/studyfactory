@@ -26,7 +26,7 @@ class StudyPresenceDurationContractTest {
         LocalDate date = LocalDate.of(2026, 8, 28);
         Instant checkedInAt = date.atTime(8, 0).atZone(SEOUL).toInstant();
         Instant checkedOutAt = date.atTime(23, 0).atZone(SEOUL).toInstant();
-        StudyPresenceSession session = new StudyPresenceSession(1L, 2L, checkedInAt);
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(1L, 2L, checkedInAt);
         session.checkOut(checkedOutAt);
 
         StudyPresenceManagerSessionResponse presence = StudyPresenceManagerSessionResponse.from(
@@ -61,7 +61,7 @@ class StudyPresenceDurationContractTest {
     void capClosedSessionAtAsOf() {
         Instant checkedInAt = Instant.parse("2026-08-28T00:00:00Z");
         Instant asOf = Instant.parse("2026-08-28T01:00:00Z");
-        StudyPresenceSession session = new StudyPresenceSession(1L, 2L, checkedInAt);
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(1L, 2L, checkedInAt);
         session.checkOut(Instant.parse("2026-08-28T02:00:00Z"));
 
         StudyPresenceManagerSessionResponse response = StudyPresenceManagerSessionResponse.from(
@@ -81,7 +81,7 @@ class StudyPresenceDurationContractTest {
     void distinguishAutomaticMidnightCheckout() {
         Instant checkedInAt = Instant.parse("2026-08-28T12:00:00Z");
         Instant midnight = Instant.parse("2026-08-28T15:00:00Z");
-        StudyPresenceSession session = new StudyPresenceSession(1L, 2L, checkedInAt);
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(1L, 2L, checkedInAt);
         session.automaticallyCheckOut(midnight);
 
         StudyPresenceManagerSessionResponse response = StudyPresenceManagerSessionResponse.from(

@@ -128,7 +128,7 @@ class StudyPresenceControllerTest {
         Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
         Member member = memberRepository.save(createMember("김회원", branch.getId()));
         Member otherMember = memberRepository.save(createMember("이회원", branch.getId()));
-        StudyPresenceSession session = new StudyPresenceSession(
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(
                 member.getId(),
                 branch.getId(),
                 now.minusSeconds(3_600)
@@ -379,7 +379,7 @@ class StudyPresenceControllerTest {
         Member staff = memberRepository.save(createMember("이스태프", branch.getId(), MemberRole.STAFF));
         Member member = memberRepository.save(createMember("김회원", branch.getId()));
         StudyPresenceSession session = studyPresenceSessionRepository.save(
-                new StudyPresenceSession(member.getId(), branch.getId(), now.minusSeconds(27_738))
+                StudyPresenceSession.qrCheckIn(member.getId(), branch.getId(), now.minusSeconds(27_738))
         );
         String accessToken = jwtTokenProvider.createAccessToken(staff);
 
@@ -454,7 +454,7 @@ class StudyPresenceControllerTest {
         Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
         Member member = memberRepository.save(createMember("김회원", branch.getId()));
         StudyPresenceSession session = studyPresenceSessionRepository.save(
-                new StudyPresenceSession(member.getId(), branch.getId(), now.minusSeconds(60))
+                StudyPresenceSession.qrCheckIn(member.getId(), branch.getId(), now.minusSeconds(60))
         );
         String accessToken = jwtTokenProvider.createAccessToken(member);
 
@@ -486,7 +486,7 @@ class StudyPresenceControllerTest {
         );
         Member otherMember = memberRepository.save(createMember("김회원", otherBranch.getId()));
         StudyPresenceSession otherSession = studyPresenceSessionRepository.save(
-                new StudyPresenceSession(otherMember.getId(), otherBranch.getId(), now.minusSeconds(60))
+                StudyPresenceSession.qrCheckIn(otherMember.getId(), otherBranch.getId(), now.minusSeconds(60))
         );
         String accessToken = jwtTokenProvider.createAccessToken(admin);
 

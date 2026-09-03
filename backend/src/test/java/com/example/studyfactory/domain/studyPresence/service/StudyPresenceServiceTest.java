@@ -157,7 +157,7 @@ class StudyPresenceServiceTest {
     @DisplayName("이미 입실 중인 회원은 중복 입실할 수 없다")
     void rejectDuplicateCheckIn() {
         Member member = createMember(1L, 2L);
-        StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
@@ -176,7 +176,7 @@ class StudyPresenceServiceTest {
     @DisplayName("새 날짜의 입실은 어제 미퇴실 기록을 자정으로 닫은 뒤 새 기록을 만든다")
     void checkInAfterAutomaticallyClosingPreviousDaySession() {
         Member member = createMember(1L, 2L);
-        StudyPresenceSession staleSession = new StudyPresenceSession(
+        StudyPresenceSession staleSession = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 PREVIOUS_SEOUL_DAY_CHECK_IN
@@ -206,7 +206,7 @@ class StudyPresenceServiceTest {
     @DisplayName("회원 행을 잠그고 활성 입실 기록을 서버 시간으로 퇴실 처리한다")
     void checkOut() {
         Member member = createMember(1L, 2L);
-        StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         ReflectionTestUtils.setField(activeSession, "id", 10L);
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
@@ -228,7 +228,7 @@ class StudyPresenceServiceTest {
     @DisplayName("자정이 지난 어제 기록은 QR 요청이 먼저 와도 자정 자동 퇴실로 정규화한다")
     void normalizeStaleQrCheckoutToMidnight() {
         Member member = createMember(1L, 2L);
-        StudyPresenceSession staleSession = new StudyPresenceSession(
+        StudyPresenceSession staleSession = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 PREVIOUS_SEOUL_DAY_CHECK_IN
@@ -281,7 +281,7 @@ class StudyPresenceServiceTest {
     @DisplayName("입실한 지점과 다른 지점 QR로 퇴실할 수 없다")
     void rejectCheckoutWithAnotherBranchQr() {
         Member member = createMember(1L, 3L);
-        StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(3L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
@@ -298,7 +298,7 @@ class StudyPresenceServiceTest {
     @DisplayName("지점이 변경되어도 입실 당시 지점 QR로 퇴실할 수 있다")
     void checkOutAtOriginalBranchAfterBranchReassignment() {
         Member reassignedMember = createMember(1L, 3L);
-        StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         given(studyPresenceQrTokenProvider.getBranchId(QR_TOKEN)).willReturn(2L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(reassignedMember));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
@@ -330,7 +330,7 @@ class StudyPresenceServiceTest {
     @DisplayName("현재 회원의 활성 입실 기록을 조회한다")
     void findActive() {
         Member member = createMember(1L, 2L);
-        StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         given(memberRepository.findById(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findByActiveMemberId(1L)).willReturn(Optional.of(activeSession));
         given(clock.instant()).willReturn(NOW);
@@ -344,7 +344,7 @@ class StudyPresenceServiceTest {
     @DisplayName("자동 종료 대기 중인 어제 기록은 현재 입실 상태로 노출하지 않는다")
     void hideStaleSessionFromCurrentStatus() {
         Member member = createMember(1L, 2L);
-        StudyPresenceSession staleSession = new StudyPresenceSession(
+        StudyPresenceSession staleSession = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 PREVIOUS_SEOUL_DAY_CHECK_IN
@@ -362,7 +362,7 @@ class StudyPresenceServiceTest {
     @DisplayName("사원 삭제 시 활성 기록만 닫고 입퇴실 이력은 보존한다")
     void closeActiveSessionForMemberDeletion() {
         Member member = createMember(1L, 2L);
-        StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         ReflectionTestUtils.setField(activeSession, "id", 10L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(1L))
@@ -384,7 +384,7 @@ class StudyPresenceServiceTest {
     @DisplayName("자정이 지난 어제 기록은 회원 삭제보다 자정 자동 퇴실을 우선 보존한다")
     void normalizeStaleDeletionClosureToMidnight() {
         Member member = createMember(1L, 2L);
-        StudyPresenceSession staleSession = new StudyPresenceSession(
+        StudyPresenceSession staleSession = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 PREVIOUS_SEOUL_DAY_CHECK_IN
@@ -409,7 +409,7 @@ class StudyPresenceServiceTest {
     void managerCheckOut() {
         Member manager = createMember(9L, 2L, MemberRole.STAFF);
         Member targetMember = createMember(1L, 2L);
-        StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(27_738));
+        StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(27_738));
         ReflectionTestUtils.setField(activeSession, "id", 10L);
         given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
         given(studyPresenceSessionRepository.findByIdAndBranchIdForUpdate(10L, 2L))
@@ -434,7 +434,7 @@ class StudyPresenceServiceTest {
     void normalizeStaleManagerCheckoutToMidnight() {
         Member manager = createMember(9L, 2L, MemberRole.STAFF);
         Member targetMember = createMember(1L, 2L);
-        StudyPresenceSession staleSession = new StudyPresenceSession(
+        StudyPresenceSession staleSession = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 PREVIOUS_SEOUL_DAY_CHECK_IN
@@ -473,7 +473,7 @@ class StudyPresenceServiceTest {
     @DisplayName("관리자는 다른 지점의 입실 기록을 수동 퇴실 처리할 수 없다")
     void rejectManagerCheckOutForAnotherBranch() {
         Member manager = createMember(9L, 3L, MemberRole.ADMIN);
-        StudyPresenceSession activeSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         ReflectionTestUtils.setField(activeSession, "id", 10L);
         given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
         given(studyPresenceSessionRepository.findByIdAndBranchIdForUpdate(10L, 3L))
@@ -491,7 +491,7 @@ class StudyPresenceServiceTest {
     @DisplayName("이미 닫힌 입실 기록은 관리자가 다시 퇴실 처리할 수 없다")
     void rejectManagerCheckOutForClosedSession() {
         Member manager = createMember(9L, 2L, MemberRole.ADMIN);
-        StudyPresenceSession closedSession = new StudyPresenceSession(1L, 2L, NOW.minusSeconds(60));
+        StudyPresenceSession closedSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         closedSession.checkOut(NOW.minusSeconds(30));
         ReflectionTestUtils.setField(closedSession, "id", 10L);
         given(memberRepository.findById(9L)).willReturn(Optional.of(manager));

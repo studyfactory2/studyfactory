@@ -512,7 +512,7 @@ class StudyPresenceQueryServiceTest {
             Long branchId,
             Instant checkedInAt
     ) {
-        StudyPresenceSession session = new StudyPresenceSession(memberId, branchId, checkedInAt);
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(memberId, branchId, checkedInAt);
         ReflectionTestUtils.setField(session, "id", sessionId);
         return session;
     }

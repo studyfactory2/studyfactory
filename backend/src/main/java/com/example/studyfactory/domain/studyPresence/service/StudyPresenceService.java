@@ -45,7 +45,7 @@ public class StudyPresenceService {
             studyPresenceSessionRepository.flush();
         }
 
-        StudyPresenceSession session = new StudyPresenceSession(
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(
                 member.getId(),
                 member.getBranchId(),
                 checkedInAt
@@ -86,6 +86,67 @@ public class StudyPresenceService {
         return new StudyPresenceDoorQrResponse(
                 branchId,
                 studyPresenceQrTokenProvider.createToken(branchId)
+        );
+    }
+
+    /**
+     * Records a check-in for a member on their behalf. The member row is locked
+     * exactly as the QR flow locks it, so a concurrent QR scan and a manual
+     * entry cannot both create an active session.
+     */
+    @Transactional
+    public StudyPresenceManagerSessionResponse managerCheckIn(
+            Long currentMemberId,
+            Long memberId,
+            Instant requestedCheckedInAt,
+            String reason
+    ) {
+        Member manager = findMember(currentMemberId);
+        validateOperations(manager);
+
+        Member target = findMemberForUpdate(memberId);
+        validateSameBranch(manager, target);
+        validateManualCheckInTarget(target);
+
+        Optional<StudyPresenceSession> activeSession =
+                studyPresenceSessionRepository.findActiveByMemberIdForUpdate(memberId);
+
+        /*
+         * Read the clock only once both pessimistic locks are held. Waiting on a
+         * contended member row can take arbitrarily long — across Seoul midnight
+         * in the worst case — and a time captured before the wait would validate
+         * "today", close stale sessions and stamp the response against a day
+         * that has already ended.
+         */
+        Instant now = clock.instant();
+        validateManualCheckInTime(requestedCheckedInAt, now);
+
+        if (activeSession.isPresent()) {
+            if (!autoClosePolicy.automaticallyCloseIfStale(activeSession.get(), now)) {
+                throw StudyPresenceException.alreadyCheckedIn();
+            }
+            closeBreakStudyForEndedPresence(activeSession.get());
+            studyPresenceSessionRepository.flush();
+        }
+
+        validateNoOverlappingSession(memberId, requestedCheckedInAt, now);
+
+        StudyPresenceSession session = studyPresenceSessionRepository.save(
+                StudyPresenceSession.managerCheckIn(
+                        target.getId(),
+                        target.getBranchId(),
+                        requestedCheckedInAt,
+                        manager.getId(),
+                        reason
+                )
+        );
+
+        return StudyPresenceManagerSessionResponse.from(
+                session,
+                target,
+                session.getCheckedInAt(),
+                now,
+                now
         );
     }
 
@@ -155,6 +216,42 @@ public class StudyPresenceService {
     private void validateOperations(Member member) {
         if (!member.hasAllPermissions()) {
             throw MemberException.forbidden();
+        }
+    }
+
+    private void validateSameBranch(Member manager, Member target) {
+        if (!manager.getBranchId().equals(target.getBranchId())) {
+            throw MemberException.forbidden();
+        }
+    }
+
+    private void validateManualCheckInTarget(Member target) {
+        if (target.getRole() != MemberRole.MEMBER) {
+            throw MemberException.forbidden();
+        }
+    }
+
+    /**
+     * The requested instant must be in the past and inside the current Asia/Seoul
+     * calendar day. It may sit before the first configured period — that is
+     * attendance only, and the study-time calculator still starts recognizing
+     * study when the first period opens.
+     */
+    private void validateManualCheckInTime(Instant requestedCheckedInAt, Instant now) {
+        if (requestedCheckedInAt.isAfter(now)) {
+            throw StudyPresenceException.futureManualCheckInTime();
+        }
+        if (requestedCheckedInAt.isBefore(autoClosePolicy.currentSeoulDayStartedAt(now))) {
+            throw StudyPresenceException.manualCheckInOutsideCurrentDay();
+        }
+    }
+
+    /** Rejects a requested interval that runs through any other session for the member. */
+    private void validateNoOverlappingSession(Long memberId, Instant windowStart, Instant windowEnd) {
+        if (!studyPresenceSessionRepository
+                .findOverlappingByMemberId(memberId, windowStart, windowEnd)
+                .isEmpty()) {
+            throw StudyPresenceException.overlappingSession();
         }
     }
 

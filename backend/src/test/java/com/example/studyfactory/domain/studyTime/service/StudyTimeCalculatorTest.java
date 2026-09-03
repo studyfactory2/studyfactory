@@ -432,6 +432,40 @@ class StudyTimeCalculatorTest {
                 .duration();
     }
 
+    @Test
+    void treatsManualCheckInBeforeTheFirstPeriodAsAttendanceOnly() {
+        // an operator recorded arrival at 08:45; recognition still opens at 09:00
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyInterval(atSeoul(STUDY_DATE, 8, 45), atSeoul(STUDY_DATE, 10, 30))
+        );
+
+        assertEquals(Duration.ofMinutes(105), Duration.between(
+                atSeoul(STUDY_DATE, 8, 45),
+                atSeoul(STUDY_DATE, 10, 30)
+        ));
+        assertEquals(Duration.ofMinutes(90), result.periodDuration());
+        assertEquals(Duration.ofMinutes(90), periodDuration(result, StudyPeriod.FIRST));
+        assertEquals(Duration.ZERO, result.breakDuration());
+        assertEquals(Duration.ofMinutes(90), result.totalDuration());
+    }
+
+    @Test
+    void doesNotRecognizeBreakStudyForPresenceWithoutABreakStudySession() {
+        // present straight through lunch, but no break-study session was started
+        DailyStudyTime result = calculator.calculate(
+                STUDY_DATE,
+                new StudyInterval(atSeoul(STUDY_DATE, 8, 45), atSeoul(STUDY_DATE, 13, 30))
+        );
+
+        assertEquals(Duration.ZERO, result.breakDuration());
+        assertEquals(Duration.ZERO, breakDuration(result, StudyBreak.AFTER_FIRST));
+        assertEquals(Duration.ZERO, breakDuration(result, StudyBreak.LUNCH));
+        // 09:00-12:05 across the first two periods, plus 13:20-13:30 of the third
+        assertEquals(Duration.ofMinutes(180), result.periodDuration());
+        assertEquals(result.periodDuration(), result.totalDuration());
+    }
+
     private void assertPeriod(
             StudyPeriod period,
             int periodNumber,

@@ -29,10 +29,10 @@ class StudyPresenceSessionRepositoryTest {
     @Test
     @DisplayName("한 회원에게 두 개의 활성 입실 기록을 저장할 수 없다")
     void rejectTwoActiveSessionsForSameMember() {
-        studyPresenceSessionRepository.saveAndFlush(new StudyPresenceSession(1L, 2L, WINDOW_START));
+        studyPresenceSessionRepository.saveAndFlush(StudyPresenceSession.qrCheckIn(1L, 2L, WINDOW_START));
 
         assertThatThrownBy(() -> studyPresenceSessionRepository.saveAndFlush(
-                new StudyPresenceSession(1L, 2L, WINDOW_START.plusSeconds(60))))
+                StudyPresenceSession.qrCheckIn(1L, 2L, WINDOW_START.plusSeconds(60))))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -59,8 +59,8 @@ class StudyPresenceSessionRepositoryTest {
     @DisplayName("서로 다른 회원은 각각 활성 입실 기록을 가질 수 있다")
     void allowActiveSessionsForDifferentMembers() {
         studyPresenceSessionRepository.saveAllAndFlush(List.of(
-                new StudyPresenceSession(1L, 2L, WINDOW_START),
-                new StudyPresenceSession(2L, 2L, WINDOW_START)
+                StudyPresenceSession.qrCheckIn(1L, 2L, WINDOW_START),
+                StudyPresenceSession.qrCheckIn(2L, 2L, WINDOW_START)
         ));
 
         assertThat(studyPresenceSessionRepository.findByActiveMemberId(1L)).isPresent();
@@ -71,7 +71,7 @@ class StudyPresenceSessionRepositoryTest {
     @DisplayName("입실 기록 ID 조회는 비관적 쓰기 잠금을 사용한다")
     void findPresenceByIdForUpdate() throws NoSuchMethodException {
         StudyPresenceSession session = studyPresenceSessionRepository.saveAndFlush(
-                new StudyPresenceSession(1L, 2L, WINDOW_START)
+                StudyPresenceSession.qrCheckIn(1L, 2L, WINDOW_START)
         );
 
         assertThat(studyPresenceSessionRepository.findByIdForUpdate(session.getId()))
@@ -88,7 +88,7 @@ class StudyPresenceSessionRepositoryTest {
     @DisplayName("활성 키와 퇴실 시간의 불일치 상태를 저장할 수 없다")
     void rejectInconsistentActiveState() {
         StudyPresenceSession session = studyPresenceSessionRepository.saveAndFlush(
-                new StudyPresenceSession(1L, 2L, WINDOW_START)
+                StudyPresenceSession.qrCheckIn(1L, 2L, WINDOW_START)
         );
         ReflectionTestUtils.setField(session, "activeMemberId", null);
 
@@ -109,7 +109,7 @@ class StudyPresenceSessionRepositoryTest {
                 WINDOW_START.minusSeconds(1800),
                 WINDOW_START.plusSeconds(1800)
         );
-        StudyPresenceSession openInsideWindow = new StudyPresenceSession(
+        StudyPresenceSession openInsideWindow = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 WINDOW_START.plusSeconds(3600)
@@ -119,7 +119,7 @@ class StudyPresenceSessionRepositoryTest {
                 WINDOW_END,
                 WINDOW_END.plusSeconds(1800)
         );
-        StudyPresenceSession otherMember = new StudyPresenceSession(
+        StudyPresenceSession otherMember = StudyPresenceSession.qrCheckIn(
                 2L,
                 2L,
                 WINDOW_START.plusSeconds(60)
@@ -144,13 +144,13 @@ class StudyPresenceSessionRepositoryTest {
     @Test
     @DisplayName("지점의 활성 입실 기록만 입실 시간순으로 찾는다")
     void findActiveSessionsByBranch() {
-        StudyPresenceSession first = new StudyPresenceSession(
+        StudyPresenceSession first = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 WINDOW_START.minusSeconds(60)
         );
-        StudyPresenceSession second = new StudyPresenceSession(2L, 2L, WINDOW_START);
-        StudyPresenceSession otherBranch = new StudyPresenceSession(3L, 3L, WINDOW_START);
+        StudyPresenceSession second = StudyPresenceSession.qrCheckIn(2L, 2L, WINDOW_START);
+        StudyPresenceSession otherBranch = StudyPresenceSession.qrCheckIn(3L, 3L, WINDOW_START);
         StudyPresenceSession closed = closedSession(
                 4L,
                 WINDOW_START.minusSeconds(120),
@@ -167,17 +167,17 @@ class StudyPresenceSessionRepositoryTest {
     @DisplayName("현재 서울 날짜 이전에 입실한 활성 기록만 자동 퇴실 대상으로 잠금 조회한다")
     void findStaleActiveSessionsForUpdate() {
         Instant currentSeoulDayStartedAt = Instant.parse("2026-08-28T15:00:00Z");
-        StudyPresenceSession firstStale = new StudyPresenceSession(
+        StudyPresenceSession firstStale = StudyPresenceSession.qrCheckIn(
                 1L,
                 2L,
                 currentSeoulDayStartedAt.minusSeconds(3600)
         );
-        StudyPresenceSession secondStale = new StudyPresenceSession(
+        StudyPresenceSession secondStale = StudyPresenceSession.qrCheckIn(
                 2L,
                 3L,
                 currentSeoulDayStartedAt.minusSeconds(1)
         );
-        StudyPresenceSession exactlyAtBoundary = new StudyPresenceSession(
+        StudyPresenceSession exactlyAtBoundary = StudyPresenceSession.qrCheckIn(
                 3L,
                 2L,
                 currentSeoulDayStartedAt
@@ -213,7 +213,7 @@ class StudyPresenceSessionRepositoryTest {
                 WINDOW_START,
                 WINDOW_START.plusSeconds(60)
         );
-        StudyPresenceSession otherBranch = new StudyPresenceSession(1L, 3L, WINDOW_START);
+        StudyPresenceSession otherBranch = StudyPresenceSession.qrCheckIn(1L, 3L, WINDOW_START);
         otherBranch.checkOut(WINDOW_START.plusSeconds(60));
         studyPresenceSessionRepository.saveAllAndFlush(List.of(matching, otherMember, otherBranch));
 
@@ -256,7 +256,7 @@ class StudyPresenceSessionRepositoryTest {
                 tiedCheckedInAt,
                 tiedCheckedInAt.plusSeconds(120)
         );
-        StudyPresenceSession activeInsideWindow = new StudyPresenceSession(
+        StudyPresenceSession activeInsideWindow = StudyPresenceSession.qrCheckIn(
                 1L,
                 4L,
                 WINDOW_START.plusSeconds(3600)
@@ -361,7 +361,7 @@ class StudyPresenceSessionRepositoryTest {
             Instant checkedInAt,
             Instant checkedOutAt
     ) {
-        StudyPresenceSession session = new StudyPresenceSession(memberId, branchId, checkedInAt);
+        StudyPresenceSession session = StudyPresenceSession.qrCheckIn(memberId, branchId, checkedInAt);
         session.checkOut(checkedOutAt);
         return session;
     }

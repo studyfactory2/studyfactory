@@ -22,14 +22,31 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "study_presence_sessions",
-        check = @CheckConstraint(
-                name = "ck_study_presence_sessions_state",
-                constraint = """
-                        (checked_out_at is null and close_reason is null
-                            and active_member_id is not null and active_member_id = member_id)
-                        or (checked_out_at is not null and close_reason is not null and active_member_id is null)
-                        """
-        ),
+        check = {
+                @CheckConstraint(
+                        name = "ck_study_presence_sessions_state",
+                        constraint = """
+                                (checked_out_at is null and close_reason is null
+                                    and active_member_id is not null and active_member_id = member_id)
+                                or (checked_out_at is not null and close_reason is not null and active_member_id is null)
+                                """
+                ),
+                @CheckConstraint(
+                        name = "ck_study_presence_sessions_check_in_audit",
+                        constraint = """
+                                (check_in_method is null
+                                    and checked_in_by_member_id is null
+                                    and manual_check_in_reason is null)
+                                or (check_in_method = 'QR'
+                                    and checked_in_by_member_id = member_id
+                                    and manual_check_in_reason is null)
+                                or (check_in_method = 'MANAGER'
+                                    and checked_in_by_member_id is not null
+                                    and manual_check_in_reason is not null
+                                    and manual_check_in_reason <> '')
+                                """
+                )
+        },
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_study_presence_sessions_active_member",
                 columnNames = "active_member_id"
@@ -47,6 +64,8 @@ import lombok.NoArgsConstructor;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StudyPresenceSession extends BaseEntity {
+
+    public static final int MANUAL_CHECK_IN_REASON_MAX_LENGTH = 200;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -77,11 +96,85 @@ public class StudyPresenceSession extends BaseEntity {
     @Column(name = "automatically_closed")
     private Boolean automaticallyClosed;
 
-    public StudyPresenceSession(Long memberId, Long branchId, Instant checkedInAt) {
+    /*
+     * Nullable on purpose. deploy.yml runs migrations before swapping the
+     * backend container, and restore_previous_backend() can put the pre-audit
+     * image back, so rows written without these columns must remain legal.
+     * Everything this application writes goes through qrCheckIn/managerCheckIn,
+     * which always populate them.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "check_in_method", length = 20, updatable = false)
+    private StudyPresenceCheckInMethod checkInMethod;
+
+    /** The member for QR check-in, the ADMIN/STAFF operator for a manual one. */
+    @Column(name = "checked_in_by_member_id", updatable = false)
+    private Long checkedInByMemberId;
+
+    @Column(name = "manual_check_in_reason", length = MANUAL_CHECK_IN_REASON_MAX_LENGTH, updatable = false)
+    private String manualCheckInReason;
+
+    private StudyPresenceSession(
+            Long memberId,
+            Long branchId,
+            Instant checkedInAt,
+            StudyPresenceCheckInMethod checkInMethod,
+            Long checkedInByMemberId,
+            String manualCheckInReason
+    ) {
         this.memberId = memberId;
         this.branchId = branchId;
         this.checkedInAt = checkedInAt;
         this.activeMemberId = memberId;
+        this.checkInMethod = checkInMethod;
+        this.checkedInByMemberId = checkedInByMemberId;
+        this.manualCheckInReason = manualCheckInReason;
+    }
+
+    /** The member scanned the door QR: they are their own check-in author. */
+    public static StudyPresenceSession qrCheckIn(Long memberId, Long branchId, Instant checkedInAt) {
+        return new StudyPresenceSession(
+                memberId,
+                branchId,
+                checkedInAt,
+                StudyPresenceCheckInMethod.QR,
+                memberId,
+                null
+        );
+    }
+
+    /** An ADMIN or STAFF operator recorded the check-in, with a required reason. */
+    public static StudyPresenceSession managerCheckIn(
+            Long memberId,
+            Long branchId,
+            Instant checkedInAt,
+            Long operatorMemberId,
+            String reason
+    ) {
+        if (operatorMemberId == null) {
+            throw new IllegalArgumentException("operatorMemberId must not be null");
+        }
+
+        String normalizedReason = reason == null ? "" : reason.trim();
+        if (normalizedReason.isEmpty()) {
+            throw StudyPresenceException.manualCheckInReasonRequired();
+        }
+        if (normalizedReason.length() > MANUAL_CHECK_IN_REASON_MAX_LENGTH) {
+            throw StudyPresenceException.manualCheckInReasonTooLong();
+        }
+
+        return new StudyPresenceSession(
+                memberId,
+                branchId,
+                checkedInAt,
+                StudyPresenceCheckInMethod.MANAGER,
+                operatorMemberId,
+                normalizedReason
+        );
+    }
+
+    public boolean isManuallyCheckedIn() {
+        return checkInMethod == StudyPresenceCheckInMethod.MANAGER;
     }
 
     public boolean isActive() {

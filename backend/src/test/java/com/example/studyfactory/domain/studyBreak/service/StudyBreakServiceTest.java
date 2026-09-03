@@ -306,7 +306,7 @@ class StudyBreakServiceTest {
     }
 
     private StudyPresenceSession activePresence() {
-        StudyPresenceSession presence = new StudyPresenceSession(
+        StudyPresenceSession presence = StudyPresenceSession.qrCheckIn(
                 MEMBER_ID,
                 BRANCH_ID,
                 PRESENCE_STARTED_AT

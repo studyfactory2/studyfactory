@@ -2,6 +2,7 @@ package com.example.studyfactory.domain.studyPresence.dto;
 
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
+import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceCheckInMethod;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceCloseReason;
 import com.example.studyfactory.domain.studyPresence.entity.StudyPresenceSession;
 import java.time.Instant;
@@ -14,6 +15,9 @@ public record StudyPresenceManagerSessionResponse(
         Integer seatNumber,
         Long branchId,
         Instant checkedInAt,
+        StudyPresenceCheckInMethod checkInMethod,
+        Long checkedInByMemberId,
+        String manualCheckInReason,
         Instant checkedOutAt,
         StudyPresenceCloseReason closeReason,
         Long closedByMemberId,
@@ -65,6 +69,9 @@ public record StudyPresenceManagerSessionResponse(
                 sessionBranchMember == null ? null : sessionBranchMember.getSeatNumber(),
                 session.getBranchId(),
                 session.getCheckedInAt(),
+                session.getCheckInMethod(),
+                session.getCheckedInByMemberId(),
+                session.getManualCheckInReason(),
                 effectiveCheckedOutAt,
                 virtuallyAutomaticallyClosed ? StudyPresenceCloseReason.CHECK_OUT : session.getCloseReason(),
                 virtuallyAutomaticallyClosed ? null : session.getClosedByMemberId(),

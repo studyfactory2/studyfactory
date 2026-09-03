@@ -5,6 +5,7 @@ import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDoorQrResp
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceHistoryResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceLiveResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceManagerSessionResponse;
+import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceManualCheckInRequest;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceQrRequest;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceSelfHistoryResponse;
@@ -111,6 +112,21 @@ public class StudyPresenceController {
             @Valid @RequestBody StudyPresenceQrRequest request
     ) {
         return StudyPresenceResponse.from(studyPresenceService.checkOut(memberId, request.qrToken()));
+    }
+
+    @PostMapping("/members/{memberId}/manual-check-in")
+    @ResponseStatus(HttpStatus.CREATED)
+    public StudyPresenceManagerSessionResponse managerCheckIn(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId,
+            @Valid @RequestBody StudyPresenceManualCheckInRequest request
+    ) {
+        return studyPresenceService.managerCheckIn(
+                currentMemberId,
+                memberId,
+                request.checkedInAt(),
+                request.reason()
+        );
     }
 
     @PostMapping("/sessions/{sessionId}/manual-check-out")
