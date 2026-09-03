@@ -33,10 +33,11 @@ public class TodoController {
 
     @GetMapping("/daily")
     public List<TodoResponse> findDaily(
-            @RequestParam Long branchId,
+            @CurrentMember Long currentMemberId,
+            @RequestParam(required = false) Long branchId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
-        return todoService.findDailyWithJoinTodos(branchId, date);
+        return todoService.findDailyWithJoinTodos(currentMemberId, branchId, date);
     }
 
     @PostMapping

@@ -4,6 +4,7 @@ import com.example.studyfactory.domain.beverage.repository.BeverageItemRepositor
 import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.suggestion.entity.Suggestion;
@@ -38,23 +39,26 @@ public class TodoService {
     private final CertificationRepository certificationRepository;
     private final Clock clock;
 
-    @Transactional(readOnly = true)
-    public List<TodoResponse> findDaily(Long branchId, LocalDate date) {
-        return todoItemRepository.findByBranchIdAndTodoDateOrderByCompletedAscPriorityDescCreatedAtAsc(branchId, date)
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
+    /**
+     * The daily board is branch-wide operations work — it is fed by member
+     * suggestions and by new-member joins — so every entry point below is
+     * ADMIN/STAFF only. The join todos are still materialized lazily on read;
+     * splitting that write out belongs with the staff 할 일 screen, which will
+     * have somewhere to call it from.
+     */
     @Transactional
-    public List<TodoResponse> findDailyWithJoinTodos(Long branchId, LocalDate date) {
-        createJoinTodos(branchId, date);
-        return findDaily(branchId, date);
+    public List<TodoResponse> findDailyWithJoinTodos(Long currentMemberId, Long branchId, LocalDate date) {
+        Member operator = findOperationsMember(currentMemberId);
+        Long targetBranchId = resolveBranchId(operator, branchId);
+        createJoinTodos(targetBranchId, date);
+
+        return findDaily(targetBranchId, date);
     }
 
     @Transactional
     public TodoResponse create(Long currentMemberId, TodoCreateRequest request) {
-        Member currentMember = findMember(currentMemberId);
+        Member operator = findOperationsMember(currentMemberId);
+        validateBranchScope(operator, request.branchId());
         TodoItem todoItem = new TodoItem(
                 request.branchId(),
                 request.todoDate(),
@@ -63,8 +67,8 @@ public class TodoService {
                 TodoSourceType.MANUAL,
                 null,
                 null,
-                currentMember.getId(),
-                currentMember.getName()
+                operator.getId(),
+                operator.getName()
         );
 
         return toResponse(todoItemRepository.save(todoItem));
@@ -72,17 +76,17 @@ public class TodoService {
 
     @Transactional
     public TodoResponse updateCompletion(Long currentMemberId, Long todoId, TodoCompletionRequest request) {
-        Member currentMember = findMember(currentMemberId);
-        TodoItem todoItem = todoItemRepository.findById(todoId).orElseThrow(MemberException::forbidden);
-        todoItem.updateCompletion(request.completed(), currentMember.getId());
+        Member operator = findOperationsMember(currentMemberId);
+        TodoItem todoItem = findTodoInScope(operator, todoId);
+        todoItem.updateCompletion(request.completed(), operator.getId());
 
         return toResponse(todoItem);
     }
 
     @Transactional
     public TodoResponse update(Long currentMemberId, Long todoId, TodoUpdateRequest request) {
-        findMember(currentMemberId);
-        TodoItem todoItem = todoItemRepository.findById(todoId).orElseThrow(MemberException::forbidden);
+        Member operator = findOperationsMember(currentMemberId);
+        TodoItem todoItem = findTodoInScope(operator, todoId);
         todoItem.updateContent(request.content().trim());
 
         return toResponse(todoItem);
@@ -90,23 +94,64 @@ public class TodoService {
 
     @Transactional
     public TodoResponse updateReply(Long currentMemberId, Long todoId, TodoReplyRequest request) {
-        Member currentMember = findMember(currentMemberId);
-        TodoItem todoItem = todoItemRepository.findById(todoId).orElseThrow(MemberException::forbidden);
-        todoReplyRepository.save(new TodoReply(todoItem.getId(), currentMember.getId(), currentMember.getName(), request.replyContent().trim()));
+        Member operator = findOperationsMember(currentMemberId);
+        TodoItem todoItem = findTodoInScope(operator, todoId);
+        todoReplyRepository.save(new TodoReply(todoItem.getId(), operator.getId(), operator.getName(), request.replyContent().trim()));
 
         return toResponse(todoItem);
     }
 
     @Transactional
     public void delete(Long currentMemberId, Long todoId) {
-        findMember(currentMemberId);
-        TodoItem todoItem = todoItemRepository.findById(todoId).orElseThrow(MemberException::forbidden);
+        Member operator = findOperationsMember(currentMemberId);
+        TodoItem todoItem = findTodoInScope(operator, todoId);
         if (todoItem.getSourceType() == TodoSourceType.JOIN_MEMBER) {
             throw MemberException.forbidden();
         }
 
         todoReplyRepository.deleteByTodoItemId(todoItem.getId());
         todoItemRepository.delete(todoItem);
+    }
+
+    private List<TodoResponse> findDaily(Long branchId, LocalDate date) {
+        return todoItemRepository.findByBranchIdAndTodoDateOrderByCompletedAscPriorityDescCreatedAtAsc(branchId, date)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private Member findOperationsMember(Long currentMemberId) {
+        Member currentMember = memberRepository.findById(currentMemberId)
+                .orElseThrow(MemberException::memberNotFound);
+        if (!currentMember.hasAllPermissions()) {
+            throw MemberException.forbidden();
+        }
+
+        return currentMember;
+    }
+
+    /** A missing todo is refused rather than reported, so ids stay unprobeable. */
+    private TodoItem findTodoInScope(Member operator, Long todoId) {
+        TodoItem todoItem = todoItemRepository.findById(todoId).orElseThrow(MemberException::forbidden);
+        validateBranchScope(operator, todoItem.getBranchId());
+
+        return todoItem;
+    }
+
+    /** ADMIN may work across branches; STAFF is pinned to their own. */
+    private Long resolveBranchId(Member operator, Long branchId) {
+        if (branchId == null) {
+            return operator.getBranchId();
+        }
+        validateBranchScope(operator, branchId);
+
+        return branchId;
+    }
+
+    private void validateBranchScope(Member operator, Long branchId) {
+        if (operator.getRole() != MemberRole.ADMIN && !operator.getBranchId().equals(branchId)) {
+            throw MemberException.forbidden();
+        }
     }
 
     @Transactional
