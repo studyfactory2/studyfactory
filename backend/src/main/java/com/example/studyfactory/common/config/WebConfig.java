@@ -42,8 +42,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/members/signup",
                         "/api/branches",
                         "/api/employee-types",
-                        "/api/certifications",
-                        "/api/pre-registrations"
+                        "/api/certifications"
                 );
     }
 

@@ -23,6 +23,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Sort;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -79,7 +80,8 @@ class PreRegistrationControllerTest {
 
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.branchId").value(branch.getId()))
@@ -91,7 +93,7 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.drinkSetting").value("아이스 아메리카노"))
                 .andExpect(jsonPath("$.drinkNotes['아이스 아메리카노']").value("연하게"));
 
-        assertThat(memberRepository.count()).isEqualTo(1);
+        assertThat(pendingPreRegistrationCount()).isEqualTo(1);
         assertThat(beverageItemRepository.count()).isEqualTo(1);
     }
 
@@ -115,13 +117,14 @@ class PreRegistrationControllerTest {
 
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.certificationId").exists());
 
         assertThat(certificationRepository.existsByContent("회계사")).isTrue();
-        assertThat(memberRepository.count()).isEqualTo(1);
+        assertThat(pendingPreRegistrationCount()).isEqualTo(1);
     }
 
     @Test
@@ -144,12 +147,13 @@ class PreRegistrationControllerTest {
 
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.certificationId").doesNotExist());
 
-        assertThat(memberRepository.count()).isEqualTo(1);
+        assertThat(pendingPreRegistrationCount()).isEqualTo(1);
     }
 
     @Test
@@ -172,12 +176,13 @@ class PreRegistrationControllerTest {
 
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.seatNumber").doesNotExist());
 
-        assertThat(memberRepository.count()).isEqualTo(1);
+        assertThat(pendingPreRegistrationCount()).isEqualTo(1);
     }
 
     @Test
@@ -185,6 +190,7 @@ class PreRegistrationControllerTest {
     void findPendingPreRegistrations() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
         String accessToken = createAccessToken();
+
         String requestBody = """
                 {
                   "branchId": %d,
@@ -199,7 +205,8 @@ class PreRegistrationControllerTest {
                 """.formatted(branch.getId());
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/pre-registrations/pending")
@@ -215,6 +222,7 @@ class PreRegistrationControllerTest {
     void updatePendingPreRegistration() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
         String accessToken = createAccessToken();
+
         String createBody = """
                 {
                   "branchId": %d,
@@ -229,7 +237,8 @@ class PreRegistrationControllerTest {
                 """.formatted(branch.getId());
         String createResponse = mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody))
+                        .content(createBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -266,6 +275,7 @@ class PreRegistrationControllerTest {
     void deletePendingPreRegistration() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
         String accessToken = createAccessToken();
+
         String requestBody = """
                 {
                   "branchId": %d,
@@ -280,7 +290,8 @@ class PreRegistrationControllerTest {
                 """.formatted(branch.getId());
         String createResponse = mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -308,8 +319,125 @@ class PreRegistrationControllerTest {
 
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("인증 없이 사전등록을 생성할 수 없다")
+    void rejectPreRegistrationWithoutAuthentication() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberRequestBody(branch.getId(), "MEMBER")))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(memberRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("일반 회원 토큰으로는 사전등록을 생성할 수 없다")
+    void rejectPreRegistrationForMemberOperator() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String memberToken = createTokenFor(MemberRole.MEMBER, branch.getId(), "회원", 31);
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberRequestBody(branch.getId(), "MEMBER"))
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("일반 회원 토큰으로는 사전등록 대기 목록을 조회할 수 없다")
+    void rejectPendingListForMemberOperator() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String memberToken = createTokenFor(MemberRole.MEMBER, branch.getId(), "회원", 32);
+
+        mockMvc.perform(get("/api/pre-registrations/pending")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("스태프는 관리자 권한으로 사전등록할 수 없다")
+    void rejectPrivilegedRoleForStaffOperator() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 33);
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberRequestBody(branch.getId(), "ADMIN"))
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점에 사전등록할 수 없다")
+    void rejectOtherBranchForStaffOperator() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        Branch otherBranch = branchRepository.save(new Branch("홍대점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 34);
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberRequestBody(otherBranch.getId(), "MEMBER"))
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("스태프는 자기 지점에 일반 회원을 사전등록할 수 있다")
+    void allowOwnBranchMemberForStaffOperator() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 35);
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberRequestBody(branch.getId(), "MEMBER"))
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("MEMBER"))
+                .andExpect(jsonPath("$.branchId").value(branch.getId()));
+    }
+
+    /** Excludes the signed-up manager who performed the request. */
+    private long pendingPreRegistrationCount() {
+        return memberRepository
+                .findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"))
+                .size();
+    }
+
+    private String memberRequestBody(Long branchId, String role) {
+        return """
+                {
+                  "branchId": %d,
+                  "name": "hong",
+                  "role": "%s",
+                  "seatNumber": null,
+                  "expectedJoinDate": "2026-07-01",
+                  "certification": null,
+                  "drinkSetting": "아이스 아메리카노",
+                  "drinkNote": "연하게"
+                }
+                """.formatted(branchId, role);
+    }
+
+    private String createTokenFor(MemberRole role, Long branchId, String name, int seatNumber) {
+        Member operator = memberRepository.save(new Member(
+                branchId,
+                name,
+                "password123",
+                role,
+                seatNumber,
+                LocalDate.of(2026, 7, 1),
+                null,
+                null
+        ));
+
+        return jwtTokenProvider.createAccessToken(operator);
     }
 
     private String createAccessToken() {

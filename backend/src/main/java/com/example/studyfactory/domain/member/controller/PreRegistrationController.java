@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.member.controller;
 
+import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
 import com.example.studyfactory.domain.member.service.PreRegistrationService;
@@ -26,26 +27,33 @@ public class PreRegistrationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PreRegistrationResponse create(@Valid @RequestBody PreRegistrationCreateRequest request) {
-        return preRegistrationService.create(request);
+    public PreRegistrationResponse create(
+            @CurrentMember Long currentMemberId,
+            @Valid @RequestBody PreRegistrationCreateRequest request
+    ) {
+        return preRegistrationService.create(currentMemberId, request);
     }
 
     @GetMapping("/pending")
-    public List<PreRegistrationResponse> findPending() {
-        return preRegistrationService.findPending();
+    public List<PreRegistrationResponse> findPending(@CurrentMember Long currentMemberId) {
+        return preRegistrationService.findPending(currentMemberId);
     }
 
     @PatchMapping("/{memberId}")
     public PreRegistrationResponse update(
+            @CurrentMember Long currentMemberId,
             @PathVariable Long memberId,
             @Valid @RequestBody PreRegistrationCreateRequest request
     ) {
-        return preRegistrationService.update(memberId, request);
+        return preRegistrationService.update(currentMemberId, memberId, request);
     }
 
     @DeleteMapping("/{memberId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long memberId) {
-        preRegistrationService.delete(memberId);
+    public void delete(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId
+    ) {
+        preRegistrationService.delete(currentMemberId, memberId);
     }
 }

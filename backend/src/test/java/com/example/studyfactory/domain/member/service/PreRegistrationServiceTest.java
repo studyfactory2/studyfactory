@@ -17,6 +17,7 @@ import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
+import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -32,6 +33,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("사전등록 서비스 테스트")
 class PreRegistrationServiceTest {
+
+    private static final Long ADMIN_ID = 9L;
+    private static final Long STAFF_ID = 8L;
+    private static final Long MEMBER_ID = 7L;
 
     @InjectMocks
     private PreRegistrationService preRegistrationService;
@@ -55,6 +60,7 @@ class PreRegistrationServiceTest {
     @DisplayName("사전등록 요청으로 사원과 음료 정보를 저장하고 응답을 반환한다")
     void createPreRegistration() {
         PreRegistrationCreateRequest request = createRequest();
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
         given(branchRepository.existsById(1L)).willReturn(true);
         Certification certification = new Certification("홍길동 매니저");
         ReflectionTestUtils.setField(certification, "id", 3L);
@@ -67,7 +73,7 @@ class PreRegistrationServiceTest {
         given(beverageService.createPreference(1L, "아이스 아메리카노", "연하게"))
                 .willReturn(List.of(new BeverageItem(1L, "아이스 아메리카노", "연하게")));
 
-        PreRegistrationResponse response = preRegistrationService.create(request);
+        PreRegistrationResponse response = preRegistrationService.create(ADMIN_ID, request);
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.branchId()).isEqualTo(1L);
@@ -95,6 +101,7 @@ class PreRegistrationServiceTest {
                 "아이스 아메리카노",
                 "연하게"
         );
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
         given(branchRepository.existsById(1L)).willReturn(true);
         given(certificationRepository.findByContent("회계사")).willReturn(Optional.empty());
         given(certificationRepository.save(any(Certification.class))).willAnswer(invocation -> {
@@ -110,7 +117,7 @@ class PreRegistrationServiceTest {
         given(beverageService.createPreference(1L, "아이스 아메리카노", "연하게"))
                 .willReturn(List.of(new BeverageItem(1L, "아이스 아메리카노", "연하게")));
 
-        PreRegistrationResponse response = preRegistrationService.create(request);
+        PreRegistrationResponse response = preRegistrationService.create(ADMIN_ID, request);
 
         assertThat(response.certificationId()).isEqualTo(7L);
         then(certificationRepository).should(never()).existsById(any());
@@ -130,6 +137,7 @@ class PreRegistrationServiceTest {
                 "아이스 아메리카노",
                 "연하게"
         );
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
         given(branchRepository.existsById(1L)).willReturn(true);
         given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
             Member member = invocation.getArgument(0);
@@ -139,7 +147,7 @@ class PreRegistrationServiceTest {
         given(beverageService.createPreference(1L, "아이스 아메리카노", "연하게"))
                 .willReturn(List.of(new BeverageItem(1L, "아이스 아메리카노", "연하게")));
 
-        PreRegistrationResponse response = preRegistrationService.create(request);
+        PreRegistrationResponse response = preRegistrationService.create(ADMIN_ID, request);
 
         assertThat(response.certificationId()).isNull();
         then(certificationRepository).should(never()).findByContent(any());
@@ -149,9 +157,10 @@ class PreRegistrationServiceTest {
     @DisplayName("존재하지 않는 지점이면 예외가 발생한다")
     void throwExceptionWhenBranchDoesNotExist() {
         PreRegistrationCreateRequest request = createRequest();
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
         given(branchRepository.existsById(1L)).willReturn(false);
 
-        assertThatThrownBy(() -> preRegistrationService.create(request))
+        assertThatThrownBy(() -> preRegistrationService.create(ADMIN_ID, request))
                 .isInstanceOf(PreRegistrationException.class)
                 .hasMessageContaining("존재하지 않는 지점입니다.");
     }
@@ -160,13 +169,93 @@ class PreRegistrationServiceTest {
     @DisplayName("이미 배정된 좌석으로 사전등록하면 예외가 발생한다")
     void throwExceptionWhenSeatAlreadyAssigned() {
         PreRegistrationCreateRequest request = createRequest();
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
         given(branchRepository.existsById(1L)).willReturn(true);
         given(memberRepository.existsAssignedSeat(1L, 12)).willReturn(true);
 
-        assertThatThrownBy(() -> preRegistrationService.create(request))
+        assertThatThrownBy(() -> preRegistrationService.create(ADMIN_ID, request))
                 .isInstanceOf(PreRegistrationException.class)
                 .hasMessageContaining("이미 배정된 좌석입니다. 다른 좌석을 선택해주세요.");
         then(memberRepository).should(never()).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("일반 회원은 사전등록을 생성할 수 없다")
+    void rejectPreRegistrationForMemberOperator() {
+        givenOperator(MEMBER_ID, MemberRole.MEMBER, 1L);
+
+        assertThatThrownBy(() -> preRegistrationService.create(MEMBER_ID, createRequest()))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+        then(memberRepository).should(never()).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("스태프는 관리자나 스태프 권한으로 사전등록할 수 없다")
+    void rejectPrivilegedRoleForStaffOperator() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
+
+        assertThatThrownBy(() -> preRegistrationService.create(STAFF_ID, createRequest()))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+        then(memberRepository).should(never()).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점에 사전등록할 수 없다")
+    void rejectOtherBranchForStaffOperator() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 2L);
+
+        assertThatThrownBy(() -> preRegistrationService.create(STAFF_ID, createMemberRequest()))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+        then(memberRepository).should(never()).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("스태프는 자기 지점에 일반 회원을 사전등록할 수 있다")
+    void allowOwnBranchMemberForStaffOperator() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
+            Member member = invocation.getArgument(0);
+            ReflectionTestUtils.setField(member, "id", 1L);
+            return member;
+        });
+        given(beverageService.createPreference(1L, "아이스 아메리카노", "연하게"))
+                .willReturn(List.of(new BeverageItem(1L, "아이스 아메리카노", "연하게")));
+
+        PreRegistrationResponse response = preRegistrationService.create(STAFF_ID, createMemberRequest());
+
+        assertThat(response.role()).isEqualTo(MemberRole.MEMBER);
+        then(memberRepository).should().save(any(Member.class));
+    }
+
+    private void givenOperator(Long operatorId, MemberRole role, Long branchId) {
+        Member operator = new Member(
+                branchId,
+                "운영자",
+                "password123",
+                role,
+                1,
+                LocalDate.of(2026, 7, 1),
+                null
+        );
+        ReflectionTestUtils.setField(operator, "id", operatorId);
+        given(memberRepository.findById(operatorId)).willReturn(Optional.of(operator));
+    }
+
+    private PreRegistrationCreateRequest createMemberRequest() {
+        return new PreRegistrationCreateRequest(
+                1L,
+                " hong ",
+                MemberRole.MEMBER,
+                null,
+                LocalDate.of(2026, 7, 1),
+                null,
+                "아이스 아메리카노",
+                "연하게"
+        );
     }
 
     private PreRegistrationCreateRequest createRequest() {

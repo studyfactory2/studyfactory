@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.member.service;
 import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
@@ -28,7 +29,10 @@ public class PreRegistrationService {
     private final CertificationRepository certificationRepository;
 
     @Transactional
-    public PreRegistrationResponse create(PreRegistrationCreateRequest request) {
+    public PreRegistrationResponse create(Long currentMemberId, PreRegistrationCreateRequest request) {
+        Member operator = findOperator(currentMemberId);
+        validateAssignableRole(operator, request.role());
+        validateBranchScope(operator, request.branchId());
         validateRequest(request);
         Long certificationId = getCertificationId(request);
         Member member = new Member(
@@ -49,7 +53,9 @@ public class PreRegistrationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PreRegistrationResponse> findPending() {
+    public List<PreRegistrationResponse> findPending(Long currentMemberId) {
+        findOperator(currentMemberId);
+
         return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
                 .map(member -> PreRegistrationResponse.from(member, beverageService.findItems(member.getId())))
@@ -57,8 +63,18 @@ public class PreRegistrationService {
     }
 
     @Transactional
-    public PreRegistrationResponse update(Long memberId, PreRegistrationCreateRequest request) {
+    public PreRegistrationResponse update(
+            Long currentMemberId,
+            Long memberId,
+            PreRegistrationCreateRequest request
+    ) {
+        Member operator = findOperator(currentMemberId);
         Member member = findPendingMember(memberId);
+        // both the record's current branch and the requested one must be in scope,
+        // so a branch-bound operator cannot move a member in or out of their branch
+        validateBranchScope(operator, member.getBranchId());
+        validateAssignableRole(operator, request.role());
+        validateBranchScope(operator, request.branchId());
         validateUpdateRequest(member.getId(), request);
         Long certificationId = getCertificationId(request);
         member.updatePreRegistration(
@@ -77,10 +93,41 @@ public class PreRegistrationService {
     }
 
     @Transactional
-    public void delete(Long memberId) {
+    public void delete(Long currentMemberId, Long memberId) {
+        Member operator = findOperator(currentMemberId);
         Member member = findPendingMember(memberId);
+        validateBranchScope(operator, member.getBranchId());
         memberDeletionCleanupService.cleanup(member.getId());
         memberRepository.delete(member);
+    }
+
+    /** Pre-registration is a manager operation: ADMIN or STAFF only. */
+    private Member findOperator(Long currentMemberId) {
+        Member operator = memberRepository.findById(currentMemberId)
+                .orElseThrow(MemberException::memberNotFound);
+        if (!operator.hasAllPermissions()) {
+            throw MemberException.forbidden();
+        }
+
+        return operator;
+    }
+
+    /**
+     * ADMIN may grant any role. STAFF may only pre-register plain members, so a
+     * branch operator cannot mint another manager — or promote themselves by
+     * pre-registering a second privileged account.
+     */
+    private void validateAssignableRole(Member operator, MemberRole requestedRole) {
+        if (operator.getRole() != MemberRole.ADMIN && requestedRole != MemberRole.MEMBER) {
+            throw MemberException.forbidden();
+        }
+    }
+
+    /** ADMIN works across branches; STAFF is confined to their own. */
+    private void validateBranchScope(Member operator, Long branchId) {
+        if (operator.getRole() != MemberRole.ADMIN && !operator.getBranchId().equals(branchId)) {
+            throw MemberException.forbidden();
+        }
     }
 
     private void validateRequest(PreRegistrationCreateRequest request) {
