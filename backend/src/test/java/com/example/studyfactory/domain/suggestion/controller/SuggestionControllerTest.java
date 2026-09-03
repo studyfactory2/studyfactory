@@ -1,6 +1,8 @@
 package com.example.studyfactory.domain.suggestion.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -9,6 +11,7 @@ import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.suggestion.entity.Suggestion;
 import com.example.studyfactory.domain.suggestion.entity.SuggestionCategory;
@@ -110,10 +113,11 @@ class SuggestionControllerTest {
     }
 
     @Test
-    @DisplayName("인증된 사원이 모든 건의사항 목록을 조회한다")
-    void findAllSuggestions() throws Exception {
+    @DisplayName("운영 권한자는 자기 지점의 건의사항만 조회한다")
+    void findBranchSuggestionsAsManager() throws Exception {
         Branch firstBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
         Branch secondBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member manager = memberRepository.save(createManager("admin", firstBranch.getId()));
         Member member = memberRepository.save(createMember("kim", firstBranch.getId()));
         Member otherMember = memberRepository.save(createMember("lee", secondBranch.getId()));
         suggestionRepository.save(new Suggestion(
@@ -128,21 +132,55 @@ class SuggestionControllerTest {
                 "화장실 비품이 부족해요.",
                 false
         ));
-        String accessToken = jwtTokenProvider.createAccessToken(member);
 
         mockMvc.perform(get("/api/suggestions")
-                        .header("Authorization", "Bearer " + accessToken))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(manager)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].memberId").exists())
-                .andExpect(jsonPath("$[0].branchId").exists())
-                .andExpect(jsonPath("$[0].category").exists())
-                .andExpect(jsonPath("$[0].content").exists())
-                .andExpect(jsonPath("$[0].isResolved").value(false))
-                .andExpect(jsonPath("$[1].memberId").exists())
-                .andExpect(jsonPath("$[1].branchId").exists())
-                .andExpect(jsonPath("$[1].category").exists())
-                .andExpect(jsonPath("$[1].content").exists())
-                .andExpect(jsonPath("$[1].isResolved").value(false));
+                .andExpect(jsonPath("$[0].branchId").value(firstBranch.getId()))
+                .andExpect(jsonPath("$[0].content").value("스터디룸이 추워요."))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("일반 회원은 전체 건의사항 목록을 조회할 수 없다")
+    void rejectFindAllForMember() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+
+        mockMvc.perform(get("/api/suggestions")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(member)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("일반 회원은 건의사항을 해결 처리할 수 없다")
+    void rejectResolveForMember() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        Suggestion suggestion = suggestionRepository.save(new Suggestion(
+                new SuggestionReferenceInformation(member.getId(), branch.getId(), null),
+                SuggestionCategory.STUDY,
+                "스터디룸이 추워요.",
+                false
+        ));
+
+        mockMvc.perform(patch("/api/suggestions/{suggestionId}/resolve", suggestion.getId())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(member)))
+                .andExpect(status().isForbidden());
+
+        assertThat(suggestionRepository.findById(suggestion.getId()).orElseThrow().isResolved()).isFalse();
+    }
+
+    private Member createManager(String name, Long branchId) {
+        return new Member(
+                branchId,
+                name,
+                "password123",
+                MemberRole.ADMIN,
+                99,
+                LocalDate.of(2026, 7, 1),
+                null
+        );
     }
 
     private Member createMember(String name, Long branchId) {

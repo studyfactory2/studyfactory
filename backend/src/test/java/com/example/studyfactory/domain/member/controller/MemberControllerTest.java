@@ -302,6 +302,30 @@ class MemberControllerTest {
                 .andExpect(status().isNoContent());
     }
 
+    @Test
+    @DisplayName("본인 정보 조회는 요청자 자신의 정보만 반환한다")
+    void findMyOwnProfile() throws Exception {
+        Member member = memberRepository.save(createMember("kim", 10));
+        memberRepository.save(createMember("lee", 11));
+
+        mockMvc.perform(get("/api/members/me")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(member)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(member.getId()))
+                .andExpect(jsonPath("$.name").value("kim"))
+                .andExpect(jsonPath("$.seatNumber").value(10))
+                .andExpect(jsonPath("$.branchId").value(member.getBranchId()))
+                .andExpect(jsonPath("$.role").value("MEMBER"))
+                .andExpect(jsonPath("$.joinDate").exists());
+    }
+
+    @Test
+    @DisplayName("인증 없이 본인 정보를 조회할 수 없다")
+    void rejectOwnProfileWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/api/members/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
     private Member createMember(String name, int seatNumber) {
         return createMember(name, seatNumber, 1L);
     }

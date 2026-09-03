@@ -19,6 +19,14 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long> {
 
     List<Suggestion> findAllByOrderByCreatedAtDesc();
 
+    @Query("""
+            select s
+            from Suggestion s
+            where s.referenceInformation.branchId = :branchId
+            order by s.createdAt desc
+            """)
+    List<Suggestion> findByBranchId(Long branchId);
+
     void deleteByReferenceInformationMemberId(Long memberId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

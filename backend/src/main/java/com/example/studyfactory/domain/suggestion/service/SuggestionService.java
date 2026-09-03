@@ -45,9 +45,11 @@ public class SuggestionService {
                 .toList();
     }
 
+    /** Operations view: managers see their own branch's suggestions, nobody else's. */
     @Transactional(readOnly = true)
-    public List<SuggestionResponse> findAll() {
-        List<Suggestion> suggestions = suggestionRepository.findAllByOrderByCreatedAtDesc();
+    public List<SuggestionResponse> findAll(Long currentMemberId) {
+        Member currentMember = findOperationsMember(currentMemberId);
+        List<Suggestion> suggestions = suggestionRepository.findByBranchId(currentMember.getBranchId());
         Map<Long, String> memberNames = findMemberNames(suggestions);
 
         return suggestions.stream()
@@ -61,8 +63,9 @@ public class SuggestionService {
 
     @Transactional
     public SuggestionResponse resolve(Long currentMemberId, Long suggestionId) {
-        Member currentMember = memberRepository.findById(currentMemberId).orElseThrow(MemberException::memberNotFound);
+        Member currentMember = findOperationsMember(currentMemberId);
         Suggestion suggestion = suggestionRepository.findById(suggestionId).orElseThrow(MemberException::forbidden);
+        validateSameBranch(currentMember, suggestion);
         suggestion.toggleResolve(currentMember.getId());
 
         String memberName = memberRepository.findById(suggestion.getMemberId())
@@ -71,6 +74,23 @@ public class SuggestionService {
         String resolvedByMemberName = suggestion.isResolved() ? currentMember.getName() : null;
 
         return SuggestionResponse.from(suggestion, memberName, resolvedByMemberName);
+    }
+
+    /** Reading or resolving other people's suggestions is a manager action. */
+    private Member findOperationsMember(Long currentMemberId) {
+        Member currentMember = memberRepository.findById(currentMemberId)
+                .orElseThrow(MemberException::memberNotFound);
+        if (!currentMember.hasAllPermissions()) {
+            throw MemberException.forbidden();
+        }
+
+        return currentMember;
+    }
+
+    private void validateSameBranch(Member currentMember, Suggestion suggestion) {
+        if (!currentMember.getBranchId().equals(suggestion.getBranchId())) {
+            throw MemberException.forbidden();
+        }
     }
 
     private Map<Long, String> findMemberNames(List<Suggestion> suggestions) {

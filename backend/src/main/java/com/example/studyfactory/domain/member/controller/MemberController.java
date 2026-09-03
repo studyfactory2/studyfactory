@@ -38,6 +38,11 @@ public class MemberController {
         return memberService.findAll(name, branchId);
     }
 
+    @GetMapping("/me")
+    public MemberResponse findMe(@CurrentMember Long currentMemberId) {
+        return memberService.findMe(currentMemberId);
+    }
+
     @GetMapping("/pre-registrations/pending")
     public List<MemberResponse> findPendingPreRegistrations() {
         return memberService.findPendingPreRegistrations();

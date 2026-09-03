@@ -42,6 +42,11 @@ public class MemberService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public MemberResponse findMe(Long currentMemberId) {
+        return MemberResponse.from(findMember(currentMemberId));
+    }
+
     @Transactional
     public MemberResponse update(Long currentMemberId, Long memberId, MemberUpdateRequest request) {
         Member currentMember = findMember(currentMemberId);

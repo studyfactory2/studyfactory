@@ -36,8 +36,8 @@ public class SuggestionController {
     }
 
     @GetMapping
-    public List<SuggestionResponse> findAll(@CurrentMember Long memberId) {
-        return suggestionService.findAll();
+    public List<SuggestionResponse> findAll(@CurrentMember Long currentMemberId) {
+        return suggestionService.findAll(currentMemberId);
     }
 
     @PatchMapping("/{suggestionId}/resolve")

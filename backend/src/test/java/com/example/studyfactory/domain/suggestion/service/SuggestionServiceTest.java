@@ -1,11 +1,14 @@
 package com.example.studyfactory.domain.suggestion.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
+import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.suggestion.dto.SuggestionCreateRequest;
 import com.example.studyfactory.domain.suggestion.dto.SuggestionResponse;
@@ -81,30 +84,75 @@ class SuggestionServiceTest {
     }
 
     @Test
-    @DisplayName("모든 건의사항 목록을 조회한다")
-    void findAll() {
-        Suggestion firstSuggestion = new Suggestion(
+    @DisplayName("운영 권한자는 자기 지점의 건의사항만 조회한다")
+    void findAllWithinOperatorBranch() {
+        Suggestion branchSuggestion = new Suggestion(
                 new SuggestionReferenceInformation(1L, 2L, null),
                 SuggestionCategory.STUDY,
                 "스터디룸이 추워요.",
                 false
         );
-        Suggestion secondSuggestion = new Suggestion(
-                new SuggestionReferenceInformation(3L, 4L, null),
+        given(memberRepository.findById(9L)).willReturn(Optional.of(createOperator(9L, 2L, MemberRole.ADMIN)));
+        given(suggestionRepository.findByBranchId(2L)).willReturn(List.of(branchSuggestion));
+
+        List<SuggestionResponse> responses = suggestionService.findAll(9L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().memberId()).isEqualTo(1L);
+        assertThat(responses.getFirst().category()).isEqualTo(SuggestionCategory.STUDY);
+        then(suggestionRepository).should().findByBranchId(2L);
+    }
+
+    @Test
+    @DisplayName("일반 회원은 전체 건의사항 목록을 조회할 수 없다")
+    void rejectFindAllForMember() {
+        given(memberRepository.findById(7L)).willReturn(Optional.of(createOperator(7L, 2L, MemberRole.MEMBER)));
+
+        assertThatThrownBy(() -> suggestionService.findAll(7L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("일반 회원은 건의사항을 해결 처리할 수 없다")
+    void rejectResolveForMember() {
+        given(memberRepository.findById(7L)).willReturn(Optional.of(createOperator(7L, 2L, MemberRole.MEMBER)));
+
+        assertThatThrownBy(() -> suggestionService.resolve(7L, 1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("다른 지점의 건의사항은 해결 처리할 수 없다")
+    void rejectResolveForOtherBranch() {
+        Suggestion otherBranchSuggestion = new Suggestion(
+                new SuggestionReferenceInformation(1L, 5L, null),
                 SuggestionCategory.GENERAL,
                 "화장실 비품이 부족해요.",
                 false
         );
-        given(suggestionRepository.findAllByOrderByCreatedAtDesc()).willReturn(List.of(firstSuggestion, secondSuggestion));
+        given(memberRepository.findById(9L)).willReturn(Optional.of(createOperator(9L, 2L, MemberRole.ADMIN)));
+        given(suggestionRepository.findById(1L)).willReturn(Optional.of(otherBranchSuggestion));
 
-        List<SuggestionResponse> responses = suggestionService.findAll();
+        assertThatThrownBy(() -> suggestionService.resolve(9L, 1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+        assertThat(otherBranchSuggestion.isResolved()).isFalse();
+    }
 
-        assertThat(responses).hasSize(2);
-        assertThat(responses.get(0).memberId()).isEqualTo(1L);
-        assertThat(responses.get(0).category()).isEqualTo(SuggestionCategory.STUDY);
-        assertThat(responses.get(1).memberId()).isEqualTo(3L);
-        assertThat(responses.get(1).category()).isEqualTo(SuggestionCategory.GENERAL);
-        then(suggestionRepository).should().findAllByOrderByCreatedAtDesc();
+    private Member createOperator(Long id, Long branchId, MemberRole role) {
+        Member operator = new Member(
+                branchId,
+                "운영자",
+                "password123",
+                role,
+                1,
+                LocalDate.of(2026, 7, 1),
+                null
+        );
+        ReflectionTestUtils.setField(operator, "id", id);
+        return operator;
     }
 
     private Member createMember() {
