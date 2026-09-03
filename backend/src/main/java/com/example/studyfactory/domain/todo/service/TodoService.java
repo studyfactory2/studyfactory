@@ -19,6 +19,7 @@ import com.example.studyfactory.domain.todo.entity.TodoReply;
 import com.example.studyfactory.domain.todo.entity.TodoSourceType;
 import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
 import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
@@ -35,6 +36,7 @@ public class TodoService {
     private final MemberRepository memberRepository;
     private final BeverageItemRepository beverageItemRepository;
     private final CertificationRepository certificationRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public List<TodoResponse> findDaily(Long branchId, LocalDate date) {
@@ -112,14 +114,14 @@ public class TodoService {
         if (todoItemRepository.existsBySourceTypeAndSourceIdAndTodoDate(
                 TodoSourceType.SUGGESTION,
                 suggestion.getId(),
-                LocalDate.now()
+                LocalDate.now(clock)
         )) {
             return;
         }
 
         todoItemRepository.save(new TodoItem(
                 suggestion.getBranchId(),
-                LocalDate.now(),
+                LocalDate.now(clock),
                 suggestion.getContent(),
                 TodoPriority.NORMAL,
                 TodoSourceType.SUGGESTION,

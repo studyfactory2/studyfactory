@@ -29,9 +29,11 @@ import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.DayOfWeek;
+import java.time.ZoneId;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -50,6 +53,14 @@ class LeaveServiceTest {
 
     @InjectMocks
     private LeaveService leaveService;
+
+    /*
+     * The service resolves "today" in the business zone, so the assertions must
+     * read the same clock — otherwise this suite fails on any host whose local
+     * date differs from Korea's, which on a UTC runner is nine hours a day.
+     */
+    @Spy
+    private Clock clock = Clock.system(ZoneId.of("Asia/Seoul"));
 
     @Mock
     private LeaveRequestRepository leaveRequestRepository;
@@ -66,7 +77,7 @@ class LeaveServiceTest {
     @Test
     @DisplayName("토큰의 사원과 휴무 정보로 휴무를 신청한다")
     void createLeave() {
-        LeaveCreateRequest request = new LeaveCreateRequest(LocalDate.now(), LeaveType.FULL);
+        LeaveCreateRequest request = new LeaveCreateRequest(LocalDate.now(clock), LeaveType.FULL);
         Member member = createMember();
         ReflectionTestUtils.setField(member, "id", 1L);
         given(memberRepository.findById(1L)).willReturn(Optional.of(member));
@@ -76,14 +87,14 @@ class LeaveServiceTest {
 
         assertThat(response.memberId()).isEqualTo(1L);
         assertThat(response.branchId()).isEqualTo(2L);
-        assertThat(response.leaveDate()).isEqualTo(LocalDate.now());
+        assertThat(response.leaveDate()).isEqualTo(LocalDate.now(clock));
         assertThat(response.leaveType()).isEqualTo(LeaveType.FULL);
     }
 
     @Test
     @DisplayName("오늘보다 이전 날짜로 휴무를 신청하면 예외가 발생한다")
     void throwExceptionWhenLeaveDateIsPast() {
-        LeaveCreateRequest request = new LeaveCreateRequest(LocalDate.now().minusDays(1), LeaveType.FULL);
+        LeaveCreateRequest request = new LeaveCreateRequest(LocalDate.now(clock).minusDays(1), LeaveType.FULL);
 
         assertThatThrownBy(() -> leaveService.create(1L, request))
                 .isInstanceOf(LeaveException.class)
@@ -196,7 +207,7 @@ class LeaveServiceTest {
     @Test
     @DisplayName("날짜가 없으면 당일 날짜로 일별 사원 휴무 현황을 조회한다")
     void findDailyStatusesWithDefaultDate() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         given(leaveRequestRepository.findDailyStatuses(today, null, null, null))
                 .willReturn(List.of());
 
@@ -324,7 +335,7 @@ class LeaveServiceTest {
     @DisplayName("관리자는 고정 휴무를 이번 주와 다음 주의 기타 휴무로 생성한다")
     void generateFixedLeaves() {
         Member admin = createMemberWithId(1L, MemberRole.ADMIN);
-        LocalDate startDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate startDate = LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endDate = startDate.plusDays(13);
         SpecialLeave oldSpecialLeave = new SpecialLeave(2L, 2L, startDate, "1", "모의", null, true, 1L);
         FixedLeave fixedLeave = new FixedLeave(2L, 2L, DayOfWeek.WEDNESDAY, "1,2", "스터디", true);
@@ -349,7 +360,7 @@ class LeaveServiceTest {
     @DisplayName("스케줄러는 첫 번째 관리자 계정으로 고정 휴무를 생성한다")
     void generateFixedLeavesBySystem() {
         Member admin = createMemberWithId(1L, MemberRole.ADMIN);
-        LocalDate startDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate startDate = LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endDate = startDate.plusDays(13);
         FixedLeave fixedLeave = new FixedLeave(2L, 2L, startDate.getDayOfWeek(), "1", "모의", true);
         given(memberRepository.findFirstByRoleOrderByIdAsc(MemberRole.ADMIN)).willReturn(Optional.of(admin));

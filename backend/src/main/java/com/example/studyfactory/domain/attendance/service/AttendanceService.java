@@ -25,6 +25,7 @@ import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,6 +58,7 @@ public class AttendanceService {
     private final FixedLeaveRepository fixedLeaveRepository;
     private final SpecialLeaveRepository specialLeaveRepository;
     private final CertificationRepository certificationRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public DailyAttendanceBoardResponse findDailyBoard(Long currentMemberId, LocalDate date, Long branchId) {
@@ -211,7 +213,7 @@ public class AttendanceService {
 
     private LocalDate resolveDate(LocalDate date) {
         if (date == null) {
-            return LocalDate.now();
+            return LocalDate.now(clock);
         }
 
         return date;

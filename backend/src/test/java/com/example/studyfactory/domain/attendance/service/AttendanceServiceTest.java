@@ -27,6 +27,8 @@ import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.entity.WorkInformation;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.DayOfWeek;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +38,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -45,6 +48,10 @@ class AttendanceServiceTest {
 
     @InjectMocks
     private AttendanceService attendanceService;
+
+    /** The board's default date is "today in Korea". */
+    @Spy
+    private Clock clock = Clock.system(ZoneId.of("Asia/Seoul"));
 
     @Mock
     private AttendanceRepository attendanceRepository;

@@ -15,6 +15,7 @@ import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanItem;
 import com.example.studyfactory.domain.weeklyPlan.repository.MonthlyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanItemRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Comparator;
@@ -31,6 +32,7 @@ public class WeeklyPlanService {
     private final WeeklyPlanGoalRepository weeklyPlanGoalRepository;
     private final WeeklyPlanItemRepository weeklyPlanItemRepository;
     private final MonthlyPlanGoalRepository monthlyPlanGoalRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public WeeklyPlanResponse findMine(Long memberId, LocalDate weekStartDate) {
@@ -151,7 +153,7 @@ public class WeeklyPlanService {
 
     private LocalDate resolveWeekStartDate(LocalDate weekStartDate) {
         if (weekStartDate == null) {
-            return LocalDate.now();
+            return LocalDate.now(clock);
         }
 
         return weekStartDate;
@@ -159,7 +161,7 @@ public class WeeklyPlanService {
 
     private YearMonth resolveMonth(String month) {
         if (month == null || month.isBlank()) {
-            return YearMonth.now();
+            return YearMonth.now(clock);
         }
 
         return YearMonth.parse(month);

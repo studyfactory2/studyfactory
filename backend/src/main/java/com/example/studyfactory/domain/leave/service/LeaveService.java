@@ -24,6 +24,7 @@ import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -50,6 +51,7 @@ public class LeaveService {
     private final SpecialLeaveRepository specialLeaveRepository;
     private final FixedLeaveRepository fixedLeaveRepository;
     private final MemberRepository memberRepository;
+    private final Clock clock;
 
     @Transactional
     public LeaveResponse create(Long memberId, LeaveCreateRequest request) {
@@ -278,7 +280,10 @@ public class LeaveService {
         Member currentMember = findMember(currentMemberId);
         validateAllPermissions(currentMember);
         FixedLeave fixedLeave = fixedLeaveRepository.findById(fixedLeaveId).orElseThrow(LeaveException::leaveNotFound);
-        specialLeaveRepository.deleteByFixedLeaveIdAndLeaveDateGreaterThanEqual(fixedLeave.getId(), LocalDate.now());
+        specialLeaveRepository.deleteByFixedLeaveIdAndLeaveDateGreaterThanEqual(
+                fixedLeave.getId(),
+                LocalDate.now(clock)
+        );
         fixedLeaveRepository.delete(fixedLeave);
     }
 
@@ -296,7 +301,7 @@ public class LeaveService {
     }
 
     private FixedLeaveGenerationResponse generateFixedLeaves(Member createdByMember) {
-        LocalDate startDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate startDate = LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endDate = startDate.plusDays(13);
         specialLeaveRepository.deleteAll(specialLeaveRepository.findByRecurringTrueAndLeaveDateBetween(startDate, endDate));
 
@@ -360,7 +365,7 @@ public class LeaveService {
 
     private LocalDate resolveDate(LocalDate date) {
         if (date == null) {
-            return LocalDate.now();
+            return LocalDate.now(clock);
         }
 
         return date;
@@ -368,14 +373,14 @@ public class LeaveService {
 
     private YearMonth resolveYearMonth(Integer year, Integer month) {
         if (year == null || month == null) {
-            return YearMonth.now();
+            return YearMonth.now(clock);
         }
 
         return YearMonth.of(year, month);
     }
 
     private void validateLeaveDate(LocalDate leaveDate) {
-        if (leaveDate.isBefore(LocalDate.now())) {
+        if (leaveDate.isBefore(LocalDate.now(clock))) {
             throw LeaveException.pastDateNotAllowed();
         }
     }

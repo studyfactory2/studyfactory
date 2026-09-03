@@ -16,6 +16,7 @@ import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @DisplayName("휴무 컨트롤러 테스트")
 class LeaveControllerTest {
+
+    /** Matches the Clock bean, which is pinned to the business zone. */
+    private static final ZoneId STUDY_FACTORY_ZONE = ZoneId.of("Asia/Seoul");
 
     @Autowired
     private MockMvc mockMvc;
@@ -63,7 +67,7 @@ class LeaveControllerTest {
                   "leaveDate": "%s",
                   "leaveType": "FULL"
                 }
-                """.formatted(LocalDate.now());
+                """.formatted(LocalDate.now(STUDY_FACTORY_ZONE));
 
         mockMvc.perform(post("/api/leaves")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -72,7 +76,7 @@ class LeaveControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.memberId").value(member.getId()))
                 .andExpect(jsonPath("$.branchId").value(branch.getId()))
-                .andExpect(jsonPath("$.leaveDate").value(String.valueOf(LocalDate.now())))
+                .andExpect(jsonPath("$.leaveDate").value(String.valueOf(LocalDate.now(STUDY_FACTORY_ZONE))))
                 .andExpect(jsonPath("$.leaveType").value("FULL"));
     }
 
@@ -87,7 +91,7 @@ class LeaveControllerTest {
                   "leaveDate": "%s",
                   "leaveType": "FULL"
                 }
-                """.formatted(LocalDate.now().minusDays(1));
+                """.formatted(LocalDate.now(STUDY_FACTORY_ZONE).minusDays(1));
 
         mockMvc.perform(post("/api/leaves")
                         .contentType(MediaType.APPLICATION_JSON)
