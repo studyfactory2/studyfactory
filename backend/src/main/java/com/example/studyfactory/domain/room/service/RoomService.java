@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.room.service;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import com.example.studyfactory.domain.room.dto.RoomLayoutItemResponse;
 import com.example.studyfactory.domain.room.dto.RoomLayoutResponse;
 import com.example.studyfactory.domain.room.entity.Room;
@@ -24,8 +25,7 @@ public class RoomService {
     @Transactional(readOnly = true)
     public List<RoomLayoutResponse> findLayouts(Long currentMemberId, Long branchId) {
         Member currentMember = memberRepository.findById(currentMemberId).orElseThrow(MemberException::memberNotFound);
-        validateAllPermissions(currentMember);
-        Long targetBranchId = resolveBranchId(currentMember, branchId);
+        Long targetBranchId = ManagerAccessPolicy.resolveRequiredBranch(currentMember, branchId);
 
         return roomRepository.findByBranchIdOrderByIdAsc(targetBranchId).stream()
                 .map(this::toResponse)
@@ -40,17 +40,4 @@ public class RoomService {
         return RoomLayoutResponse.from(room, items);
     }
 
-    private void validateAllPermissions(Member member) {
-        if (!member.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
-    }
-
-    private Long resolveBranchId(Member currentMember, Long branchId) {
-        if (branchId == null) {
-            return currentMember.getBranchId();
-        }
-
-        return branchId;
-    }
 }

@@ -143,6 +143,17 @@ class SideDishServiceTest {
     }
 
     @Test
+    @DisplayName("스태프가 다른 지점의 반찬 신청을 조회하면 예외가 발생한다")
+    void rejectStaffFindDailyAcrossBranches() {
+        Member staff = createMemberWithId(1L, MemberRole.STAFF);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+
+        assertThatThrownBy(() -> sideDishService.findDaily(1L, LocalDate.of(2026, 6, 19), 3L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
     @DisplayName("본인의 반찬 신청을 삭제한다")
     void deleteSideDish() {
         SideDishRequest sideDishRequest = new SideDishRequest(
@@ -177,8 +188,8 @@ class SideDishServiceTest {
     }
 
     @Test
-    @DisplayName("스태프는 다른 사원의 반찬 신청을 삭제한다")
-    void staffDeleteOtherMemberSideDish() {
+    @DisplayName("스태프가 다른 사원의 반찬 신청을 삭제하면 예외가 발생한다")
+    void rejectStaffDeletingOtherMemberSideDish() {
         SideDishRequest sideDishRequest = new SideDishRequest(
                 new SideDishReferenceInformation(2L, 2L),
                 new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
@@ -188,9 +199,9 @@ class SideDishServiceTest {
         given(sideDishRequestRepository.findById(10L)).willReturn(Optional.of(sideDishRequest));
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
 
-        sideDishService.delete(1L, 10L);
-
-        then(sideDishRequestRepository).should().delete(sideDishRequest);
+        assertThatThrownBy(() -> sideDishService.delete(1L, 10L))
+                .isInstanceOf(SideDishException.class)
+                .hasMessageContaining("본인의 반찬 신청만 삭제할 수 있습니다.");
     }
 
     @Test

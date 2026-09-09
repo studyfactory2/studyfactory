@@ -17,6 +17,11 @@ import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
+import com.example.studyfactory.domain.room.entity.Room;
+import com.example.studyfactory.domain.room.entity.Seat;
+import com.example.studyfactory.domain.room.entity.SeatType;
+import com.example.studyfactory.domain.room.repository.RoomRepository;
+import com.example.studyfactory.domain.room.repository.SeatRepository;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,12 +54,20 @@ class PreRegistrationControllerTest {
     private BeverageItemRepository beverageItemRepository;
 
     @Autowired
+    private RoomRepository roomRepository;
+
+    @Autowired
+    private SeatRepository seatRepository;
+
+    @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
     void setUp() {
         beverageItemRepository.deleteAll();
         memberRepository.deleteAll();
+        seatRepository.deleteAll();
+        roomRepository.deleteAll();
         branchRepository.deleteAll();
         certificationRepository.deleteAll();
     }
@@ -63,6 +76,7 @@ class PreRegistrationControllerTest {
     @DisplayName("사전등록 요청이 유효하면 201 응답과 생성 결과를 반환한다")
     void createPreRegistration() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
+        createLayoutItem(branch.getId(), 12, SeatType.SEAT);
         Certification certification = certificationRepository.save(new Certification("홍길동 매니저"));
 
         String requestBody = """
@@ -101,6 +115,7 @@ class PreRegistrationControllerTest {
     @DisplayName("직접 입력한 자격증으로 사전등록하면 자격증을 저장하고 201 응답을 반환한다")
     void createPreRegistrationWithCustomCertification() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
+        createLayoutItem(branch.getId(), 12, SeatType.SEAT);
 
         String requestBody = """
                 {
@@ -131,6 +146,7 @@ class PreRegistrationControllerTest {
     @DisplayName("자격증 없이 사전등록하면 201 응답과 생성 결과를 반환한다")
     void createPreRegistrationWithoutCertification() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
+        createLayoutItem(branch.getId(), 12, SeatType.SEAT);
 
         String requestBody = """
                 {
@@ -218,9 +234,63 @@ class PreRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("스태프는 자기 지점의 사전등록 대기 목록만 조회한다")
+    void staffFindsOnlyOwnBranchPendingPreRegistrations() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        Branch otherBranch = branchRepository.save(new Branch("홍대점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 36);
+        Member ownBranchPending = memberRepository.save(createPendingMember(branch.getId(), "강남 회원"));
+        memberRepository.save(createPendingMember(branch.getId(), "강남 예정 스태프", MemberRole.STAFF));
+        memberRepository.save(createPendingMember(otherBranch.getId(), "홍대 회원"));
+
+        mockMvc.perform(get("/api/pre-registrations/pending")
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(ownBranchPending.getId()))
+                .andExpect(jsonPath("$[0].branchId").value(branch.getId()))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("스태프는 같은 지점의 스태프 사전등록 정보를 수정할 수 없다")
+    void rejectStaffUpdatingPrivilegedPendingTarget() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 37);
+        Member pendingStaff = memberRepository.save(
+                createPendingMember(branch.getId(), "예정 스태프", MemberRole.STAFF)
+        );
+
+        mockMvc.perform(patch("/api/pre-registrations/{memberId}", pendingStaff.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberRequestBody(branch.getId(), "MEMBER"))
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isForbidden());
+
+        assertThat(memberRepository.findById(pendingStaff.getId()).orElseThrow().getRole())
+                .isEqualTo(MemberRole.STAFF);
+    }
+
+    @Test
+    @DisplayName("스태프는 같은 지점의 관리자 사전등록 정보를 삭제할 수 없다")
+    void rejectStaffDeletingPrivilegedPendingTarget() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 38);
+        Member pendingAdmin = memberRepository.save(
+                createPendingMember(branch.getId(), "예정 관리자", MemberRole.ADMIN)
+        );
+
+        mockMvc.perform(delete("/api/pre-registrations/{memberId}", pendingAdmin.getId())
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isForbidden());
+
+        assertThat(memberRepository.existsById(pendingAdmin.getId())).isTrue();
+    }
+
+    @Test
     @DisplayName("사전등록 대기 사원을 수정하면 변경된 내용을 반환한다")
     void updatePendingPreRegistration() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
+        createLayoutItem(branch.getId(), 15, SeatType.SEAT);
         String accessToken = createAccessToken();
 
         String createBody = """
@@ -268,6 +338,33 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.expectedJoinDate").value("2026-07-02"))
                 .andExpect(jsonPath("$.drinkSetting").value("라떼"))
                 .andExpect(jsonPath("$.drinkNotes['라떼']").value("뜨겁게"));
+    }
+
+    @Test
+    @DisplayName("실제 좌석이어도 이미 다른 회원에게 배정되어 있으면 사전등록을 거절한다")
+    void rejectOccupiedLayoutSeat() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        createLayoutItem(branch.getId(), 12, SeatType.SEAT);
+        memberRepository.save(createMemberForBranch(branch.getId(), "기존 회원", 12));
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(preRegistrationBody(branch.getId(), 12))
+                        .header("Authorization", "Bearer " + createAccessToken()))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("좌석표의 문 위치에는 사전등록 좌석을 배정할 수 없다")
+    void rejectDoorAsPreRegistrationSeat() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        createLayoutItem(branch.getId(), 13, SeatType.DOOR);
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(preRegistrationBody(branch.getId(), 13))
+                        .header("Authorization", "Bearer " + createAccessToken()))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -453,5 +550,55 @@ class PreRegistrationControllerTest {
         ));
 
         return jwtTokenProvider.createAccessToken(member);
+    }
+
+    private Member createPendingMember(Long branchId, String name) {
+        return createPendingMember(branchId, name, MemberRole.MEMBER);
+    }
+
+    private Member createPendingMember(Long branchId, String name, MemberRole role) {
+        return new Member(
+                branchId,
+                name,
+                null,
+                role,
+                null,
+                LocalDate.of(2026, 7, 1),
+                null,
+                null
+        );
+    }
+
+    private void createLayoutItem(Long branchId, Integer number, SeatType type) {
+        Room room = roomRepository.save(new Room(branchId, "테스트 작업실", 2, 2));
+        seatRepository.save(new Seat(branchId, room.getId(), number, null, type, 1, 1));
+    }
+
+    private Member createMemberForBranch(Long branchId, String name, Integer seatNumber) {
+        return new Member(
+                branchId,
+                name,
+                "password123",
+                MemberRole.MEMBER,
+                seatNumber,
+                LocalDate.of(2026, 7, 1),
+                null,
+                null
+        );
+    }
+
+    private String preRegistrationBody(Long branchId, Integer seatNumber) {
+        return """
+                {
+                  "branchId": %d,
+                  "name": "hong",
+                  "role": "MEMBER",
+                  "seatNumber": %d,
+                  "expectedJoinDate": "2026-07-01",
+                  "certification": null,
+                  "drinkSetting": null,
+                  "drinkNote": null
+                }
+                """.formatted(branchId, seatNumber);
     }
 }

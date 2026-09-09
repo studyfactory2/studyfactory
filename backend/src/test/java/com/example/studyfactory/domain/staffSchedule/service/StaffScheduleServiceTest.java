@@ -86,6 +86,28 @@ class StaffScheduleServiceTest {
                 .hasMessageContaining("권한이 없습니다.");
     }
 
+    @Test
+    @DisplayName("스태프가 다른 지점 근무표를 조회하면 예외가 발생한다")
+    void rejectStaffFindingCrossBranchSchedule() {
+        Member staff = createMember(1L, MemberRole.STAFF);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+
+        assertThatThrownBy(() -> staffScheduleService.findAll(1L, 3L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("일반 회원은 근무표를 조회할 수 없다")
+    void rejectMemberFindingSchedule() {
+        Member member = createMember(1L, MemberRole.MEMBER);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> staffScheduleService.findAll(1L, null))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
     private Member createMember(Long id, MemberRole role) {
         Member member = new Member(2L, "관리자", "1234", role, null, LocalDate.of(2026, 6, 24), null, null);
         ReflectionTestUtils.setField(member, "id", id);

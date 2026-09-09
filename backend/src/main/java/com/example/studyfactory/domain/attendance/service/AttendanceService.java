@@ -8,10 +8,12 @@ import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardRespon
 import com.example.studyfactory.domain.attendance.entity.Attendance;
 import com.example.studyfactory.domain.attendance.entity.AttendanceDailyInitialization;
 import com.example.studyfactory.domain.attendance.entity.AttendanceReferenceInformation;
+import com.example.studyfactory.domain.attendance.entity.AttendanceReviewedAbsence;
 import com.example.studyfactory.domain.attendance.entity.AttendanceSlotInformation;
 import com.example.studyfactory.domain.attendance.entity.AttendanceStatusType;
 import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedAbsenceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTypeRepository;
 import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
@@ -25,6 +27,7 @@ import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -48,9 +51,10 @@ public class AttendanceService {
     private static final String EMPTY_STATUS = "X";
     private static final String PRESENT_STATUS = "O";
     private static final String PRESENT_STATUS_TYPE_NAME = "출석";
-    private static final String FIXED_LEAVE_CANCELLATION_MARKER = "FIXED_LEAVE_CANCELLED";
+    private static final String REVIEWED_ABSENT_SOURCE = "MANAGER_ABSENT";
 
     private final AttendanceRepository attendanceRepository;
+    private final AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
     private final AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
     private final AttendanceStatusTypeRepository attendanceStatusTypeRepository;
     private final MemberRepository memberRepository;
@@ -63,15 +67,16 @@ public class AttendanceService {
     @Transactional(readOnly = true)
     public DailyAttendanceBoardResponse findDailyBoard(Long currentMemberId, LocalDate date, Long branchId) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
         LocalDate targetDate = resolveDate(date);
-        Long targetBranchId = resolveBranchId(currentMember, branchId);
+        Long targetBranchId = ManagerAccessPolicy.resolveRequiredBranch(currentMember, branchId);
         List<Member> members = memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(targetBranchId);
         Map<Integer, Member> membersBySeat = toMembersBySeat(members);
         Map<Long, List<String>> statusesByMemberId = initializeStatuses(members);
         Map<Long, List<String>> statusSourcesByMemberId = initializeStatusSources(members);
 
         List<Attendance> dailyAttendances = attendanceRepository.findDailyBoardAttendances(targetBranchId, targetDate);
+        List<AttendanceReviewedAbsence> reviewedAbsences = attendanceReviewedAbsenceRepository
+                .findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(targetBranchId, targetDate);
         applyLeaveRequests(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
         applyFixedLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
         applySpecialLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
@@ -79,6 +84,7 @@ public class AttendanceService {
         // 관리자가 특정 교시를 출석으로 바꾸면 해당 교시만 휴무보다 우선한다.
         // 예: 오후반차(4~7교시) 중 4교시만 출석 처리해도 5~7교시는 오후반차로 유지한다.
         applyAttendances(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
+        applyReviewedAbsences(statusesByMemberId, statusSourcesByMemberId, reviewedAbsences);
         Set<Long> initializedMemberIds = findInitializedMemberIds(targetBranchId, targetDate);
 
         return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId, statusSourcesByMemberId, initializedMemberIds));
@@ -87,11 +93,9 @@ public class AttendanceService {
     @Transactional
     public void updateSlotStatus(Long currentMemberId, AttendanceSlotStatusUpdateRequest request) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
-        Member member = findMember(request.memberId());
-        if (!currentMember.getBranchId().equals(member.getBranchId()) && !currentMember.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member member = findMemberForUpdate(request.memberId());
+        ManagerAccessPolicy.validateMemberTarget(currentMember, member);
 
         boolean cancelsFixedLeave = request.status() == AttendanceSlotStatusUpdateType.ABSENT
                 && hasFixedLeaveAt(member.getId(), request.date(), request.slot());
@@ -102,6 +106,9 @@ public class AttendanceService {
         }
         if (request.status() == AttendanceSlotStatusUpdateType.PRESENT) {
             createPresentAttendance(currentMember, member, request);
+        }
+        if (request.status() == AttendanceSlotStatusUpdateType.ABSENT && !cancelsFixedLeave) {
+            createReviewedAbsence(currentMember, member, request);
         }
         if (request.status() == AttendanceSlotStatusUpdateType.OTHER) {
             createSpecialLeave(currentMember, member, request);
@@ -114,13 +121,12 @@ public class AttendanceService {
     @Transactional
     public void resetDailyStatus(Long currentMemberId, AttendanceDailyResetRequest request) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
-        Member member = findMember(request.memberId());
-        if (!currentMember.getBranchId().equals(member.getBranchId()) && !currentMember.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member member = findMemberForUpdate(request.memberId());
+        ManagerAccessPolicy.validateMemberTarget(currentMember, member);
 
         attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDate(member.getId(), request.date());
+        attendanceReviewedAbsenceRepository.deleteByMemberIdAndAttendanceDate(member.getId(), request.date());
         leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), request.date())
                 .forEach(leaveRequestRepository::delete);
         specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), request.date())
@@ -136,15 +142,14 @@ public class AttendanceService {
         return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
     }
 
-    private void validateAllPermissions(Member member) {
-        if (!member.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
+    private Member findMemberForUpdate(Long memberId) {
+        return memberRepository.findByIdForUpdate(memberId).orElseThrow(MemberException::memberNotFound);
     }
 
     private void clearSlotStatus(Long memberId, LocalDate date, Integer slot) {
         attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
         attendanceRepository.flush();
+        clearReviewedAbsence(memberId, date, slot);
         deleteLeaveRequestsBySlot(memberId, date, slot);
         deleteSpecialLeavesBySlot(memberId, date, slot);
     }
@@ -152,6 +157,7 @@ public class AttendanceService {
     private void clearPresentSlotStatus(Long memberId, LocalDate date, Integer slot) {
         attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
         attendanceRepository.flush();
+        clearReviewedAbsence(memberId, date, slot);
         // 출석 처리는 해당 교시를 덮어쓰는 개별 기록이다. 반차/월차 요청 자체를 지우면
         // 나머지 휴무 교시까지 X로 바뀌므로, 회원 휴무 요청은 그대로 둔다.
         deleteSpecialLeavesBySlot(memberId, date, slot);
@@ -184,14 +190,33 @@ public class AttendanceService {
     private void createFixedLeaveCancellation(Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request) {
         attendanceRepository.save(new Attendance(
                 new AttendanceReferenceInformation(member.getId(), member.getBranchId(), findPresentStatusType().getId(), currentMember.getId()),
-                new AttendanceSlotInformation(request.date(), request.slot(), FIXED_LEAVE_CANCELLATION_MARKER)
+                new AttendanceSlotInformation(request.date(), request.slot(), Attendance.FIXED_LEAVE_CANCELLATION_MARKER)
+        ));
+    }
+
+    private void clearReviewedAbsence(Long memberId, LocalDate date, Integer slot) {
+        attendanceReviewedAbsenceRepository.deleteByMemberIdAndAttendanceDateAndSlot(memberId, date, slot);
+        attendanceReviewedAbsenceRepository.flush();
+    }
+
+    private void createReviewedAbsence(Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request) {
+        attendanceReviewedAbsenceRepository.save(new AttendanceReviewedAbsence(
+                member.getId(),
+                member.getBranchId(),
+                request.date(),
+                request.slot(),
+                currentMember.getId(),
+                clock.instant()
         ));
     }
 
     private AttendanceStatusType findPresentStatusType() {
-        AttendanceStatusType statusType = attendanceStatusTypeRepository.findByName(PRESENT_STATUS_TYPE_NAME)
-                .orElseGet(() -> attendanceStatusTypeRepository.save(new AttendanceStatusType(PRESENT_STATUS_TYPE_NAME, false)));
-        return statusType;
+        return findBuiltInStatusType(PRESENT_STATUS_TYPE_NAME);
+    }
+
+    private AttendanceStatusType findBuiltInStatusType(String name) {
+        return attendanceStatusTypeRepository.findByName(name)
+                .orElseThrow(() -> new IllegalStateException("필수 출석 상태가 초기화되지 않았습니다: " + name));
     }
 
     private void createSpecialLeave(Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request) {
@@ -217,14 +242,6 @@ public class AttendanceService {
         }
 
         return date;
-    }
-
-    private Long resolveBranchId(Member currentMember, Long branchId) {
-        if (branchId == null) {
-            return currentMember.getBranchId();
-        }
-
-        return branchId;
     }
 
     private Map<Integer, Member> toMembersBySeat(List<Member> members) {
@@ -281,7 +298,7 @@ public class AttendanceService {
             List<Attendance> attendances
     ) {
         for (Attendance attendance : attendances) {
-            if (FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText())) {
+            if (Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText())) {
                 continue;
             }
             List<String> statuses = statusesByMemberId.get(attendance.getMemberId());
@@ -293,19 +310,39 @@ public class AttendanceService {
         }
     }
 
+    private void applyReviewedAbsences(
+            Map<Long, List<String>> statusesByMemberId,
+            Map<Long, List<String>> statusSourcesByMemberId,
+            List<AttendanceReviewedAbsence> reviewedAbsences
+    ) {
+        for (AttendanceReviewedAbsence reviewedAbsence : reviewedAbsences) {
+            List<String> statuses = statusesByMemberId.get(reviewedAbsence.getMemberId());
+            List<String> sources = statusSourcesByMemberId.get(reviewedAbsence.getMemberId());
+            if (statuses != null && sources != null) {
+                setStatus(
+                        statuses,
+                        sources,
+                        reviewedAbsence.getSlot(),
+                        EMPTY_STATUS,
+                        REVIEWED_ABSENT_SOURCE
+                );
+            }
+        }
+    }
+
     private void applyFixedLeaveCancellations(
             Map<Long, List<String>> statusesByMemberId,
             Map<Long, List<String>> statusSourcesByMemberId,
             List<Attendance> attendances
     ) {
         for (Attendance attendance : attendances) {
-            if (!FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText())) {
+            if (!Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText())) {
                 continue;
             }
             List<String> statuses = statusesByMemberId.get(attendance.getMemberId());
             List<String> sources = statusSourcesByMemberId.get(attendance.getMemberId());
             if (statuses != null && sources != null) {
-                setStatus(statuses, sources, attendance.getSlot(), EMPTY_STATUS, "NONE");
+                setStatus(statuses, sources, attendance.getSlot(), EMPTY_STATUS, REVIEWED_ABSENT_SOURCE);
             }
         }
     }

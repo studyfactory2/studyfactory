@@ -62,6 +62,11 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     List<Member> findByReferenceInformationBranchIdOrderByIdAsc(Long branchId);
 
+    List<Member> findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+            Long branchId,
+            MemberRole role
+    );
+
     List<Member> findByNameContainingAndReferenceInformationBranchIdOrderByIdAsc(String name, Long branchId);
 
     Optional<Member> findFirstByRoleOrderByIdAsc(MemberRole role);

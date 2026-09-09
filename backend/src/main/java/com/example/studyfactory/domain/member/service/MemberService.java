@@ -8,9 +8,12 @@ import com.example.studyfactory.domain.member.dto.MemberUpdateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyResponse;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.room.service.SeatService;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -23,20 +26,26 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final BeverageService beverageService;
     private final MemberDeletionCleanupService memberDeletionCleanupService;
+    private final SeatService seatService;
 
     @Transactional(readOnly = true)
-    public List<MemberResponse> findAll(String name, Long branchId) {
+    public List<MemberResponse> findAll(Long currentMemberId, String name, Long branchId) {
+        Member currentMember = findMember(currentMemberId);
         String searchName = toSearchName(name);
+        Long targetBranchId = ManagerAccessPolicy.resolveOptionalAdminBranch(currentMember, branchId);
 
-        return findMembers(searchName, branchId)
+        return findMembers(searchName, targetBranchId)
                 .stream()
                 .map(MemberResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<MemberResponse> findPendingPreRegistrations() {
-        return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"))
+    public List<MemberResponse> findPendingPreRegistrations(Long currentMemberId) {
+        Member currentMember = findMember(currentMemberId);
+        Long branchId = ManagerAccessPolicy.resolveOptionalAdminBranch(currentMember, null);
+
+        return findPendingMembers(branchId)
                 .stream()
                 .map(MemberResponse::from)
                 .toList();
@@ -50,8 +59,12 @@ public class MemberService {
     @Transactional
     public MemberResponse update(Long currentMemberId, Long memberId, MemberUpdateRequest request) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
+        ManagerAccessPolicy.validateManager(currentMember);
         Member member = findMember(memberId);
+        validateUpdateAccess(currentMember, member, request);
+        if (seatAssignmentChanges(member, request)) {
+            seatService.validateAssignment(member.getId(), request.branchId(), request.seatNumber());
+        }
         member.update(
                 request.branchId(),
                 request.name().trim(),
@@ -68,8 +81,9 @@ public class MemberService {
     @Transactional
     public void delete(Long currentMemberId, Long memberId) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
+        ManagerAccessPolicy.validateManager(currentMember);
         Member member = findMemberForUpdate(memberId);
+        validateDeleteAccess(currentMember, member);
         memberDeletionCleanupService.cleanup(member.getId());
         memberRepository.delete(member);
     }
@@ -131,6 +145,40 @@ public class MemberService {
         return memberRepository.findAllByOrderByIdAsc();
     }
 
+    private List<Member> findPendingMembers(Long branchId) {
+        if (branchId != null) {
+            return memberRepository.findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                    branchId,
+                    MemberRole.MEMBER
+            );
+        }
+
+        return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"));
+    }
+
+    private void validateUpdateAccess(Member operator, Member target, MemberUpdateRequest request) {
+        if (operator.getRole() == MemberRole.ADMIN) {
+            return;
+        }
+
+        ManagerAccessPolicy.validateMemberTarget(operator, target);
+        ManagerAccessPolicy.validateBranch(operator, request.branchId());
+        if (request.role() != MemberRole.MEMBER) {
+            throw MemberException.forbidden();
+        }
+    }
+
+    private void validateDeleteAccess(Member operator, Member target) {
+        if (operator.getRole() != MemberRole.ADMIN) {
+            ManagerAccessPolicy.validateMemberTarget(operator, target);
+        }
+    }
+
+    private boolean seatAssignmentChanges(Member member, MemberUpdateRequest request) {
+        return !Objects.equals(member.getBranchId(), request.branchId())
+                || !Objects.equals(member.getSeatNumber(), request.seatNumber());
+    }
+
     private void validateNotSignedUp(Member member) {
         if (member.getPassword() != null) {
             throw MemberException.alreadySignedUp();
@@ -143,9 +191,4 @@ public class MemberService {
         }
     }
 
-    private void validateAllPermissions(Member member) {
-        if (!member.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
-    }
 }

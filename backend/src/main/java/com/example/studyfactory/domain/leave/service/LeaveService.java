@@ -23,6 +23,7 @@ import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -129,16 +130,27 @@ public class LeaveService {
     }
 
     @Transactional(readOnly = true)
-    public List<DailyLeaveStatusResponse> findDailyStatuses(LocalDate date, String name, Long branchId, LeaveType leaveType) {
+    public List<DailyLeaveStatusResponse> findDailyStatuses(
+            Long currentMemberId,
+            LocalDate date,
+            String name,
+            Long branchId,
+            LeaveType leaveType
+    ) {
+        Member currentMember = findMember(currentMemberId);
         LocalDate targetDate = resolveDate(date);
         String searchName = toSearchName(name);
+        Long targetBranchId = ManagerAccessPolicy.resolveOptionalAdminBranch(currentMember, branchId);
         List<DailyLeaveStatusResponse> responses = new ArrayList<>(
-                leaveRequestRepository.findDailyStatuses(targetDate, searchName, branchId, leaveType)
+                leaveRequestRepository.findDailyStatuses(targetDate, searchName, targetBranchId, leaveType)
+                        .stream()
+                        .map(this::withRequestedAfterEight)
+                        .toList()
         );
         Map<String, DailyLeaveStatusResponse> managerLeaveStatuses = new LinkedHashMap<>();
-        List<SpecialLeave> specialLeaves = branchId == null
+        List<SpecialLeave> specialLeaves = targetBranchId == null
                 ? specialLeaveRepository.findByLeaveDateOrderByCreatedAtAsc(targetDate)
-                : specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(branchId, targetDate);
+                : specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(targetBranchId, targetDate);
         Map<Long, Member> membersById = memberRepository.findAllById(
                         specialLeaves.stream().map(SpecialLeave::getMemberId).distinct().toList()
                 )
@@ -183,8 +195,9 @@ public class LeaveService {
     @Transactional(readOnly = true)
     public List<MonthlyLeaveCalendarResponse> findMonthlyCalendar(Long currentMemberId, Long memberId, Integer year, Integer month) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
-        findMember(memberId);
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member targetMember = findMember(memberId);
+        ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
         YearMonth yearMonth = resolveYearMonth(year, month);
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
@@ -212,8 +225,9 @@ public class LeaveService {
     @Transactional
     public List<SpecialLeaveResponse> createSpecial(Long currentMemberId, SpecialLeaveCreateRequest request) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
+        ManagerAccessPolicy.validateManager(currentMember);
         Member targetMember = findMember(request.memberId());
+        ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
         validateSpecialLeaveRequest(request);
         String slots = toSlots(request.slots());
         String reason = request.reason().trim();
@@ -240,8 +254,9 @@ public class LeaveService {
     @Transactional
     public FixedLeaveResponse createFixed(Long currentMemberId, FixedLeaveCreateRequest request) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
+        ManagerAccessPolicy.validateManager(currentMember);
         Member targetMember = findMember(request.memberId());
+        ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
         validateFixedLeaveRequest(request);
         if (hasFixedLeaveSlotConflict(targetMember.getId(), request.leaveDate().getDayOfWeek(), request.slots())) {
             throw LeaveException.fixedLeaveSlotAlreadyExists();
@@ -261,7 +276,7 @@ public class LeaveService {
     @Transactional(readOnly = true)
     public List<FixedLeaveManagementResponse> findFixedLeaves(Long currentMemberId, String name, Long branchId) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
+        Long targetBranchId = ManagerAccessPolicy.resolveOptionalAdminBranch(currentMember, branchId);
         String searchName = toSearchName(name);
         List<FixedLeave> fixedLeaves = fixedLeaveRepository.findByActiveTrueOrderByCreatedAtAsc();
         Map<Long, Member> membersById = memberRepository.findAllById(fixedLeaves.stream().map(FixedLeave::getMemberId).toList())
@@ -269,7 +284,7 @@ public class LeaveService {
                 .collect(Collectors.toMap(Member::getId, member -> member));
 
         return fixedLeaves.stream()
-                .filter(fixedLeave -> branchId == null || fixedLeave.getBranchId().equals(branchId))
+                .filter(fixedLeave -> targetBranchId == null || fixedLeave.getBranchId().equals(targetBranchId))
                 .filter(fixedLeave -> matchesFixedLeaveMember(fixedLeave, membersById, searchName))
                 .map(fixedLeave -> FixedLeaveManagementResponse.from(fixedLeave, membersById.get(fixedLeave.getMemberId())))
                 .toList();
@@ -278,8 +293,9 @@ public class LeaveService {
     @Transactional
     public void deleteFixed(Long currentMemberId, Long fixedLeaveId) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
+        ManagerAccessPolicy.validateManager(currentMember);
         FixedLeave fixedLeave = fixedLeaveRepository.findById(fixedLeaveId).orElseThrow(LeaveException::leaveNotFound);
+        ManagerAccessPolicy.validateBranch(currentMember, fixedLeave.getBranchId());
         specialLeaveRepository.deleteByFixedLeaveIdAndLeaveDateGreaterThanEqual(
                 fixedLeave.getId(),
                 LocalDate.now(clock)
@@ -290,7 +306,7 @@ public class LeaveService {
     @Transactional
     public FixedLeaveGenerationResponse generateFixedLeaves(Long currentMemberId) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
+        validateAdmin(currentMember);
         return generateFixedLeaves(currentMember);
     }
 
@@ -334,8 +350,9 @@ public class LeaveService {
     @Transactional(readOnly = true)
     public List<SpecialLeaveResponse> findSpecialByMember(Long currentMemberId, Long memberId) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
-        findMember(memberId);
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member targetMember = findMember(memberId);
+        ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
 
         return specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
                 .stream()
@@ -346,9 +363,10 @@ public class LeaveService {
     @Transactional
     public void deleteSpecialSlot(Long currentMemberId, Long specialLeaveId, Integer slot) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
+        ManagerAccessPolicy.validateManager(currentMember);
         validateSlot(slot);
         SpecialLeave specialLeave = specialLeaveRepository.findById(specialLeaveId).orElseThrow(LeaveException::leaveNotFound);
+        ManagerAccessPolicy.validateBranch(currentMember, specialLeave.getBranchId());
         boolean empty = specialLeave.removeSlot(slot);
 
         if (!empty && !specialLeave.getSlots().contains(String.valueOf(slot))) {
@@ -386,7 +404,7 @@ public class LeaveService {
     }
 
     private void validateOwner(Member member, LeaveRequest leaveRequest) {
-        if (member.hasAllPermissions()) {
+        if (member.getRole() == MemberRole.ADMIN) {
             return;
         }
         if (!leaveRequest.getMemberId().equals(member.getId())) {
@@ -402,8 +420,8 @@ public class LeaveService {
         return name.trim();
     }
 
-    private void validateAllPermissions(Member member) {
-        if (!member.hasAllPermissions()) {
+    private void validateAdmin(Member member) {
+        if (member.getRole() != MemberRole.ADMIN) {
             throw MemberException.forbidden();
         }
     }
@@ -538,18 +556,37 @@ public class LeaveService {
     }
 
     private boolean isCreatedAfterEightInKorea(SpecialLeave specialLeave) {
-        LocalDateTime createdAt = specialLeave.getCreatedAt();
+        return isCreatedAfterEightInKorea(specialLeave.getCreatedAt(), specialLeave.getLeaveDate());
+    }
+
+    private DailyLeaveStatusResponse withRequestedAfterEight(DailyLeaveStatusResponse response) {
+        return new DailyLeaveStatusResponse(
+                response.memberId(),
+                response.branchId(),
+                response.seatNumber(),
+                response.name(),
+                response.branch(),
+                response.leaveDate(),
+                response.leaveType(),
+                response.createdAt(),
+                response.label(),
+                response.source(),
+                isCreatedAfterEightInKorea(response.createdAt(), response.leaveDate())
+        );
+    }
+
+    private boolean isCreatedAfterEightInKorea(LocalDateTime createdAt, LocalDate leaveDate) {
         if (createdAt == null) {
             return false;
         }
 
         LocalDateTime createdAtInKorea = createdAt
                 .atZone(ZoneId.systemDefault())
-                .withZoneSameInstant(ZoneId.of("Asia/Seoul"))
+                .withZoneSameInstant(clock.getZone())
                 .toLocalDateTime();
 
         java.time.LocalTime requestedTime = createdAtInKorea.toLocalTime();
-        return createdAtInKorea.toLocalDate().equals(specialLeave.getLeaveDate())
+        return createdAtInKorea.toLocalDate().equals(leaveDate)
                 && !requestedTime.isBefore(java.time.LocalTime.of(8, 0))
                 && requestedTime.isBefore(java.time.LocalTime.of(9, 0));
     }

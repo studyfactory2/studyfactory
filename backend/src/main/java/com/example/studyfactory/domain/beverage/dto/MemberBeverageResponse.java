@@ -3,8 +3,8 @@ package com.example.studyfactory.domain.beverage.dto;
 import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,11 +19,16 @@ public record MemberBeverageResponse(
         String drinks,
         Map<String, String> drinkNotes,
         List<BeverageItemResponse> items,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        Instant createdAt,
+        Instant updatedAt
 ) {
 
-    public static MemberBeverageResponse from(Member member, List<BeverageItem> items) {
+    public static MemberBeverageResponse from(
+            Member member,
+            List<BeverageItem> items,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
         return new MemberBeverageResponse(
                 member.getId(),
                 member.getBranchId(),
@@ -34,8 +39,8 @@ public record MemberBeverageResponse(
                 toDrinkText(items),
                 toDrinkNotes(items),
                 items.stream().map(BeverageItemResponse::from).toList(),
-                items.isEmpty() ? null : items.get(0).getCreatedAt(),
-                items.isEmpty() ? null : items.get(items.size() - 1).getUpdatedAt()
+                createdAt,
+                updatedAt
         );
     }
 

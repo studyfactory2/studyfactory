@@ -9,10 +9,12 @@ import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
+import com.example.studyfactory.domain.room.service.SeatService;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class PreRegistrationService {
     private final MemberDeletionCleanupService memberDeletionCleanupService;
     private final BranchRepository branchRepository;
     private final CertificationRepository certificationRepository;
+    private final SeatService seatService;
 
     @Transactional
     public PreRegistrationResponse create(Long currentMemberId, PreRegistrationCreateRequest request) {
@@ -54,9 +57,10 @@ public class PreRegistrationService {
 
     @Transactional(readOnly = true)
     public List<PreRegistrationResponse> findPending(Long currentMemberId) {
-        findOperator(currentMemberId);
+        Member operator = findOperator(currentMemberId);
+        Long branchId = ManagerAccessPolicy.resolveOptionalAdminBranch(operator, null);
 
-        return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"))
+        return findPendingMembers(branchId)
                 .stream()
                 .map(member -> PreRegistrationResponse.from(member, beverageService.findItems(member.getId())))
                 .toList();
@@ -70,12 +74,13 @@ public class PreRegistrationService {
     ) {
         Member operator = findOperator(currentMemberId);
         Member member = findPendingMember(memberId);
+        validateTargetAccess(operator, member);
         // both the record's current branch and the requested one must be in scope,
         // so a branch-bound operator cannot move a member in or out of their branch
         validateBranchScope(operator, member.getBranchId());
         validateAssignableRole(operator, request.role());
         validateBranchScope(operator, request.branchId());
-        validateUpdateRequest(member.getId(), request);
+        validateUpdateRequest(member, request);
         Long certificationId = getCertificationId(request);
         member.updatePreRegistration(
                 request.branchId(),
@@ -96,6 +101,7 @@ public class PreRegistrationService {
     public void delete(Long currentMemberId, Long memberId) {
         Member operator = findOperator(currentMemberId);
         Member member = findPendingMember(memberId);
+        validateTargetAccess(operator, member);
         validateBranchScope(operator, member.getBranchId());
         memberDeletionCleanupService.cleanup(member.getId());
         memberRepository.delete(member);
@@ -105,9 +111,7 @@ public class PreRegistrationService {
     private Member findOperator(Long currentMemberId) {
         Member operator = memberRepository.findById(currentMemberId)
                 .orElseThrow(MemberException::memberNotFound);
-        if (!operator.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
+        ManagerAccessPolicy.validateManager(operator);
 
         return operator;
     }
@@ -125,8 +129,12 @@ public class PreRegistrationService {
 
     /** ADMIN works across branches; STAFF is confined to their own. */
     private void validateBranchScope(Member operator, Long branchId) {
-        if (operator.getRole() != MemberRole.ADMIN && !operator.getBranchId().equals(branchId)) {
-            throw MemberException.forbidden();
+        ManagerAccessPolicy.validateBranch(operator, branchId);
+    }
+
+    private void validateTargetAccess(Member operator, Member member) {
+        if (operator.getRole() != MemberRole.ADMIN) {
+            ManagerAccessPolicy.validateMemberTarget(operator, member);
         }
     }
 
@@ -134,31 +142,16 @@ public class PreRegistrationService {
         if (!branchRepository.existsById(request.branchId())) {
             throw PreRegistrationException.invalidBranch();
         }
-        validateSeatAvailable(request.branchId(), request.seatNumber());
+        seatService.validateAssignment(null, request.branchId(), request.seatNumber());
     }
 
-    private void validateUpdateRequest(Long memberId, PreRegistrationCreateRequest request) {
+    private void validateUpdateRequest(Member member, PreRegistrationCreateRequest request) {
         if (!branchRepository.existsById(request.branchId())) {
             throw PreRegistrationException.invalidBranch();
         }
-        validateSeatAvailable(memberId, request.branchId(), request.seatNumber());
-    }
-
-    private void validateSeatAvailable(Long branchId, Integer seatNumber) {
-        if (seatNumber == null) {
-            return;
-        }
-        if (memberRepository.existsAssignedSeat(branchId, seatNumber)) {
-            throw PreRegistrationException.seatAlreadyAssigned();
-        }
-    }
-
-    private void validateSeatAvailable(Long memberId, Long branchId, Integer seatNumber) {
-        if (seatNumber == null) {
-            return;
-        }
-        if (memberRepository.existsAssignedSeat(branchId, seatNumber, memberId)) {
-            throw PreRegistrationException.seatAlreadyAssigned();
+        if (!Objects.equals(member.getBranchId(), request.branchId())
+                || !Objects.equals(member.getSeatNumber(), request.seatNumber())) {
+            seatService.validateAssignment(member.getId(), request.branchId(), request.seatNumber());
         }
     }
 
@@ -183,6 +176,17 @@ public class PreRegistrationService {
         }
 
         return member;
+    }
+
+    private List<Member> findPendingMembers(Long branchId) {
+        if (branchId != null) {
+            return memberRepository.findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                    branchId,
+                    MemberRole.MEMBER
+            );
+        }
+
+        return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"));
     }
 
 }

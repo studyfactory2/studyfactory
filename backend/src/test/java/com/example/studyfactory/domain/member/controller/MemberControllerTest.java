@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.member.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -49,7 +50,7 @@ class MemberControllerTest {
     @Test
     @DisplayName("인증된 요청이면 전체 사원 목록을 반환한다")
     void findAllMembers() throws Exception {
-        Member firstMember = memberRepository.save(createMember("kim", 10));
+        Member firstMember = memberRepository.save(createMember("kim", 10, 1L, MemberRole.STAFF));
         memberRepository.save(createMember("lee", 11));
         String accessToken = jwtTokenProvider.createAccessToken(firstMember);
 
@@ -76,7 +77,7 @@ class MemberControllerTest {
     @Test
     @DisplayName("이름 검색어가 있으면 해당 이름이 포함된 사원 목록을 반환한다")
     void findAllMembersByName() throws Exception {
-        Member firstMember = memberRepository.save(createMember("kim", 10));
+        Member firstMember = memberRepository.save(createMember("kim", 10, 1L, MemberRole.STAFF));
         memberRepository.save(createMember("lee", 11));
         String accessToken = jwtTokenProvider.createAccessToken(firstMember);
 
@@ -91,7 +92,7 @@ class MemberControllerTest {
     @Test
     @DisplayName("지점 ID 검색어가 있으면 해당 지점의 사원 목록을 반환한다")
     void findAllMembersByBranchId() throws Exception {
-        Member firstMember = memberRepository.save(createMember("kim", 10, 1L));
+        Member firstMember = memberRepository.save(createMember("kim", 10, 1L, MemberRole.STAFF));
         memberRepository.save(createMember("lee", 11, 2L));
         String accessToken = jwtTokenProvider.createAccessToken(firstMember);
 
@@ -107,7 +108,7 @@ class MemberControllerTest {
     @Test
     @DisplayName("이름과 지점 ID 검색어가 모두 있으면 두 조건에 맞는 사원 목록을 반환한다")
     void findAllMembersByNameAndBranchId() throws Exception {
-        Member firstMember = memberRepository.save(createMember("kim", 10, 1L));
+        Member firstMember = memberRepository.save(createMember("kim", 10, 1L, MemberRole.STAFF));
         memberRepository.save(createMember("kim", 11, 2L));
         memberRepository.save(createMember("lee", 12, 1L));
         String accessToken = jwtTokenProvider.createAccessToken(firstMember);
@@ -123,11 +124,34 @@ class MemberControllerTest {
     }
 
     @Test
-    @DisplayName("인증된 요청이면 비밀번호가 없는 사전등록 대기 사원 목록을 반환한다")
-    void findPendingPreRegistrations() throws Exception {
-        Member signedUpMember = memberRepository.save(createMember("kim", 10));
-        Member pendingMember = memberRepository.save(createPendingMember("lee", null));
-        String accessToken = jwtTokenProvider.createAccessToken(signedUpMember);
+    @DisplayName("일반 회원이 사원 목록을 조회하면 403 응답을 반환한다")
+    void rejectMemberFindingAllMembers() throws Exception {
+        Member member = memberRepository.save(createMember("member", 10));
+
+        mockMvc.perform(get("/api/members")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(member)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("스태프가 다른 지점 사원 목록을 조회하면 403 응답을 반환한다")
+    void rejectStaffFindingCrossBranchMembers() throws Exception {
+        Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
+
+        mockMvc.perform(get("/api/members")
+                        .param("branchId", "2")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("스태프 요청이면 자기 지점의 사전등록 대기 사원만 반환한다")
+    void staffFindsOnlyOwnBranchPendingPreRegistrations() throws Exception {
+        Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
+        Member pendingMember = memberRepository.save(createPendingMember("lee", null, 1L));
+        memberRepository.save(createPendingMember("pending staff", null, 1L, MemberRole.STAFF));
+        memberRepository.save(createPendingMember("park", null, 2L));
+        String accessToken = jwtTokenProvider.createAccessToken(staff);
 
         mockMvc.perform(get("/api/members/pre-registrations/pending")
                         .header("Authorization", "Bearer " + accessToken))
@@ -136,6 +160,102 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$[0].name").value("lee"))
                 .andExpect(jsonPath("$[0].seatNumber").doesNotExist())
                 .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("일반 회원은 사전등록 대기 사원 목록을 조회할 수 없다")
+    void rejectMemberFindingPendingPreRegistrations() throws Exception {
+        Member member = memberRepository.save(createMember("member", 10));
+
+        mockMvc.perform(get("/api/members/pre-registrations/pending")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(member)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점 회원 정보를 수정할 수 없다")
+    void rejectStaffUpdatingCrossBranchMember() throws Exception {
+        Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
+        Member target = memberRepository.save(createMember("target", 11, 2L, MemberRole.MEMBER));
+
+        mockMvc.perform(patch("/api/members/{memberId}", target.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberUpdateBody(2L, "MEMBER", "null"))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+
+        assertThat(memberRepository.findById(target.getId()).orElseThrow().getName()).isEqualTo("target");
+    }
+
+    @Test
+    @DisplayName("스태프는 일반 회원을 관리자로 승격할 수 없다")
+    void rejectStaffPromotingMember() throws Exception {
+        Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
+        Member target = memberRepository.save(createMember("target", 11));
+
+        mockMvc.perform(patch("/api/members/{memberId}", target.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberUpdateBody(1L, "ADMIN", "null"))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+
+        assertThat(memberRepository.findById(target.getId()).orElseThrow().getRole()).isEqualTo(MemberRole.MEMBER);
+    }
+
+    @Test
+    @DisplayName("회원 정보 수정으로 실제 좌석표에 없는 좌석을 배정할 수 없다")
+    void rejectInvalidSeatWhenUpdatingMember() throws Exception {
+        Member admin = memberRepository.save(createMember("admin", 10, 1L, MemberRole.ADMIN));
+        Member target = memberRepository.save(createMember("target", 11));
+
+        mockMvc.perform(patch("/api/members/{memberId}", target.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberUpdateBody(1L, "MEMBER", "999"))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isBadRequest());
+
+        assertThat(memberRepository.findById(target.getId()).orElseThrow().getSeatNumber()).isEqualTo(11);
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점 회원을 삭제할 수 없다")
+    void rejectStaffDeletingCrossBranchMember() throws Exception {
+        Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
+        Member target = memberRepository.save(createMember("target", 11, 2L, MemberRole.MEMBER));
+
+        mockMvc.perform(delete("/api/members/{memberId}", target.getId())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+
+        assertThat(memberRepository.existsById(target.getId())).isTrue();
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 스태프 계정을 삭제할 수 없다")
+    void rejectStaffDeletingPrivilegedTarget() throws Exception {
+        Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
+        Member target = memberRepository.save(createMember("other staff", 11, 1L, MemberRole.STAFF));
+
+        mockMvc.perform(delete("/api/members/{memberId}", target.getId())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+
+        assertThat(memberRepository.existsById(target.getId())).isTrue();
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 지점 회원을 스태프로 변경할 수 있다")
+    void adminUpdatesCrossBranchMember() throws Exception {
+        Member admin = memberRepository.save(createMember("admin", 10, 1L, MemberRole.ADMIN));
+        Member target = memberRepository.save(createMember("target", 11, 1L, MemberRole.MEMBER));
+
+        mockMvc.perform(patch("/api/members/{memberId}", target.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberUpdateBody(2L, "STAFF", "null"))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(2))
+                .andExpect(jsonPath("$.role").value("STAFF"));
     }
 
     @Test
@@ -348,15 +468,37 @@ class MemberControllerTest {
     }
 
     private Member createPendingMember(String name, Integer seatNumber) {
+        return createPendingMember(name, seatNumber, 1L);
+    }
+
+    private Member createPendingMember(String name, Integer seatNumber, Long branchId) {
+        return createPendingMember(name, seatNumber, branchId, MemberRole.MEMBER);
+    }
+
+    private Member createPendingMember(String name, Integer seatNumber, Long branchId, MemberRole role) {
         return new Member(
-                1L,
+                branchId,
                 name,
                 null,
-                MemberRole.MEMBER,
+                role,
                 seatNumber,
                 LocalDate.of(2026, 7, 1),
                 3L,
                 "오전 교육 예정"
         );
+    }
+
+    private String memberUpdateBody(Long branchId, String role, String seatNumber) {
+        return """
+                {
+                  "branchId": %d,
+                  "name": "updated target",
+                  "role": "%s",
+                  "seatNumber": %s,
+                  "joinDate": "2026-08-01",
+                  "certificationId": null,
+                  "preparingCertifications": ""
+                }
+                """.formatted(branchId, role, seatNumber);
     }
 }

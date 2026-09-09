@@ -1,8 +1,10 @@
 package com.example.studyfactory.domain.sideDish.service;
 
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
@@ -72,9 +74,11 @@ public class SideDishService {
     @Transactional(readOnly = true)
     public List<DailySideDishResponse> findDaily(Long currentMemberId, LocalDate date, Long branchId) {
         Member currentMember = memberRepository.findById(currentMemberId).orElseThrow(MemberException::memberNotFound);
-        validateAllPermissions(currentMember);
 
-        return sideDishRequestRepository.findDailyByBranchAndDate(resolveBranchId(currentMember, branchId), resolveDate(date));
+        return sideDishRequestRepository.findDailyByBranchAndDate(
+                ManagerAccessPolicy.resolveRequiredBranch(currentMember, branchId),
+                resolveDate(date)
+        );
     }
 
     @Transactional
@@ -116,17 +120,11 @@ public class SideDishService {
     }
 
     private void validateOwner(Member member, SideDishRequest sideDishRequest) {
-        if (member.hasAllPermissions()) {
+        if (member.getRole() == MemberRole.ADMIN) {
             return;
         }
         if (!sideDishRequest.getMemberId().equals(member.getId())) {
             throw SideDishException.notOwner();
-        }
-    }
-
-    private void validateAllPermissions(Member member) {
-        if (!member.hasAllPermissions()) {
-            throw MemberException.forbidden();
         }
     }
 
@@ -152,14 +150,6 @@ public class SideDishService {
         }
 
         return date;
-    }
-
-    private Long resolveBranchId(Member currentMember, Long branchId) {
-        if (branchId == null) {
-            return currentMember.getBranchId();
-        }
-
-        return branchId;
     }
 
     private boolean isToday(LocalDate mealDate) {

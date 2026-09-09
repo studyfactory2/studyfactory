@@ -65,6 +65,7 @@ public class LeaveController {
 
     @GetMapping("/daily-status")
     public List<DailyLeaveStatusResponse> findDailyStatuses(
+            @CurrentMember Long currentMemberId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date,
@@ -72,7 +73,7 @@ public class LeaveController {
             @RequestParam(required = false) Long branchId,
             @RequestParam(required = false) LeaveType leaveType
     ) {
-        return leaveService.findDailyStatuses(date, name, branchId, leaveType);
+        return leaveService.findDailyStatuses(currentMemberId, date, name, branchId, leaveType);
     }
 
     @GetMapping("/monthly-calendar")

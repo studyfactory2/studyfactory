@@ -4,6 +4,7 @@ import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import com.example.studyfactory.domain.staffSchedule.dto.StaffScheduleCellRequest;
 import com.example.studyfactory.domain.staffSchedule.dto.StaffScheduleResponse;
 import com.example.studyfactory.domain.staffSchedule.dto.StaffScheduleUpdateRequest;
@@ -45,8 +46,7 @@ public class StaffScheduleService {
     @Transactional(readOnly = true)
     public List<StaffScheduleResponse> findAll(Long currentMemberId, Long branchId) {
         Member currentMember = findMember(currentMemberId);
-        validateAllPermissions(currentMember);
-        Long targetBranchId = resolveBranchId(currentMember, branchId);
+        Long targetBranchId = ManagerAccessPolicy.resolveRequiredBranch(currentMember, branchId);
         Map<String, StaffSchedule> scheduleMap = new HashMap<>();
         staffScheduleRepository.findByBranchIdOrderByDayOfWeekAscShiftAscTaskTypeAsc(targetBranchId)
                 .forEach(schedule -> scheduleMap.put(toKey(schedule.getDayOfWeek(), schedule.getShift(), schedule.getTaskType()), schedule));
@@ -72,7 +72,7 @@ public class StaffScheduleService {
     public List<StaffScheduleResponse> update(Long currentMemberId, Long branchId, StaffScheduleUpdateRequest request) {
         Member currentMember = findMember(currentMemberId);
         validateAdmin(currentMember);
-        Long targetBranchId = resolveBranchId(currentMember, branchId);
+        Long targetBranchId = ManagerAccessPolicy.resolveRequiredBranch(currentMember, branchId);
         validateRequest(request);
         staffScheduleRepository.deleteByBranchId(targetBranchId);
         List<StaffSchedule> schedules = request.schedules()
@@ -92,20 +92,6 @@ public class StaffScheduleService {
 
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
-    }
-
-    private Long resolveBranchId(Member currentMember, Long branchId) {
-        if (branchId == null) {
-            return currentMember.getBranchId();
-        }
-
-        return branchId;
-    }
-
-    private void validateAllPermissions(Member member) {
-        if (!member.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
     }
 
     private void validateAdmin(Member member) {

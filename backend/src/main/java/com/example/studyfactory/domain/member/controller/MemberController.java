@@ -32,10 +32,11 @@ public class MemberController {
 
     @GetMapping
     public List<MemberResponse> findAll(
+            @CurrentMember Long currentMemberId,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long branchId
     ) {
-        return memberService.findAll(name, branchId);
+        return memberService.findAll(currentMemberId, name, branchId);
     }
 
     @GetMapping("/me")
@@ -44,8 +45,8 @@ public class MemberController {
     }
 
     @GetMapping("/pre-registrations/pending")
-    public List<MemberResponse> findPendingPreRegistrations() {
-        return memberService.findPendingPreRegistrations();
+    public List<MemberResponse> findPendingPreRegistrations(@CurrentMember Long currentMemberId) {
+        return memberService.findPendingPreRegistrations(currentMemberId);
     }
 
     @PatchMapping("/{memberId}")

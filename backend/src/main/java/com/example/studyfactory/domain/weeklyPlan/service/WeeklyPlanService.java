@@ -1,8 +1,10 @@
 package com.example.studyfactory.domain.weeklyPlan.service;
 
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import com.example.studyfactory.domain.weeklyPlan.dto.MonthlyPlanGoalRequest;
 import com.example.studyfactory.domain.weeklyPlan.dto.MonthlyPlanGoalResponse;
 import com.example.studyfactory.domain.weeklyPlan.dto.WeeklyPlanItemRequest;
@@ -60,8 +62,10 @@ public class WeeklyPlanService {
     @Transactional(readOnly = true)
     public WeeklyPlanResponse findForManager(Long currentMemberId, Long memberId, LocalDate weekStartDate) {
         Member currentMember = findMember(currentMemberId);
-        if (!currentMember.hasAllPermissions()) {
-            throw MemberException.forbidden();
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member targetMember = findMember(memberId);
+        if (currentMember.getRole() != MemberRole.ADMIN) {
+            ManagerAccessPolicy.validateMemberTarget(currentMember, targetMember);
         }
 
         return findMine(memberId, weekStartDate);

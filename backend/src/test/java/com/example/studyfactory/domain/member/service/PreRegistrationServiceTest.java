@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import com.example.studyfactory.domain.beverage.entity.BeverageItem;
@@ -19,6 +20,8 @@ import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
+import com.example.studyfactory.domain.room.exception.SeatException;
+import com.example.studyfactory.domain.room.service.SeatService;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.List;
@@ -28,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,6 +59,9 @@ class PreRegistrationServiceTest {
 
     @Mock
     private CertificationRepository certificationRepository;
+
+    @Mock
+    private SeatService seatService;
 
     @Test
     @DisplayName("사전등록 요청으로 사원과 음료 정보를 저장하고 응답을 반환한다")
@@ -171,11 +178,25 @@ class PreRegistrationServiceTest {
         PreRegistrationCreateRequest request = createRequest();
         givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
         given(branchRepository.existsById(1L)).willReturn(true);
-        given(memberRepository.existsAssignedSeat(1L, 12)).willReturn(true);
+        willThrow(SeatException.alreadyAssigned()).given(seatService).validateAssignment(null, 1L, 12);
 
         assertThatThrownBy(() -> preRegistrationService.create(ADMIN_ID, request))
-                .isInstanceOf(PreRegistrationException.class)
-                .hasMessageContaining("이미 배정된 좌석입니다. 다른 좌석을 선택해주세요.");
+                .isInstanceOf(SeatException.class)
+                .hasMessageContaining("이미 배정된 좌석입니다.");
+        then(memberRepository).should(never()).save(any(Member.class));
+    }
+
+    @Test
+    @DisplayName("좌석표에 없거나 문 위치인 번호로 사전등록할 수 없다")
+    void rejectNonSeatLayoutItem() {
+        PreRegistrationCreateRequest request = createRequest();
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
+        given(branchRepository.existsById(1L)).willReturn(true);
+        willThrow(SeatException.invalidSeat()).given(seatService).validateAssignment(null, 1L, 12);
+
+        assertThatThrownBy(() -> preRegistrationService.create(ADMIN_ID, request))
+                .isInstanceOf(SeatException.class)
+                .hasMessageContaining("존재하지 않는 좌석입니다.");
         then(memberRepository).should(never()).save(any(Member.class));
     }
 
@@ -231,6 +252,77 @@ class PreRegistrationServiceTest {
         then(memberRepository).should().save(any(Member.class));
     }
 
+    @Test
+    @DisplayName("관리자는 모든 지점의 사전등록 대기 목록을 조회한다")
+    void adminFindsAllPendingPreRegistrations() {
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
+        Member first = createPendingMember(1L, 1L, "강남 회원");
+        Member second = createPendingMember(2L, 2L, "홍대 회원");
+        given(memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id")))
+                .willReturn(List.of(first, second));
+        given(beverageService.findItems(first.getId())).willReturn(List.of());
+        given(beverageService.findItems(second.getId())).willReturn(List.of());
+
+        List<PreRegistrationResponse> responses = preRegistrationService.findPending(ADMIN_ID);
+
+        assertThat(responses).extracting(PreRegistrationResponse::branchId).containsExactly(1L, 2L);
+    }
+
+    @Test
+    @DisplayName("스태프는 자기 지점의 사전등록 대기 목록만 조회한다")
+    void staffFindsOnlyOwnBranchPendingPreRegistrations() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 2L);
+        Member pending = createPendingMember(1L, 2L, "홍대 회원");
+        given(memberRepository.findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                2L,
+                MemberRole.MEMBER
+        ))
+                .willReturn(List.of(pending));
+        given(beverageService.findItems(pending.getId())).willReturn(List.of());
+
+        List<PreRegistrationResponse> responses = preRegistrationService.findPending(STAFF_ID);
+
+        assertThat(responses).extracting(PreRegistrationResponse::branchId).containsExactly(2L);
+        then(memberRepository).should(never()).findPendingPreRegistrations(any());
+    }
+
+    @Test
+    @DisplayName("스태프는 같은 지점의 관리자 사전등록 정보를 수정할 수 없다")
+    void staffCannotUpdatePrivilegedPendingTarget() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
+        Member pendingStaff = createPendingMember(1L, 1L, "예정 스태프", MemberRole.STAFF);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(pendingStaff));
+
+        assertThatThrownBy(() -> preRegistrationService.update(STAFF_ID, 1L, createMemberRequest()))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+        then(beverageService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("스태프는 같은 지점의 관리자 사전등록 정보를 삭제할 수 없다")
+    void staffCannotDeletePrivilegedPendingTarget() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
+        Member pendingAdmin = createPendingMember(1L, 1L, "예정 관리자", MemberRole.ADMIN);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(pendingAdmin));
+
+        assertThatThrownBy(() -> preRegistrationService.delete(STAFF_ID, 1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+        then(memberDeletionCleanupService).shouldHaveNoInteractions();
+        then(memberRepository).should(never()).delete(pendingAdmin);
+    }
+
+    @Test
+    @DisplayName("일반 회원은 사전등록 대기 목록을 조회할 수 없다")
+    void memberCannotFindPendingPreRegistrations() {
+        givenOperator(MEMBER_ID, MemberRole.MEMBER, 1L);
+
+        assertThatThrownBy(() -> preRegistrationService.findPending(MEMBER_ID))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
     private void givenOperator(Long operatorId, MemberRole role, Long branchId) {
         Member operator = new Member(
                 branchId,
@@ -269,5 +361,24 @@ class PreRegistrationServiceTest {
                 "아이스 아메리카노",
                 "연하게"
         );
+    }
+
+    private Member createPendingMember(Long id, Long branchId, String name) {
+        return createPendingMember(id, branchId, name, MemberRole.MEMBER);
+    }
+
+    private Member createPendingMember(Long id, Long branchId, String name, MemberRole role) {
+        Member member = new Member(
+                branchId,
+                name,
+                null,
+                role,
+                null,
+                LocalDate.of(2026, 7, 1),
+                null,
+                null
+        );
+        ReflectionTestUtils.setField(member, "id", id);
+        return member;
     }
 }

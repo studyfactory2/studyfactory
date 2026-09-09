@@ -1,11 +1,13 @@
 package com.example.studyfactory.domain.weeklyPlan.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
+import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.weeklyPlan.dto.MonthlyPlanGoalResponse;
 import com.example.studyfactory.domain.weeklyPlan.dto.WeeklyPlanResponse;
@@ -86,17 +88,95 @@ class WeeklyPlanServiceTest {
         then(monthlyPlanGoalRepository).should().findByMemberIdAndMonth(1L, SEOUL_MONTH);
     }
 
+    @Test
+    @DisplayName("스태프는 자기 지점 일반 회원의 주간 계획을 조회한다")
+    void staffFindsOwnBranchMemberPlan() {
+        Member staff = createMember(9L, 2L, MemberRole.STAFF);
+        Member member = createMember(1L, 2L, MemberRole.MEMBER);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(staff));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(weeklyPlanGoalRepository.findByMemberIdAndWeekStartDate(1L, SEOUL_TODAY))
+                .willReturn(Optional.empty());
+        given(weeklyPlanItemRepository
+                .findByMemberIdAndWeekStartDateOrderByPeriodIndexAscDayIndexAscSortOrderAscIdAsc(1L, SEOUL_TODAY))
+                .willReturn(List.of());
+
+        WeeklyPlanResponse response = weeklyPlanService.findForManager(9L, 1L, null);
+
+        assertThat(response.memberId()).isEqualTo(1L);
+        assertThat(response.branchId()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점 회원의 주간 계획을 조회할 수 없다")
+    void rejectStaffFindingCrossBranchMemberPlan() {
+        Member staff = createMember(9L, 2L, MemberRole.STAFF);
+        Member member = createMember(1L, 3L, MemberRole.MEMBER);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(staff));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> weeklyPlanService.findForManager(9L, 1L, null))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("스태프는 관리자 역할의 주간 계획을 조회할 수 없다")
+    void rejectStaffFindingPrivilegedTargetPlan() {
+        Member staff = createMember(9L, 2L, MemberRole.STAFF);
+        Member targetStaff = createMember(1L, 2L, MemberRole.STAFF);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(staff));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(targetStaff));
+
+        assertThatThrownBy(() -> weeklyPlanService.findForManager(9L, 1L, null))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("일반 회원은 관리자용 주간 계획 조회를 사용할 수 없다")
+    void rejectMemberUsingManagerPlanLookup() {
+        Member member = createMember(9L, 2L, MemberRole.MEMBER);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> weeklyPlanService.findForManager(9L, 1L, null))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 지점 스태프의 주간 계획도 조회할 수 있다")
+    void adminFindsCrossBranchStaffPlan() {
+        Member admin = createMember(9L, 1L, MemberRole.ADMIN);
+        Member targetStaff = createMember(1L, 3L, MemberRole.STAFF);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(targetStaff));
+        given(weeklyPlanGoalRepository.findByMemberIdAndWeekStartDate(1L, SEOUL_TODAY))
+                .willReturn(Optional.empty());
+        given(weeklyPlanItemRepository
+                .findByMemberIdAndWeekStartDateOrderByPeriodIndexAscDayIndexAscSortOrderAscIdAsc(1L, SEOUL_TODAY))
+                .willReturn(List.of());
+
+        WeeklyPlanResponse response = weeklyPlanService.findForManager(9L, 1L, null);
+
+        assertThat(response.branchId()).isEqualTo(3L);
+    }
+
     private Member createMember() {
+        return createMember(1L, 2L, MemberRole.MEMBER);
+    }
+
+    private Member createMember(Long id, Long branchId, MemberRole role) {
         Member member = new Member(
-                2L,
+                branchId,
                 "김회원",
                 "password123",
-                MemberRole.MEMBER,
+                role,
                 10,
                 LocalDate.of(2026, 8, 1),
                 null
         );
-        ReflectionTestUtils.setField(member, "id", 1L);
+        ReflectionTestUtils.setField(member, "id", id);
         return member;
     }
 }

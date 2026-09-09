@@ -196,7 +196,7 @@ class StudyTimeLeaveExclusionServiceTest {
         given(attendanceRepository.findByMemberIdAndAttendanceDateBetween(MEMBER_ID, MONDAY, MONDAY))
                 .willReturn(List.of(
                         attendance(MONDAY, 2, null),
-                        attendance(MONDAY, 5, "FIXED_LEAVE_CANCELLED")
+                        attendance(MONDAY, 5, Attendance.FIXED_LEAVE_CANCELLATION_MARKER)
                 ));
 
         Map<LocalDate, Set<StudyPeriod>> result = service.findExcludedPeriods(

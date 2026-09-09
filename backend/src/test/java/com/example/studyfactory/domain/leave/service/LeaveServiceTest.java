@@ -143,16 +143,16 @@ class LeaveServiceTest {
     }
 
     @Test
-    @DisplayName("스태프는 다른 사원의 휴무 신청을 삭제한다")
-    void staffDeleteOtherMemberLeave() {
+    @DisplayName("스태프가 다른 사원의 휴무 신청을 삭제하면 예외가 발생한다")
+    void rejectStaffDeletingOtherMemberLeave() {
         LeaveRequest leaveRequest = new LeaveRequest(2L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
         Member staff = createMemberWithId(1L, MemberRole.STAFF);
         given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
 
-        leaveService.delete(1L, 10L);
-
-        then(leaveRequestRepository).should().delete(leaveRequest);
+        assertThatThrownBy(() -> leaveService.delete(1L, 10L))
+                .isInstanceOf(LeaveException.class)
+                .hasMessageContaining("본인의 휴무 신청만 삭제할 수 있습니다.");
     }
 
     @Test
@@ -182,6 +182,7 @@ class LeaveServiceTest {
     @DisplayName("날짜와 검색 조건으로 일별 사원 휴무 현황을 조회한다")
     void findDailyStatuses() {
         LocalDate date = LocalDate.of(2026, 7, 1);
+        Member admin = createMemberWithId(99L, MemberRole.ADMIN);
         DailyLeaveStatusResponse response = new DailyLeaveStatusResponse(
                 1L,
                 1L,
@@ -194,8 +195,9 @@ class LeaveServiceTest {
         );
         given(leaveRequestRepository.findDailyStatuses(date, "ki", 1L, LeaveType.FULL))
                 .willReturn(List.of(response));
+        given(memberRepository.findById(99L)).willReturn(Optional.of(admin));
 
-        List<DailyLeaveStatusResponse> responses = leaveService.findDailyStatuses(date, " ki ", 1L, LeaveType.FULL);
+        List<DailyLeaveStatusResponse> responses = leaveService.findDailyStatuses(99L, date, " ki ", 1L, LeaveType.FULL);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).name()).isEqualTo("kim");
@@ -208,14 +210,106 @@ class LeaveServiceTest {
     @DisplayName("날짜가 없으면 당일 날짜로 일별 사원 휴무 현황을 조회한다")
     void findDailyStatusesWithDefaultDate() {
         LocalDate today = LocalDate.now(clock);
+        Member admin = createMemberWithId(99L, MemberRole.ADMIN);
         given(leaveRequestRepository.findDailyStatuses(today, null, null, null))
                 .willReturn(List.of());
+        given(memberRepository.findById(99L)).willReturn(Optional.of(admin));
 
-        List<DailyLeaveStatusResponse> responses = leaveService.findDailyStatuses(null, " ", null, null);
+        List<DailyLeaveStatusResponse> responses = leaveService.findDailyStatuses(99L, null, " ", null, null);
 
         assertThat(responses).isEmpty();
         then(leaveRequestRepository).should()
                 .findDailyStatuses(today, null, null, null);
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점의 일별 휴무 현황을 조회할 수 없다")
+    void rejectStaffFindingCrossBranchDailyStatuses() {
+        Member staff = createMemberWithId(1L, MemberRole.STAFF);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+
+        assertThatThrownBy(() -> leaveService.findDailyStatuses(
+                1L,
+                LocalDate.of(2026, 7, 1),
+                null,
+                3L,
+                null
+        ))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("일반 회원은 일별 휴무 현황을 조회할 수 없다")
+    void rejectMemberFindingDailyStatuses() {
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> leaveService.findDailyStatuses(
+                1L,
+                LocalDate.of(2026, 7, 1),
+                null,
+                null,
+                null
+        ))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("일반 휴무도 서울 당일 8시 이후 신청 여부를 명시해 반환한다")
+    void marksOrdinaryLeaveRequestedAfterEightUsingBusinessZone() {
+        LocalDate leaveDate = LocalDate.of(2026, 7, 1);
+        Member staff = createMemberWithId(1L, MemberRole.STAFF);
+        LocalDateTime storedCreatedAt = LocalDateTime.of(2026, 7, 1, 8, 30)
+                .atZone(clock.getZone())
+                .withZoneSameInstant(ZoneId.systemDefault())
+                .toLocalDateTime();
+        DailyLeaveStatusResponse response = new DailyLeaveStatusResponse(
+                2L,
+                2L,
+                10,
+                "kim",
+                "망미점",
+                leaveDate,
+                LeaveType.FULL,
+                storedCreatedAt
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(leaveRequestRepository.findDailyStatuses(leaveDate, null, 2L, null))
+                .willReturn(List.of(response));
+
+        List<DailyLeaveStatusResponse> responses = leaveService.findDailyStatuses(
+                1L,
+                leaveDate,
+                null,
+                null,
+                null
+        );
+
+        assertThat(responses).singleElement()
+                .extracting(DailyLeaveStatusResponse::requestedAfterEight)
+                .isEqualTo(true);
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점의 고정 휴무를 삭제할 수 없다")
+    void rejectStaffDeletingCrossBranchFixedLeave() {
+        Member staff = createMemberWithId(1L, MemberRole.STAFF, 2L);
+        FixedLeave fixedLeave = new FixedLeave(
+                2L,
+                3L,
+                DayOfWeek.MONDAY,
+                "1,2",
+                "알바",
+                true
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(fixedLeaveRepository.findById(10L)).willReturn(Optional.of(fixedLeave));
+
+        assertThatThrownBy(() -> leaveService.deleteFixed(1L, 10L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
     }
 
     @Test
@@ -507,9 +601,20 @@ class LeaveServiceTest {
     }
 
     private Member createMemberWithId(Long id, MemberRole role) {
-        Member member = createMember();
+        return createMemberWithId(id, role, 2L);
+    }
+
+    private Member createMemberWithId(Long id, MemberRole role, Long branchId) {
+        Member member = new Member(
+                branchId,
+                "kim",
+                "password123",
+                role,
+                12,
+                LocalDate.of(2026, 7, 1),
+                4L
+        );
         ReflectionTestUtils.setField(member, "id", id);
-        ReflectionTestUtils.setField(member, "role", role);
         return member;
     }
 }

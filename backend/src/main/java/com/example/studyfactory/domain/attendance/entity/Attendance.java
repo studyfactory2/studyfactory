@@ -22,6 +22,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Attendance extends BaseEntity {
 
+    public static final String FIXED_LEAVE_CANCELLATION_MARKER = "FIXED_LEAVE_CANCELLED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -14,6 +14,7 @@ import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -154,8 +155,9 @@ class LeaveControllerTest {
     void findDailyStatuses() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
         Member member = memberRepository.save(createMember("kim", branch.getId()));
+        Member staff = memberRepository.save(createMember("staff", branch.getId(), MemberRole.STAFF));
         leaveRequestRepository.save(new LeaveRequest(member.getId(), branch.getId(), LocalDate.of(2026, 7, 1), LeaveType.FULL));
-        String accessToken = jwtTokenProvider.createAccessToken(member);
+        String accessToken = jwtTokenProvider.createAccessToken(staff);
 
         mockMvc.perform(get("/api/leaves/daily-status")
                         .param("date", "2026-07-01")
@@ -164,7 +166,8 @@ class LeaveControllerTest {
                 .andExpect(jsonPath("$[0].name").value("kim"))
                 .andExpect(jsonPath("$[0].branch").value("강남점"))
                 .andExpect(jsonPath("$[0].leaveType").value("FULL"))
-                .andExpect(jsonPath("$[0].createdAt").exists());
+                .andExpect(jsonPath("$[0].createdAt").exists())
+                .andExpect(jsonPath("$[0].requestedAfterEight").isBoolean());
     }
 
     @Test
@@ -175,10 +178,11 @@ class LeaveControllerTest {
         Member firstMember = memberRepository.save(createMember("kim", gangnam.getId()));
         Member secondMember = memberRepository.save(createMember("kim", seomyeon.getId()));
         Member thirdMember = memberRepository.save(createMember("lee", gangnam.getId()));
+        Member admin = memberRepository.save(createMember("admin", gangnam.getId(), MemberRole.ADMIN));
         leaveRequestRepository.save(new LeaveRequest(firstMember.getId(), gangnam.getId(), LocalDate.of(2026, 7, 1), LeaveType.MORNING));
         leaveRequestRepository.save(new LeaveRequest(secondMember.getId(), seomyeon.getId(), LocalDate.of(2026, 7, 1), LeaveType.MORNING));
         leaveRequestRepository.save(new LeaveRequest(thirdMember.getId(), gangnam.getId(), LocalDate.of(2026, 7, 1), LeaveType.AFTERNOON));
-        String accessToken = jwtTokenProvider.createAccessToken(firstMember);
+        String accessToken = jwtTokenProvider.createAccessToken(admin);
 
         mockMvc.perform(get("/api/leaves/daily-status")
                         .param("date", "2026-07-01")
@@ -201,10 +205,15 @@ class LeaveControllerTest {
     }
 
     private Member createMember(String name, Long branchId) {
+        return createMember(name, branchId, MemberRole.MEMBER);
+    }
+
+    private Member createMember(String name, Long branchId, MemberRole role) {
         return new Member(
                 branchId,
                 name,
                 "password123",
+                role,
                 12,
                 LocalDate.of(2026, 7, 1),
                 3L,
