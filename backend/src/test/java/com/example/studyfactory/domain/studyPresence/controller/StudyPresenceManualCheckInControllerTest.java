@@ -158,15 +158,40 @@ class StudyPresenceManualCheckInControllerTest {
     }
 
     @Test
-    @DisplayName("다른 지점 회원은 수동 입실 처리할 수 없다")
+    @DisplayName("스태프에게 다른 지점 회원과 없는 회원은 같은 404로 보인다")
     void rejectManualCheckInForOtherBranchTarget() throws Exception {
+        Branch otherBranch = branchRepository.save(new Branch("홍대점", "서울 마포구"));
+        Member staff = memberRepository.save(createMember("사무직원", otherBranch.getId(), MemberRole.STAFF));
+
+        String foreignTargetResponse = mockMvc.perform(
+                        manualCheckIn(target.getId(), staff, BEFORE_FIRST_PERIOD, REASON))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String missingTargetResponse = mockMvc.perform(
+                        manualCheckIn(Long.MAX_VALUE, staff, BEFORE_FIRST_PERIOD, REASON))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(foreignTargetResponse).isEqualTo(missingTargetResponse);
+        assertThat(studyPresenceSessionRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 지점 회원도 수동 입실 처리할 수 있다")
+    void adminManualCheckInSupportsAnotherBranch() throws Exception {
         Branch otherBranch = branchRepository.save(new Branch("홍대점", "서울 마포구"));
         Member admin = memberRepository.save(createMember("관리자", otherBranch.getId(), MemberRole.ADMIN));
 
         mockMvc.perform(manualCheckIn(target.getId(), admin, BEFORE_FIRST_PERIOD, REASON))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.branchId").value(branch.getId()))
+                .andExpect(jsonPath("$.checkedInByMemberId").value(admin.getId()));
 
-        assertThat(studyPresenceSessionRepository.findAll()).isEmpty();
+        assertThat(studyPresenceSessionRepository.findAll()).hasSize(1);
     }
 
     @Test

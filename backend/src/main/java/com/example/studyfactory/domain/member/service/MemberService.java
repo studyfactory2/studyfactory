@@ -1,6 +1,8 @@
 package com.example.studyfactory.domain.member.service;
 
 import com.example.studyfactory.domain.beverage.service.BeverageService;
+import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.member.dto.MemberResponse;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
@@ -27,6 +29,8 @@ public class MemberService {
     private final BeverageService beverageService;
     private final MemberDeletionCleanupService memberDeletionCleanupService;
     private final SeatService seatService;
+    private final BranchRepository branchRepository;
+    private final CertificationRepository certificationRepository;
 
     @Transactional(readOnly = true)
     public List<MemberResponse> findAll(Long currentMemberId, String name, Long branchId) {
@@ -41,11 +45,11 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberResponse> findPendingPreRegistrations(Long currentMemberId) {
+    public List<MemberResponse> findPendingPreRegistrations(Long currentMemberId, Long requestedBranchId) {
         Member currentMember = findMember(currentMemberId);
-        Long branchId = ManagerAccessPolicy.resolveOptionalAdminBranch(currentMember, null);
+        Long branchId = ManagerAccessPolicy.resolveOptionalAdminBranch(currentMember, requestedBranchId);
 
-        return findPendingMembers(branchId)
+        return findPendingMembers(currentMember, branchId)
                 .stream()
                 .map(MemberResponse::from)
                 .toList();
@@ -60,8 +64,9 @@ public class MemberService {
     public MemberResponse update(Long currentMemberId, Long memberId, MemberUpdateRequest request) {
         Member currentMember = findMember(currentMemberId);
         ManagerAccessPolicy.validateManager(currentMember);
-        Member member = findMember(memberId);
+        Member member = findManagedMemberForUpdate(currentMember, memberId);
         validateUpdateAccess(currentMember, member, request);
+        validateUpdateReferences(request);
         if (seatAssignmentChanges(member, request)) {
             seatService.validateAssignment(member.getId(), request.branchId(), request.seatNumber());
         }
@@ -82,7 +87,7 @@ public class MemberService {
     public void delete(Long currentMemberId, Long memberId) {
         Member currentMember = findMember(currentMemberId);
         ManagerAccessPolicy.validateManager(currentMember);
-        Member member = findMemberForUpdate(memberId);
+        Member member = findManagedMemberForUpdate(currentMember, memberId);
         validateDeleteAccess(currentMember, member);
         memberDeletionCleanupService.cleanup(member.getId());
         memberRepository.delete(member);
@@ -90,9 +95,10 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public List<PreRegistrationVerifyResponse> verifyPreRegistration(PreRegistrationVerifyRequest request) {
-        List<Member> members = memberRepository.findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(
+        List<Member> members = memberRepository.findByNameAndReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
                 request.name().trim(),
-                request.branchId()
+                request.branchId(),
+                MemberRole.MEMBER
         );
         if (members.isEmpty()) {
             throw MemberException.preRegistrationNotFound();
@@ -105,8 +111,7 @@ public class MemberService {
 
     @Transactional
     public MemberSignupResponse signup(MemberSignupRequest request) {
-        Member member = findMember(request.memberId());
-        validateNotSignedUp(member);
+        Member member = findSignupCandidateForUpdate(request.memberId());
         validateDuplicatedPassword(member, request.password());
         member.signup(request.password());
 
@@ -119,6 +124,26 @@ public class MemberService {
 
     private Member findMemberForUpdate(Long memberId) {
         return memberRepository.findByIdForUpdate(memberId).orElseThrow(MemberException::memberNotFound);
+    }
+
+    private Member findManagedMemberForUpdate(Member operator, Long memberId) {
+        if (operator.getRole() == MemberRole.ADMIN) {
+            return findMemberForUpdate(memberId);
+        }
+
+        return memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(memberId, operator.getBranchId())
+                .orElseThrow(MemberException::memberNotFound);
+    }
+
+    private Member findSignupCandidateForUpdate(Long memberId) {
+        Member member = memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(MemberException::preRegistrationNotFound);
+        if (member.getRole() != MemberRole.MEMBER) {
+            throw MemberException.preRegistrationNotFound();
+        }
+        validateNotSignedUp(member);
+
+        return member;
     }
 
     private String toSearchName(String name) {
@@ -145,15 +170,18 @@ public class MemberService {
         return memberRepository.findAllByOrderByIdAsc();
     }
 
-    private List<Member> findPendingMembers(Long branchId) {
-        if (branchId != null) {
-            return memberRepository.findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
-                    branchId,
-                    MemberRole.MEMBER
-            );
+    private List<Member> findPendingMembers(Member operator, Long branchId) {
+        if (branchId == null) {
+            return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"));
+        }
+        if (operator.getRole() == MemberRole.ADMIN) {
+            return memberRepository.findByReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(branchId);
         }
 
-        return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"));
+        return memberRepository.findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                branchId,
+                MemberRole.MEMBER
+        );
     }
 
     private void validateUpdateAccess(Member operator, Member target, MemberUpdateRequest request) {
@@ -171,6 +199,16 @@ public class MemberService {
     private void validateDeleteAccess(Member operator, Member target) {
         if (operator.getRole() != MemberRole.ADMIN) {
             ManagerAccessPolicy.validateMemberTarget(operator, target);
+        }
+    }
+
+    private void validateUpdateReferences(MemberUpdateRequest request) {
+        if (!branchRepository.existsById(request.branchId())) {
+            throw MemberException.invalidBranch();
+        }
+        if (request.certificationId() != null
+                && !certificationRepository.existsById(request.certificationId())) {
+            throw MemberException.invalidCertification();
         }
     }
 

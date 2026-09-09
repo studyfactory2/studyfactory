@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 
 import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
+import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.member.dto.MemberSignupRequest;
 import com.example.studyfactory.domain.member.dto.MemberSignupResponse;
 import com.example.studyfactory.domain.member.dto.MemberUpdateRequest;
@@ -50,12 +52,22 @@ class MemberServiceTest {
     @Mock
     private SeatService seatService;
 
+    @Mock
+    private BranchRepository branchRepository;
+
+    @Mock
+    private CertificationRepository certificationRepository;
+
     @Test
     @DisplayName("이름과 지점에 해당하는 사전등록 사원 정보를 확인한다")
     void verifyPreRegistration() {
         Member member = createPreRegisteredMember();
         BeverageItem beverageItem = new BeverageItem(1L, "아이스 아메리카노", "연하게");
-        given(memberRepository.findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc("hong", 1L))
+        given(memberRepository.findByNameAndReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                "hong",
+                1L,
+                MemberRole.MEMBER
+        ))
                 .willReturn(List.of(member));
         given(beverageService.findItems(member.getId())).willReturn(List.of(beverageItem));
 
@@ -73,10 +85,28 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("공개 사전등록 확인은 관리자나 스태프 계정을 노출하지 않는다")
+    void verifyPreRegistrationDoesNotDiscoverPrivilegedAccounts() {
+        given(memberRepository.findByNameAndReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                "manager",
+                1L,
+                MemberRole.MEMBER
+        )).willReturn(List.of());
+
+        assertThatThrownBy(() -> memberService.verifyPreRegistration(
+                new PreRegistrationVerifyRequest("manager", 1L)
+        ))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("일치하는 사전등록 정보가 없습니다.");
+
+        then(beverageService).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("사전등록된 사원에 비밀번호를 세팅해 회원가입을 완료한다")
     void signup() {
         Member member = createPreRegisteredMember();
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "password123")).willReturn(false);
 
         MemberSignupResponse response = memberService.signup(new MemberSignupRequest(1L, "password123"));
@@ -87,12 +117,17 @@ class MemberServiceTest {
         assertThat(response.joinDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(response.certificationId()).isEqualTo(3L);
         assertThat(member.getPassword()).isEqualTo("password123");
+        then(memberRepository).should().findByIdForUpdate(1L);
     }
 
     @Test
     @DisplayName("일치하는 사전등록 사원 정보가 없으면 예외가 발생한다")
     void throwExceptionWhenPreRegistrationDoesNotExist() {
-        given(memberRepository.findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc("hong", 1L))
+        given(memberRepository.findByNameAndReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                "hong",
+                1L,
+                MemberRole.MEMBER
+        ))
                 .willReturn(List.of());
 
         assertThatThrownBy(() -> memberService.verifyPreRegistration(new PreRegistrationVerifyRequest("hong", 1L)))
@@ -104,11 +139,30 @@ class MemberServiceTest {
     @DisplayName("이미 비밀번호가 있는 사원을 가입하면 예외가 발생한다")
     void throwExceptionWhenAlreadySignedUp() {
         Member member = createRegisteredMember();
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> memberService.signup(new MemberSignupRequest(1L, "password123")))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("이미 가입된 사원입니다.");
+    }
+
+    @Test
+    @DisplayName("공개 회원가입은 잠긴 행을 다시 확인하고 관리자나 스태프 계정을 숨긴다")
+    void rejectPrivilegedPublicSignupWithoutRevealingAccount() {
+        Member pendingAdmin = createPreRegisteredMember(MemberRole.ADMIN);
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(pendingAdmin));
+
+        assertThatThrownBy(() -> memberService.signup(new MemberSignupRequest(1L, "password123")))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("일치하는 사전등록 정보가 없습니다.");
+
+        assertThat(pendingAdmin.getPassword()).isNull();
+        then(memberRepository).should().findByIdForUpdate(1L);
+        then(memberRepository).should(never()).existsByNameAndBranchIdAndPassword(
+                "hong",
+                1L,
+                "password123"
+        );
     }
 
     @Test
@@ -118,7 +172,9 @@ class MemberServiceTest {
         Member member = createRegisteredMember();
         ReflectionTestUtils.setField(admin, "id", 2L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(admin));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(branchRepository.existsById(3L)).willReturn(true);
+        given(certificationRepository.existsById(4L)).willReturn(true);
 
         MemberUpdateRequest request = new MemberUpdateRequest(
                 3L,
@@ -146,7 +202,9 @@ class MemberServiceTest {
         Member staff = createRegisteredMember(2L, MemberRole.STAFF, 1L);
         Member member = createRegisteredMember(1L, MemberRole.MEMBER, 1L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(member));
+        given(branchRepository.existsById(1L)).willReturn(true);
         MemberUpdateRequest request = updateRequest(1L, MemberRole.MEMBER, 20);
 
         assertThat(memberService.update(2L, 1L, request).seatNumber()).isEqualTo(20);
@@ -155,16 +213,16 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("스태프는 다른 지점 회원 정보를 수정할 수 없다")
+    @DisplayName("스태프의 다른 지점 회원 수정은 존재하지 않는 회원과 같은 응답으로 거절한다")
     void rejectStaffUpdatingCrossBranchMember() {
         Member staff = createRegisteredMember(2L, MemberRole.STAFF, 1L);
-        Member member = createRegisteredMember(1L, MemberRole.MEMBER, 2L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> memberService.update(2L, 1L, updateRequest(2L, MemberRole.MEMBER, null)))
                 .isInstanceOf(MemberException.class)
-                .hasMessageContaining("권한이 없습니다.");
+                .hasMessageContaining("존재하지 않는 사원입니다.");
         then(seatService).shouldHaveNoInteractions();
     }
 
@@ -174,7 +232,8 @@ class MemberServiceTest {
         Member staff = createRegisteredMember(2L, MemberRole.STAFF, 1L);
         Member member = createRegisteredMember(1L, MemberRole.MEMBER, 1L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> memberService.update(2L, 1L, updateRequest(2L, MemberRole.MEMBER, null)))
                 .isInstanceOf(MemberException.class)
@@ -188,7 +247,8 @@ class MemberServiceTest {
         Member staff = createRegisteredMember(2L, MemberRole.STAFF, 1L);
         Member member = createRegisteredMember(1L, MemberRole.MEMBER, 1L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> memberService.update(2L, 1L, updateRequest(1L, MemberRole.ADMIN, null)))
                 .isInstanceOf(MemberException.class)
@@ -202,7 +262,8 @@ class MemberServiceTest {
         Member admin = createRegisteredMember(2L, MemberRole.ADMIN, 1L);
         Member member = createRegisteredMember(1L, MemberRole.MEMBER, 1L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(admin));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(branchRepository.existsById(1L)).willReturn(true);
         willThrow(SeatException.invalidSeat()).given(seatService).validateAssignment(1L, 1L, 999);
 
         assertThatThrownBy(() -> memberService.update(2L, 1L, updateRequest(1L, MemberRole.MEMBER, 999)))
@@ -218,13 +279,62 @@ class MemberServiceTest {
         Member member = createRegisteredMember(1L, MemberRole.MEMBER, 1L);
         member.updateSeat(999);
         given(memberRepository.findById(2L)).willReturn(Optional.of(admin));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(branchRepository.existsById(1L)).willReturn(true);
 
         assertThat(memberService.update(2L, 1L, updateRequest(1L, MemberRole.MEMBER, 999)).name())
                 .isEqualTo("kim");
 
         then(seatService).shouldHaveNoInteractions();
         assertThat(member.getSeatNumber()).isEqualTo(999);
+    }
+
+    @Test
+    @DisplayName("좌석 변경이 없어도 존재하지 않는 지점으로 회원 정보를 저장할 수 없다")
+    void rejectInvalidBranchWhenUpdatingUnchangedSeat() {
+        Member admin = createRegisteredMember(2L, MemberRole.ADMIN, 1L);
+        Member member = createRegisteredMember(1L, MemberRole.MEMBER, 999L);
+        given(memberRepository.findById(2L)).willReturn(Optional.of(admin));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(branchRepository.existsById(999L)).willReturn(false);
+
+        assertThatThrownBy(() -> memberService.update(
+                2L,
+                1L,
+                updateRequest(999L, MemberRole.MEMBER, 12)
+        ))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("존재하지 않는 지점입니다.");
+
+        assertThat(member.getName()).isEqualTo("hong");
+        then(seatService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 자격증으로 회원 정보를 저장할 수 없다")
+    void rejectInvalidCertificationWhenUpdatingMember() {
+        Member admin = createRegisteredMember(2L, MemberRole.ADMIN, 1L);
+        Member member = createRegisteredMember(1L, MemberRole.MEMBER, 1L);
+        given(memberRepository.findById(2L)).willReturn(Optional.of(admin));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(certificationRepository.existsById(999L)).willReturn(false);
+        MemberUpdateRequest request = new MemberUpdateRequest(
+                1L,
+                "kim",
+                MemberRole.MEMBER,
+                12,
+                LocalDate.of(2026, 8, 1),
+                999L,
+                ""
+        );
+
+        assertThatThrownBy(() -> memberService.update(2L, 1L, request))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("존재하지 않는 자격증입니다.");
+
+        assertThat(member.getCertificationId()).isEqualTo(3L);
+        then(seatService).shouldHaveNoInteractions();
     }
 
     @Test
@@ -255,26 +365,28 @@ class MemberServiceTest {
         Member member = createRegisteredMember();
         ReflectionTestUtils.setField(staff, "id", 2L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
-        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(member));
 
         memberService.delete(2L, 1L);
 
         then(memberDeletionCleanupService).should().cleanup(1L);
-        then(memberRepository).should().findByIdForUpdate(1L);
+        then(memberRepository).should().findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L);
         then(memberRepository).should().delete(member);
     }
 
     @Test
-    @DisplayName("스태프는 다른 지점 회원을 삭제할 수 없다")
+    @DisplayName("스태프의 다른 지점 회원 삭제는 존재하지 않는 회원과 같은 응답으로 거절한다")
     void rejectStaffDeletingCrossBranchMember() {
         Member staff = createRegisteredMember(2L, MemberRole.STAFF, 1L);
         Member member = createRegisteredMember(1L, MemberRole.MEMBER, 2L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
-        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> memberService.delete(2L, 1L))
                 .isInstanceOf(MemberException.class)
-                .hasMessageContaining("권한이 없습니다.");
+                .hasMessageContaining("존재하지 않는 사원입니다.");
         then(memberDeletionCleanupService).shouldHaveNoInteractions();
         then(memberRepository).should(never()).delete(member);
     }
@@ -285,7 +397,8 @@ class MemberServiceTest {
         Member staff = createRegisteredMember(2L, MemberRole.STAFF, 1L);
         Member targetStaff = createRegisteredMember(1L, MemberRole.STAFF, 1L);
         given(memberRepository.findById(2L)).willReturn(Optional.of(staff));
-        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(targetStaff));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(targetStaff));
 
         assertThatThrownBy(() -> memberService.delete(2L, 1L))
                 .isInstanceOf(MemberException.class)
@@ -308,7 +421,20 @@ class MemberServiceTest {
     }
 
     private Member createPreRegisteredMember() {
-        Member member = new Member(1L, "hong", null, 12, LocalDate.of(2026, 7, 1), 3L, "오전 교육 예정");
+        return createPreRegisteredMember(MemberRole.MEMBER);
+    }
+
+    private Member createPreRegisteredMember(MemberRole role) {
+        Member member = new Member(
+                1L,
+                "hong",
+                null,
+                role,
+                12,
+                LocalDate.of(2026, 7, 1),
+                3L,
+                "오전 교육 예정"
+        );
         ReflectionTestUtils.setField(member, "id", 1L);
         return member;
     }

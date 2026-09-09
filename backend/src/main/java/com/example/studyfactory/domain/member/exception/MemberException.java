@@ -25,4 +25,12 @@ public class MemberException extends BaseException {
         return new MemberException(HttpStatus.FORBIDDEN, "권한이 없습니다.");
     }
 
+    public static MemberException invalidBranch() {
+        return new MemberException(HttpStatus.BAD_REQUEST, "존재하지 않는 지점입니다.");
+    }
+
+    public static MemberException invalidCertification() {
+        return new MemberException(HttpStatus.BAD_REQUEST, "존재하지 않는 자격증입니다.");
+    }
+
 }

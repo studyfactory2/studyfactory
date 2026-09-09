@@ -17,6 +17,20 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("select member from Member member where member.id = :memberId")
     Optional<Member> findByIdForUpdate(@Param("memberId") Long memberId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select member
+            from Member member
+            where member.id = :memberId
+              and member.referenceInformation.branchId = :branchId
+            """)
+    Optional<Member> findByIdAndReferenceInformationBranchIdForUpdate(
+            @Param("memberId") Long memberId,
+            @Param("branchId") Long branchId
+    );
+
+    Optional<Member> findByIdAndReferenceInformationBranchId(Long memberId, Long branchId);
+
     @Query("""
             select count(m) > 0
             from Member m
@@ -54,13 +68,19 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("branchId") Long branchId
     );
 
-    List<Member> findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(String name, Long branchId);
+    List<Member> findByNameAndReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+            String name,
+            Long branchId,
+            MemberRole role
+    );
 
     List<Member> findAllByOrderByIdAsc();
 
     List<Member> findByNameContainingOrderByIdAsc(String name);
 
     List<Member> findByReferenceInformationBranchIdOrderByIdAsc(Long branchId);
+
+    List<Member> findByReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(Long branchId);
 
     List<Member> findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
             Long branchId,

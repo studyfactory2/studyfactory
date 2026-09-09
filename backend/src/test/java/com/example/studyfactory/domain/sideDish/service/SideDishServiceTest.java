@@ -13,6 +13,7 @@ import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.sideDish.dto.DailySideDishResponse;
 import com.example.studyfactory.domain.sideDish.dto.SideDishCreateRequest;
 import com.example.studyfactory.domain.sideDish.dto.SideDishResponse;
+import com.example.studyfactory.domain.sideDish.dto.SideDishTotalResponse;
 import com.example.studyfactory.domain.sideDish.entity.MealType;
 import com.example.studyfactory.domain.sideDish.entity.SideDishMealInformation;
 import com.example.studyfactory.domain.sideDish.entity.SideDishOrderInformation;
@@ -101,6 +102,57 @@ class SideDishServiceTest {
         assertThat(responses.get(0).items()).isEqualTo("제육볶음: 9000");
         assertThat(responses.get(0).totalPrice()).isEqualTo(9000);
         then(sideDishRequestRepository).should().findMineByDate(1L, mealDate);
+    }
+
+    @Test
+    @DisplayName("회원은 자기 지점의 반찬 총액을 계속 조회할 수 있다")
+    void memberFindOwnBranchTotals() {
+        LocalDate mealDate = LocalDate.of(2026, 6, 19);
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(2L, mealDate, MealType.LUNCH))
+                .willReturn(9_000L);
+        given(sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(2L, mealDate, MealType.DINNER))
+                .willReturn(8_000L);
+
+        SideDishTotalResponse response = sideDishService.findBranchTotals(1L, mealDate, null);
+
+        assertThat(response.lunchTotal()).isEqualTo(9_000L);
+        assertThat(response.dinnerTotal()).isEqualTo(8_000L);
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 지점의 반찬 총액을 조회한다")
+    void adminFindTotalsAcrossBranches() {
+        LocalDate mealDate = LocalDate.of(2026, 6, 19);
+        Member admin = createMemberWithId(1L, MemberRole.ADMIN);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(5L, mealDate, MealType.LUNCH))
+                .willReturn(18_000L);
+        given(sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(5L, mealDate, MealType.DINNER))
+                .willReturn(16_000L);
+
+        SideDishTotalResponse response = sideDishService.findBranchTotals(1L, mealDate, 5L);
+
+        assertThat(response.lunchTotal()).isEqualTo(18_000L);
+        assertThat(response.dinnerTotal()).isEqualTo(16_000L);
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점의 반찬 총액을 조회할 수 없다")
+    void rejectStaffFindTotalsAcrossBranches() {
+        Member staff = createMemberWithId(1L, MemberRole.STAFF);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+
+        assertThatThrownBy(() -> sideDishService.findBranchTotals(
+                1L,
+                LocalDate.of(2026, 6, 19),
+                5L
+        ))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+
+        then(sideDishRequestRepository).shouldHaveNoInteractions();
     }
 
     @Test

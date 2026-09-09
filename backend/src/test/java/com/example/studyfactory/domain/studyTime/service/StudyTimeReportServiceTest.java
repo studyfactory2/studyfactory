@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
@@ -224,13 +225,14 @@ class StudyTimeReportServiceTest {
     }
 
     @Test
-    @DisplayName("스태프와 관리자는 같은 지점 회원만 지점 범위 쿼리로 조회한다")
+    @DisplayName("스태프는 같은 지점 회원을 지점 범위 쿼리로 조회한다")
     void scopeManagerReportToCurrentBranch() {
         Member manager = member(9L, 2L, MemberRole.STAFF);
         Member target = member(1L, 2L, MemberRole.MEMBER);
         Instant rangeStart = atSeoul(STUDY_DATE, 0, 0);
         given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
-        given(memberRepository.findById(1L)).willReturn(Optional.of(target));
+        given(memberRepository.findByIdAndReferenceInformationBranchId(1L, 2L))
+                .willReturn(Optional.of(target));
         given(studyPresenceSessionRepository.findIntervalRowsByBranchIdAndMemberId(
                 2L,
                 1L,
@@ -276,11 +278,10 @@ class StudyTimeReportServiceTest {
     }
 
     @Test
-    @DisplayName("일반 회원의 운영 조회와 다른 지점 회원 조회는 거절한다")
+    @DisplayName("일반 회원의 운영 조회와 스태프의 다른 지점 회원 조회는 거절한다")
     void rejectUnauthorizedManagerReports() {
         Member member = member(1L, 2L, MemberRole.MEMBER);
-        Member manager = member(9L, 2L, MemberRole.ADMIN);
-        Member otherBranchMember = member(3L, 3L, MemberRole.MEMBER);
+        Member manager = member(9L, 2L, MemberRole.STAFF);
         given(memberRepository.findById(1L)).willReturn(Optional.of(member));
 
         assertThatThrownBy(() -> studyTimeReportService.findForManager(
@@ -292,7 +293,8 @@ class StudyTimeReportServiceTest {
                 .hasMessageContaining("권한이 없습니다.");
 
         given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
-        given(memberRepository.findById(3L)).willReturn(Optional.of(otherBranchMember));
+        given(memberRepository.findByIdAndReferenceInformationBranchId(3L, 2L))
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> studyTimeReportService.findForManager(
                 9L,
@@ -300,10 +302,48 @@ class StudyTimeReportServiceTest {
                 STUDY_DATE,
                 STUDY_DATE
         )).isInstanceOf(MemberException.class)
-                .hasMessageContaining("권한이 없습니다.");
+                .hasMessageContaining("존재하지 않는 사원입니다.");
 
+        then(memberRepository).should().findByIdAndReferenceInformationBranchId(3L, 2L);
+        then(memberRepository).should(never()).findById(3L);
         then(studyPresenceSessionRepository).shouldHaveNoInteractions();
         then(studyBreakSessionRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 지점 회원 리포트를 대상 회원의 지점 범위로 조회한다")
+    void adminFindsAnotherBranchMemberReport() {
+        Member admin = member(9L, 2L, MemberRole.ADMIN);
+        Member target = member(1L, 3L, MemberRole.MEMBER);
+        Instant rangeStart = atSeoul(STUDY_DATE, 0, 0);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(target));
+        given(studyPresenceSessionRepository.findIntervalRowsByBranchIdAndMemberId(
+                3L,
+                1L,
+                rangeStart,
+                NOW
+        )).willReturn(List.of());
+        given(studyBreakSessionRepository.findIntervalRowsByBranchIdAndMemberId(
+                3L,
+                1L,
+                STUDY_DATE,
+                STUDY_DATE,
+                rangeStart,
+                NOW
+        )).willReturn(List.of());
+        given(leaveExclusionService.findExcludedPeriods(1L, 3L, STUDY_DATE, STUDY_DATE))
+                .willReturn(Map.of());
+
+        var response = studyTimeReportService.findForManager(9L, 1L, STUDY_DATE, STUDY_DATE);
+
+        assertThat(response.branchId()).isEqualTo(3L);
+        then(studyPresenceSessionRepository).should().findIntervalRowsByBranchIdAndMemberId(
+                3L,
+                1L,
+                rangeStart,
+                NOW
+        );
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.studyPresence.service;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDurationResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceHistoryResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceLiveResponse;
@@ -39,10 +40,16 @@ public class StudyPresenceQueryService {
 
     @Transactional(readOnly = true)
     public StudyPresenceLiveResponse findLive(Long currentMemberId) {
+        return findLive(currentMemberId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public StudyPresenceLiveResponse findLive(Long currentMemberId, Long requestedBranchId) {
         Member manager = findOperationsMember(currentMemberId);
+        Long branchId = ManagerAccessPolicy.resolveRequiredBranch(manager, requestedBranchId);
         Instant asOf = clock.instant();
         List<StudyPresenceSession> sessions = studyPresenceSessionRepository
-                .findActiveByBranchId(manager.getBranchId())
+                .findActiveByBranchId(branchId)
                 .stream()
                 .filter(session -> !autoClosePolicy.shouldAutomaticallyClose(session, asOf))
                 .toList();
@@ -59,7 +66,7 @@ public class StudyPresenceQueryService {
                 .toList();
 
         return new StudyPresenceLiveResponse(
-                manager.getBranchId(),
+                branchId,
                 PRESENCE_ZONE.getId(),
                 asOf,
                 responses.size(),
@@ -69,9 +76,19 @@ public class StudyPresenceQueryService {
 
     @Transactional(readOnly = true)
     public StudyPresenceHistoryResponse findDailyHistory(Long currentMemberId, LocalDate date) {
+        return findDailyHistory(currentMemberId, date, null);
+    }
+
+    @Transactional(readOnly = true)
+    public StudyPresenceHistoryResponse findDailyHistory(
+            Long currentMemberId,
+            LocalDate date,
+            Long requestedBranchId
+    ) {
         Member manager = findOperationsMember(currentMemberId);
+        Long branchId = ManagerAccessPolicy.resolveRequiredBranch(manager, requestedBranchId);
         LocalDate requestedDate = date == null ? LocalDate.now(clock.withZone(PRESENCE_ZONE)) : date;
-        return findHistory(manager.getBranchId(), null, requestedDate, requestedDate);
+        return findHistory(branchId, null, requestedDate, requestedDate);
     }
 
     @Transactional(readOnly = true)
@@ -127,10 +144,22 @@ public class StudyPresenceQueryService {
             LocalDate fromDate,
             LocalDate toDate
     ) {
+        return findMemberHistory(currentMemberId, memberId, fromDate, toDate, null);
+    }
+
+    @Transactional(readOnly = true)
+    public StudyPresenceHistoryResponse findMemberHistory(
+            Long currentMemberId,
+            Long memberId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            Long requestedBranchId
+    ) {
         Member manager = findOperationsMember(currentMemberId);
+        Long branchId = ManagerAccessPolicy.resolveRequiredBranch(manager, requestedBranchId);
         validateDateRange(fromDate, toDate);
 
-        return findHistory(manager.getBranchId(), memberId, fromDate, toDate);
+        return findHistory(branchId, memberId, fromDate, toDate);
     }
 
     private StudyPresenceHistoryResponse findHistory(
@@ -196,9 +225,7 @@ public class StudyPresenceQueryService {
 
     private Member findOperationsMember(Long currentMemberId) {
         Member currentMember = findMember(currentMemberId);
-        if (!currentMember.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
+        ManagerAccessPolicy.validateManager(currentMember);
         return currentMember;
     }
 

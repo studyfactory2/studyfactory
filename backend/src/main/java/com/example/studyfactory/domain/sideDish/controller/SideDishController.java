@@ -52,9 +52,10 @@ public class SideDishController {
     @GetMapping("/totals")
     public SideDishTotalResponse findBranchTotals(
             @CurrentMember Long memberId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Long branchId
     ) {
-        return sideDishService.findBranchTotals(memberId, date);
+        return sideDishService.findBranchTotals(memberId, date, branchId);
     }
 
     @GetMapping("/daily")

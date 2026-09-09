@@ -252,6 +252,37 @@ class PreRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("관리자는 지점을 지정해 해당 지점의 사전등록 대기 목록만 조회한다")
+    void adminFiltersPendingPreRegistrationsByBranch() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        Branch otherBranch = branchRepository.save(new Branch("홍대점"));
+        String adminToken = createTokenFor(MemberRole.ADMIN, branch.getId(), "관리자", 40);
+        memberRepository.save(createPendingMember(branch.getId(), "강남 회원"));
+        Member target = memberRepository.save(createPendingMember(otherBranch.getId(), "홍대 회원"));
+
+        mockMvc.perform(get("/api/pre-registrations/pending")
+                        .param("branchId", String.valueOf(otherBranch.getId()))
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(target.getId()))
+                .andExpect(jsonPath("$[0].branchId").value(otherBranch.getId()))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점의 사전등록 대기 목록을 지정할 수 없다")
+    void rejectStaffFilteringPendingPreRegistrationsByAnotherBranch() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        Branch otherBranch = branchRepository.save(new Branch("홍대점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 41);
+
+        mockMvc.perform(get("/api/pre-registrations/pending")
+                        .param("branchId", String.valueOf(otherBranch.getId()))
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("스태프는 같은 지점의 스태프 사전등록 정보를 수정할 수 없다")
     void rejectStaffUpdatingPrivilegedPendingTarget() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
@@ -284,6 +315,74 @@ class PreRegistrationControllerTest {
                 .andExpect(status().isForbidden());
 
         assertThat(memberRepository.existsById(pendingAdmin.getId())).isTrue();
+    }
+
+    @Test
+    @DisplayName("스태프의 다른 지점 사전등록 수정은 존재하지 않는 등록과 같은 응답을 반환한다")
+    void rejectStaffUpdatingForeignPendingWithoutRevealingIt() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        Branch otherBranch = branchRepository.save(new Branch("홍대점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 42);
+        Member foreignPending = memberRepository.save(createPendingMember(otherBranch.getId(), "홍대 회원"));
+        String requestBody = memberRequestBody(branch.getId(), "MEMBER");
+
+        String foreignResponse = mockMvc.perform(patch(
+                                "/api/pre-registrations/{memberId}",
+                                foreignPending.getId()
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String missingResponse = mockMvc.perform(patch(
+                                "/api/pre-registrations/{memberId}",
+                                Long.MAX_VALUE
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(foreignResponse).isEqualTo(missingResponse);
+        assertThat(memberRepository.findById(foreignPending.getId()).orElseThrow().getName())
+                .isEqualTo("홍대 회원");
+    }
+
+    @Test
+    @DisplayName("스태프의 다른 지점 사전등록 삭제는 존재하지 않는 등록과 같은 응답을 반환한다")
+    void rejectStaffDeletingForeignPendingWithoutRevealingIt() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        Branch otherBranch = branchRepository.save(new Branch("홍대점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 43);
+        Member foreignPending = memberRepository.save(createPendingMember(otherBranch.getId(), "홍대 회원"));
+
+        String foreignResponse = mockMvc.perform(delete(
+                                "/api/pre-registrations/{memberId}",
+                                foreignPending.getId()
+                        )
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String missingResponse = mockMvc.perform(delete(
+                                "/api/pre-registrations/{memberId}",
+                                Long.MAX_VALUE
+                        )
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(foreignResponse).isEqualTo(missingResponse);
+        assertThat(memberRepository.existsById(foreignPending.getId())).isTrue();
     }
 
     @Test
@@ -422,6 +521,42 @@ class PreRegistrationControllerTest {
     }
 
     @Test
+    @DisplayName("사전등록 이름이 50자를 초과하면 400 응답을 반환한다")
+    void rejectTooLongPreRegistrationName() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String requestBody = memberRequestBody(branch.getId(), "MEMBER")
+                .replace("\"hong\"", "\"" + "가".repeat(51) + "\"");
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
+                .andExpect(status().isBadRequest());
+
+        assertThat(pendingPreRegistrationCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("사전등록 자격증이 100자를 초과하면 400 응답을 반환한다")
+    void rejectTooLongPreRegistrationCertification() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String requestBody = memberRequestBodyWithCertification(
+                branch.getId(),
+                "MEMBER",
+                "자".repeat(101)
+        );
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                        .header("Authorization", "Bearer " + createAccessToken()))
+                .andExpect(status().isBadRequest());
+
+        assertThat(certificationRepository.count()).isZero();
+        assertThat(pendingPreRegistrationCount()).isZero();
+    }
+
+    @Test
     @DisplayName("인증 없이 사전등록을 생성할 수 없다")
     void rejectPreRegistrationWithoutAuthentication() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점"));
@@ -500,6 +635,23 @@ class PreRegistrationControllerTest {
                 .andExpect(jsonPath("$.branchId").value(branch.getId()));
     }
 
+    @Test
+    @DisplayName("스태프는 새 자격증을 사전등록 과정에서 자동 생성할 수 없다")
+    void rejectUnknownCertificationForStaffOperator() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점"));
+        String staffToken = createTokenFor(MemberRole.STAFF, branch.getId(), "사무직원", 39);
+
+        mockMvc.perform(post("/api/pre-registrations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberRequestBodyWithCertification(branch.getId(), "MEMBER", "새 자격증"))
+                        .header("Authorization", "Bearer " + staffToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("존재하지 않는 자격증입니다."));
+
+        assertThat(certificationRepository.existsByContent("새 자격증")).isFalse();
+        assertThat(pendingPreRegistrationCount()).isZero();
+    }
+
     /** Excludes the signed-up manager who performed the request. */
     private long pendingPreRegistrationCount() {
         return memberRepository
@@ -508,6 +660,11 @@ class PreRegistrationControllerTest {
     }
 
     private String memberRequestBody(Long branchId, String role) {
+        return memberRequestBodyWithCertification(branchId, role, null);
+    }
+
+    private String memberRequestBodyWithCertification(Long branchId, String role, String certification) {
+        String certificationJson = certification == null ? "null" : "\"" + certification + "\"";
         return """
                 {
                   "branchId": %d,
@@ -515,11 +672,11 @@ class PreRegistrationControllerTest {
                   "role": "%s",
                   "seatNumber": null,
                   "expectedJoinDate": "2026-07-01",
-                  "certification": null,
+                  "certification": %s,
                   "drinkSetting": "아이스 아메리카노",
                   "drinkNote": "연하게"
                 }
-                """.formatted(branchId, role);
+                """.formatted(branchId, role, certificationJson);
     }
 
     private String createTokenFor(MemberRole role, Long branchId, String name, int seatNumber) {

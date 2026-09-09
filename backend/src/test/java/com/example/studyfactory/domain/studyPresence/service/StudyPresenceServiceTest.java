@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import com.example.studyfactory.domain.branch.exception.BranchException;
+import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
@@ -51,6 +53,9 @@ class StudyPresenceServiceTest {
     private MemberRepository memberRepository;
 
     @Mock
+    private BranchRepository branchRepository;
+
+    @Mock
     private StudyPresenceQrTokenProvider studyPresenceQrTokenProvider;
 
     @Spy
@@ -67,6 +72,7 @@ class StudyPresenceServiceTest {
     void findDoorQrForAdminBranch() {
         Member admin = createMember(1L, 2L, MemberRole.ADMIN);
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(branchRepository.existsById(2L)).willReturn(true);
         given(studyPresenceQrTokenProvider.createToken(2L)).willReturn(QR_TOKEN);
 
         StudyPresenceDoorQrResponse response = studyPresenceService.findDoorQr(1L);
@@ -76,6 +82,34 @@ class StudyPresenceServiceTest {
         then(memberRepository).should().findById(1L);
         then(studyPresenceQrTokenProvider).should().createToken(2L);
         then(studyPresenceSessionRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("관리자는 선택한 다른 지점의 영구 출입 QR을 조회한다")
+    void findDoorQrForSelectedAdminBranch() {
+        Member admin = createMember(1L, 2L, MemberRole.ADMIN);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(branchRepository.existsById(3L)).willReturn(true);
+        given(studyPresenceQrTokenProvider.createToken(3L)).willReturn(QR_TOKEN);
+
+        StudyPresenceDoorQrResponse response = studyPresenceService.findDoorQr(1L, 3L);
+
+        assertThat(response.branchId()).isEqualTo(3L);
+        assertThat(response.qrToken()).isEqualTo(QR_TOKEN);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 지점의 출입 QR은 발급하지 않는다")
+    void rejectDoorQrForMissingBranch() {
+        Member admin = createMember(1L, 2L, MemberRole.ADMIN);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(branchRepository.existsById(999L)).willReturn(false);
+
+        assertThatThrownBy(() -> studyPresenceService.findDoorQr(1L, 999L))
+                .isInstanceOf(BranchException.class)
+                .hasMessageContaining("존재하지 않는 지점입니다.");
+
+        then(studyPresenceQrTokenProvider).shouldHaveNoInteractions();
     }
 
     @Test
@@ -470,21 +504,22 @@ class StudyPresenceServiceTest {
     }
 
     @Test
-    @DisplayName("관리자는 다른 지점의 입실 기록을 수동 퇴실 처리할 수 없다")
-    void rejectManagerCheckOutForAnotherBranch() {
+    @DisplayName("관리자는 다른 지점의 입실 기록도 수동 퇴실 처리할 수 있다")
+    void adminChecksOutAnotherBranchSession() {
         Member manager = createMember(9L, 3L, MemberRole.ADMIN);
+        Member targetMember = createMember(1L, 2L);
         StudyPresenceSession activeSession = StudyPresenceSession.qrCheckIn(1L, 2L, NOW.minusSeconds(60));
         ReflectionTestUtils.setField(activeSession, "id", 10L);
         given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
-        given(studyPresenceSessionRepository.findByIdAndBranchIdForUpdate(10L, 3L))
-                .willReturn(Optional.empty());
+        given(studyPresenceSessionRepository.findByIdForUpdate(10L)).willReturn(Optional.of(activeSession));
+        given(clock.instant()).willReturn(NOW);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(targetMember));
 
-        assertThatThrownBy(() -> studyPresenceService.managerCheckOut(9L, 10L))
-                .isInstanceOf(StudyPresenceException.class)
-                .hasMessageContaining("존재하지 않는 입퇴실 기록입니다.");
+        var response = studyPresenceService.managerCheckOut(9L, 10L);
 
-        assertThat(activeSession.isActive()).isTrue();
-        then(clock).shouldHaveNoInteractions();
+        assertThat(response.branchId()).isEqualTo(2L);
+        assertThat(response.closedByMemberId()).isEqualTo(9L);
+        assertThat(activeSession.isActive()).isFalse();
     }
 
     @Test
@@ -495,7 +530,7 @@ class StudyPresenceServiceTest {
         closedSession.checkOut(NOW.minusSeconds(30));
         ReflectionTestUtils.setField(closedSession, "id", 10L);
         given(memberRepository.findById(9L)).willReturn(Optional.of(manager));
-        given(studyPresenceSessionRepository.findByIdAndBranchIdForUpdate(10L, 2L))
+        given(studyPresenceSessionRepository.findByIdForUpdate(10L))
                 .willReturn(Optional.of(closedSession));
         given(clock.instant()).willReturn(NOW);
 

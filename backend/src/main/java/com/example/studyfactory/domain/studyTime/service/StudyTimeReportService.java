@@ -1,8 +1,10 @@
 package com.example.studyfactory.domain.studyTime.service;
 
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import com.example.studyfactory.domain.studyBreak.model.StudyBreakIntervalRow;
 import com.example.studyfactory.domain.studyBreak.repository.StudyBreakSessionRepository;
 import com.example.studyfactory.domain.studyPresence.model.StudyPresenceIntervalRow;
@@ -69,15 +71,11 @@ public class StudyTimeReportService {
         Instant asOf = clock.instant();
         validateDateRange(fromDate, toDate);
         Member manager = findMember(currentMemberId);
-        if (!manager.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
-        Member member = findMember(memberId);
-        if (!manager.getBranchId().equals(member.getBranchId())) {
-            throw MemberException.forbidden();
-        }
+        ManagerAccessPolicy.validateManager(manager);
+        Member member = findManagerTarget(manager, memberId);
+        ManagerAccessPolicy.validateMemberTarget(manager, member);
 
-        return buildReport(member, Optional.of(manager.getBranchId()), fromDate, toDate, asOf);
+        return buildReport(member, Optional.of(member.getBranchId()), fromDate, toDate, asOf);
     }
 
     private StudyTimeReportResponse buildReport(
@@ -349,6 +347,15 @@ public class StudyTimeReportService {
 
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+    }
+
+    private Member findManagerTarget(Member manager, Long memberId) {
+        if (manager.getRole() == MemberRole.ADMIN) {
+            return findMember(memberId);
+        }
+
+        return memberRepository.findByIdAndReferenceInformationBranchId(memberId, manager.getBranchId())
+                .orElseThrow(MemberException::memberNotFound);
     }
 
     private Instant earlierOf(Instant first, Instant second) {

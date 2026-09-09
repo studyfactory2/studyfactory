@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,8 +36,11 @@ public class PreRegistrationController {
     }
 
     @GetMapping("/pending")
-    public List<PreRegistrationResponse> findPending(@CurrentMember Long currentMemberId) {
-        return preRegistrationService.findPending(currentMemberId);
+    public List<PreRegistrationResponse> findPending(
+            @CurrentMember Long currentMemberId,
+            @RequestParam(required = false) Long branchId
+    ) {
+        return preRegistrationService.findPending(currentMemberId, branchId);
     }
 
     @PatchMapping("/{memberId}")

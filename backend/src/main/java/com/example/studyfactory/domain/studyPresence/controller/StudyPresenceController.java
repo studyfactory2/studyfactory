@@ -55,17 +55,23 @@ public class StudyPresenceController {
     }
 
     @GetMapping("/door-qr")
-    public ResponseEntity<StudyPresenceDoorQrResponse> findDoorQr(@CurrentMember Long currentMemberId) {
+    public ResponseEntity<StudyPresenceDoorQrResponse> findDoorQr(
+            @CurrentMember Long currentMemberId,
+            @RequestParam(required = false) Long branchId
+    ) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore().mustRevalidate())
-                .body(studyPresenceService.findDoorQr(currentMemberId));
+                .body(studyPresenceService.findDoorQr(currentMemberId, branchId));
     }
 
     @GetMapping("/live")
-    public ResponseEntity<StudyPresenceLiveResponse> findLive(@CurrentMember Long currentMemberId) {
+    public ResponseEntity<StudyPresenceLiveResponse> findLive(
+            @CurrentMember Long currentMemberId,
+            @RequestParam(required = false) Long branchId
+    ) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(studyPresenceQueryService.findLive(currentMemberId));
+                .body(studyPresenceQueryService.findLive(currentMemberId, branchId));
     }
 
     @GetMapping("/history")
@@ -73,11 +79,12 @@ public class StudyPresenceController {
             @CurrentMember Long currentMemberId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate date
+            LocalDate date,
+            @RequestParam(required = false) Long branchId
     ) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(studyPresenceQueryService.findDailyHistory(currentMemberId, date));
+                .body(studyPresenceQueryService.findDailyHistory(currentMemberId, date, branchId));
     }
 
     @GetMapping("/members/{memberId}/history")
@@ -85,7 +92,8 @@ public class StudyPresenceController {
             @CurrentMember Long currentMemberId,
             @PathVariable Long memberId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) Long branchId
     ) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
@@ -93,7 +101,8 @@ public class StudyPresenceController {
                         currentMemberId,
                         memberId,
                         from,
-                        to
+                        to,
+                        branchId
                 ));
     }
 

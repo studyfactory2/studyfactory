@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
@@ -59,6 +60,9 @@ class StudyPresenceManualCheckInServiceTest {
 
     @Mock
     private MemberRepository memberRepository;
+
+    @Mock
+    private BranchRepository branchRepository;
 
     @Mock
     private StudyPresenceQrTokenProvider studyPresenceQrTokenProvider;
@@ -128,17 +132,36 @@ class StudyPresenceManualCheckInServiceTest {
     }
 
     @Test
-    @DisplayName("다른 지점 회원은 수동으로 입실 처리할 수 없다")
+    @DisplayName("스태프는 다른 지점 회원을 잠그거나 조회하지 않고 없는 회원과 같이 처리한다")
     void rejectManualCheckInForOtherBranchTarget() {
-        Member admin = createMember(9L, 2L, MemberRole.ADMIN);
-        Member target = createMember(1L, 3L, MemberRole.MEMBER);
-        given(memberRepository.findById(9L)).willReturn(Optional.of(admin));
-        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(target));
+        Member staff = createMember(9L, 2L, MemberRole.STAFF);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(staff));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 2L))
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> studyPresenceService.managerCheckIn(9L, 1L, BEFORE_FIRST_PERIOD, REASON))
                 .isInstanceOf(MemberException.class)
-                .hasMessageContaining("권한이 없습니다.");
+                .hasMessageContaining("존재하지 않는 사원입니다.");
+        then(memberRepository).should(never()).findByIdForUpdate(1L);
         then(studyPresenceSessionRepository).should(never()).save(any());
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 지점 회원도 선택한 지점 범위에서 수동 입실 처리한다")
+    void adminManuallyChecksInOtherBranchMember() {
+        Member admin = createMember(9L, 2L, MemberRole.ADMIN);
+        Member target = createMember(1L, 3L, MemberRole.MEMBER);
+        givenManualCheckInIsPossible(admin, target, BEFORE_FIRST_PERIOD);
+
+        StudyPresenceManagerSessionResponse response = studyPresenceService.managerCheckIn(
+                9L,
+                1L,
+                BEFORE_FIRST_PERIOD,
+                REASON
+        );
+
+        assertThat(response.branchId()).isEqualTo(3L);
+        assertThat(response.checkedInByMemberId()).isEqualTo(9L);
     }
 
     @Test
@@ -310,7 +333,14 @@ class StudyPresenceManualCheckInServiceTest {
     /** Operator resolved, both pessimistic locks taken, clock ready to be read. */
     private void givenLocksAreHeld(Member operator, Member target) {
         given(memberRepository.findById(operator.getId())).willReturn(Optional.of(operator));
-        given(memberRepository.findByIdForUpdate(target.getId())).willReturn(Optional.of(target));
+        if (operator.getRole() == MemberRole.ADMIN) {
+            given(memberRepository.findByIdForUpdate(target.getId())).willReturn(Optional.of(target));
+        } else {
+            given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(
+                    target.getId(),
+                    operator.getBranchId()
+            )).willReturn(Optional.of(target));
+        }
         given(studyPresenceSessionRepository.findActiveByMemberIdForUpdate(target.getId()))
                 .willReturn(Optional.empty());
         given(clock.instant()).willReturn(NOW);

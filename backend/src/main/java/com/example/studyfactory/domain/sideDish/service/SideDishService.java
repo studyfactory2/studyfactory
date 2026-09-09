@@ -60,14 +60,14 @@ public class SideDishService {
     }
 
     @Transactional(readOnly = true)
-    public SideDishTotalResponse findBranchTotals(Long memberId, LocalDate date) {
+    public SideDishTotalResponse findBranchTotals(Long memberId, LocalDate date, Long branchId) {
         Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
         LocalDate mealDate = resolveDate(date);
-        Long branchId = member.getBranchId();
+        Long targetBranchId = resolveTotalsBranch(member, branchId);
 
         return new SideDishTotalResponse(
-                sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(branchId, mealDate, MealType.LUNCH),
-                sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(branchId, mealDate, MealType.DINNER)
+                sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(targetBranchId, mealDate, MealType.LUNCH),
+                sideDishRequestRepository.sumTotalByBranchAndDateAndMealType(targetBranchId, mealDate, MealType.DINNER)
         );
     }
 
@@ -150,6 +150,17 @@ public class SideDishService {
         }
 
         return date;
+    }
+
+    private Long resolveTotalsBranch(Member member, Long requestedBranchId) {
+        if (member.getRole() == MemberRole.MEMBER) {
+            if (requestedBranchId != null && !member.getBranchId().equals(requestedBranchId)) {
+                throw MemberException.forbidden();
+            }
+            return member.getBranchId();
+        }
+
+        return ManagerAccessPolicy.resolveRequiredBranch(member, requestedBranchId);
     }
 
     private boolean isToday(LocalDate mealDate) {

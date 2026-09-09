@@ -80,6 +80,36 @@ class StudyPresenceQueryServiceTest {
     }
 
     @Test
+    @DisplayName("관리자는 선택한 다른 지점의 실시간 입실자를 조회한다")
+    void adminFindsLivePresenceForSelectedBranch() {
+        Member admin = createMember(9L, 2L, "김관리자", MemberRole.ADMIN, null);
+        Member target = createMember(1L, 3L, "김회원", MemberRole.MEMBER, 10);
+        StudyPresenceSession session = activeSession(10L, 1L, 3L, NOW.minusSeconds(60));
+        given(memberRepository.findById(9L)).willReturn(Optional.of(admin));
+        given(studyPresenceSessionRepository.findActiveByBranchId(3L)).willReturn(List.of(session));
+        given(memberRepository.findAllById(List.of(1L))).willReturn(List.of(target));
+
+        var response = studyPresenceQueryService.findLive(9L, 3L);
+
+        assertThat(response.branchId()).isEqualTo(3L);
+        assertThat(response.sessions()).singleElement()
+                .satisfies(item -> assertThat(item.memberId()).isEqualTo(1L));
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점의 운영 입실 현황을 선택할 수 없다")
+    void rejectForeignBranchSelectionForStaff() {
+        Member staff = createMember(9L, 2L, "이스태프", MemberRole.STAFF, null);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(staff));
+
+        assertThatThrownBy(() -> studyPresenceQueryService.findLive(9L, 3L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+
+        then(studyPresenceSessionRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("스케줄러 저장 직전의 어제 미퇴실 기록은 실시간 입실자에서 숨긴다")
     void hidePendingAutomaticCheckoutFromLivePresence() {
         Member manager = createMember(9L, 2L, "이스태프", MemberRole.STAFF, null);

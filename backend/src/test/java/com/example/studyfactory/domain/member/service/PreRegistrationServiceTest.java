@@ -253,6 +253,70 @@ class PreRegistrationServiceTest {
     }
 
     @Test
+    @DisplayName("스태프는 카탈로그에 이미 있는 자격증으로 일반 회원을 사전등록할 수 있다")
+    void allowStaffToUseExistingCertification() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
+        given(branchRepository.existsById(1L)).willReturn(true);
+        Certification certification = new Certification("회계사");
+        ReflectionTestUtils.setField(certification, "id", 7L);
+        given(certificationRepository.findByContent("회계사")).willReturn(Optional.of(certification));
+        given(memberRepository.save(any(Member.class))).willAnswer(invocation -> {
+            Member member = invocation.getArgument(0);
+            ReflectionTestUtils.setField(member, "id", 1L);
+            return member;
+        });
+        given(beverageService.createPreference(1L, null, (String) null)).willReturn(List.of());
+        PreRegistrationCreateRequest request = memberRequestWithCertification(" 회계사 ");
+
+        PreRegistrationResponse response = preRegistrationService.create(STAFF_ID, request);
+
+        assertThat(response.certificationId()).isEqualTo(7L);
+        then(certificationRepository).should(never()).save(any(Certification.class));
+    }
+
+    @Test
+    @DisplayName("스태프 사전등록은 새 자격증 카탈로그 항목을 자동 생성하지 않는다")
+    void rejectStaffCreatingUnknownCertification() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(certificationRepository.findByContent("새 자격증")).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> preRegistrationService.create(
+                STAFF_ID,
+                memberRequestWithCertification("새 자격증")
+        ))
+                .isInstanceOf(PreRegistrationException.class)
+                .hasMessageContaining("존재하지 않는 자격증입니다.");
+
+        then(certificationRepository).should(never()).save(any(Certification.class));
+        then(memberRepository).should(never()).save(any(Member.class));
+        then(beverageService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("스태프 사전등록 수정도 새 자격증 카탈로그 항목을 자동 생성하지 않는다")
+    void rejectStaffUpdatingToUnknownCertification() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
+        Member pendingMember = createPendingMember(1L, 1L, "예정 회원");
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(pendingMember));
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(certificationRepository.findByContent("새 자격증")).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> preRegistrationService.update(
+                STAFF_ID,
+                1L,
+                memberRequestWithCertification("새 자격증")
+        ))
+                .isInstanceOf(PreRegistrationException.class)
+                .hasMessageContaining("존재하지 않는 자격증입니다.");
+
+        assertThat(pendingMember.getCertificationId()).isNull();
+        then(certificationRepository).should(never()).save(any(Certification.class));
+        then(beverageService).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("관리자는 모든 지점의 사전등록 대기 목록을 조회한다")
     void adminFindsAllPendingPreRegistrations() {
         givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
@@ -263,9 +327,25 @@ class PreRegistrationServiceTest {
         given(beverageService.findItems(first.getId())).willReturn(List.of());
         given(beverageService.findItems(second.getId())).willReturn(List.of());
 
-        List<PreRegistrationResponse> responses = preRegistrationService.findPending(ADMIN_ID);
+        List<PreRegistrationResponse> responses = preRegistrationService.findPending(ADMIN_ID, null);
 
         assertThat(responses).extracting(PreRegistrationResponse::branchId).containsExactly(1L, 2L);
+    }
+
+    @Test
+    @DisplayName("관리자는 지점을 지정해 해당 지점의 사전등록 대기 목록만 조회한다")
+    void adminFiltersPendingPreRegistrationsByBranch() {
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
+        Member pending = createPendingMember(1L, 2L, "홍대 예정 스태프", MemberRole.STAFF);
+        given(memberRepository.findByReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(2L))
+                .willReturn(List.of(pending));
+        given(beverageService.findItems(pending.getId())).willReturn(List.of());
+
+        List<PreRegistrationResponse> responses = preRegistrationService.findPending(ADMIN_ID, 2L);
+
+        assertThat(responses).extracting(PreRegistrationResponse::branchId).containsExactly(2L);
+        assertThat(responses).extracting(PreRegistrationResponse::role).containsExactly(MemberRole.STAFF);
+        then(memberRepository).should(never()).findPendingPreRegistrations(any());
     }
 
     @Test
@@ -280,10 +360,24 @@ class PreRegistrationServiceTest {
                 .willReturn(List.of(pending));
         given(beverageService.findItems(pending.getId())).willReturn(List.of());
 
-        List<PreRegistrationResponse> responses = preRegistrationService.findPending(STAFF_ID);
+        List<PreRegistrationResponse> responses = preRegistrationService.findPending(STAFF_ID, null);
 
         assertThat(responses).extracting(PreRegistrationResponse::branchId).containsExactly(2L);
         then(memberRepository).should(never()).findPendingPreRegistrations(any());
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점의 사전등록 대기 목록을 지정할 수 없다")
+    void rejectStaffFilteringPendingPreRegistrationsByAnotherBranch() {
+        givenOperator(STAFF_ID, MemberRole.STAFF, 2L);
+
+        assertThatThrownBy(() -> preRegistrationService.findPending(STAFF_ID, 3L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+
+        then(memberRepository).should(never())
+                .findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(any(), any());
+        then(beverageService).shouldHaveNoInteractions();
     }
 
     @Test
@@ -291,7 +385,8 @@ class PreRegistrationServiceTest {
     void staffCannotUpdatePrivilegedPendingTarget() {
         givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
         Member pendingStaff = createPendingMember(1L, 1L, "예정 스태프", MemberRole.STAFF);
-        given(memberRepository.findById(1L)).willReturn(Optional.of(pendingStaff));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(pendingStaff));
 
         assertThatThrownBy(() -> preRegistrationService.update(STAFF_ID, 1L, createMemberRequest()))
                 .isInstanceOf(MemberException.class)
@@ -304,7 +399,8 @@ class PreRegistrationServiceTest {
     void staffCannotDeletePrivilegedPendingTarget() {
         givenOperator(STAFF_ID, MemberRole.STAFF, 1L);
         Member pendingAdmin = createPendingMember(1L, 1L, "예정 관리자", MemberRole.ADMIN);
-        given(memberRepository.findById(1L)).willReturn(Optional.of(pendingAdmin));
+        given(memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(pendingAdmin));
 
         assertThatThrownBy(() -> preRegistrationService.delete(STAFF_ID, 1L))
                 .isInstanceOf(MemberException.class)
@@ -318,7 +414,7 @@ class PreRegistrationServiceTest {
     void memberCannotFindPendingPreRegistrations() {
         givenOperator(MEMBER_ID, MemberRole.MEMBER, 1L);
 
-        assertThatThrownBy(() -> preRegistrationService.findPending(MEMBER_ID))
+        assertThatThrownBy(() -> preRegistrationService.findPending(MEMBER_ID, null))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("권한이 없습니다.");
     }
@@ -347,6 +443,19 @@ class PreRegistrationServiceTest {
                 null,
                 "아이스 아메리카노",
                 "연하게"
+        );
+    }
+
+    private PreRegistrationCreateRequest memberRequestWithCertification(String certification) {
+        return new PreRegistrationCreateRequest(
+                1L,
+                " hong ",
+                MemberRole.MEMBER,
+                null,
+                LocalDate.of(2026, 7, 1),
+                certification,
+                null,
+                (String) null
         );
     }
 

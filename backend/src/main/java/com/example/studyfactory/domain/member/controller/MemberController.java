@@ -45,8 +45,11 @@ public class MemberController {
     }
 
     @GetMapping("/pre-registrations/pending")
-    public List<MemberResponse> findPendingPreRegistrations(@CurrentMember Long currentMemberId) {
-        return memberService.findPendingPreRegistrations(currentMemberId);
+    public List<MemberResponse> findPendingPreRegistrations(
+            @CurrentMember Long currentMemberId,
+            @RequestParam(required = false) Long branchId
+    ) {
+        return memberService.findPendingPreRegistrations(currentMemberId, branchId);
     }
 
     @PatchMapping("/{memberId}")

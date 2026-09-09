@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.beverage.repository.BeverageItemRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +65,45 @@ class MemberSignupTest {
     }
 
     @Test
+    @DisplayName("공개 사전등록 확인은 같은 이름의 관리자나 스태프 계정을 제외한다")
+    void verifyPreRegistrationReturnsOnlyMemberAccounts() throws Exception {
+        memberRepository.save(createPreRegisteredMember(MemberRole.ADMIN));
+        memberRepository.save(createPreRegisteredMember(MemberRole.STAFF));
+        Member member = memberRepository.save(createPreRegisteredMember());
+        String requestBody = """
+                {
+                  "name": "hong",
+                  "branchId": 1
+                }
+                """;
+
+        mockMvc.perform(post("/api/members/pre-registration/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].memberId").value(member.getId()))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("공개 사전등록 확인은 권한 계정의 존재를 노출하지 않는다")
+    void verifyPreRegistrationDoesNotRevealPrivilegedAccount() throws Exception {
+        memberRepository.save(createPreRegisteredMember(MemberRole.ADMIN));
+        String requestBody = """
+                {
+                  "name": "hong",
+                  "branchId": 1
+                }
+                """;
+
+        mockMvc.perform(post("/api/members/pre-registration/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("일치하는 사전등록 정보가 없습니다."));
+    }
+
+    @Test
     @DisplayName("사전등록 사원 정보와 비밀번호가 유효하면 회원가입을 완료한다")
     void signup() throws Exception {
         Member member = memberRepository.save(createPreRegisteredMember());
@@ -85,6 +125,42 @@ class MemberSignupTest {
                 .andExpect(jsonPath("$.certificationId").value(3));
 
         assertThat(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "password123")).isTrue();
+    }
+
+    @Test
+    @DisplayName("공개 회원가입은 관리자나 스태프 사전등록 계정을 활성화하지 않는다")
+    void signupDoesNotActivatePrivilegedAccount() throws Exception {
+        Member pendingAdmin = memberRepository.save(createPreRegisteredMember(MemberRole.ADMIN));
+        String requestBody = """
+                {
+                  "memberId": %d,
+                  "password": "password123"
+                }
+                """.formatted(pendingAdmin.getId());
+
+        String privilegedAccountResponse = mockMvc.perform(post("/api/members/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("일치하는 사전등록 정보가 없습니다."))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String missingAccountResponse = mockMvc.perform(post("/api/members/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "memberId": 9223372036854775807,
+                                  "password": "password123"
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(memberRepository.findById(pendingAdmin.getId()).orElseThrow().getPassword()).isNull();
+        assertThat(privilegedAccountResponse).isEqualTo(missingAccountResponse);
     }
 
     @Test
@@ -120,6 +196,19 @@ class MemberSignupTest {
     }
 
     private Member createPreRegisteredMember() {
-        return new Member(1L, "hong", null, 12, LocalDate.of(2026, 7, 1), 3L, "오전 교육 예정");
+        return createPreRegisteredMember(MemberRole.MEMBER);
+    }
+
+    private Member createPreRegisteredMember(MemberRole role) {
+        return new Member(
+                1L,
+                "hong",
+                null,
+                role,
+                12,
+                LocalDate.of(2026, 7, 1),
+                3L,
+                "오전 교육 예정"
+        );
     }
 }

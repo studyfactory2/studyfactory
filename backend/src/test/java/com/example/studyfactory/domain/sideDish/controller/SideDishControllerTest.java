@@ -11,6 +11,7 @@ import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.sideDish.entity.MealType;
 import com.example.studyfactory.domain.sideDish.entity.SideDishMealInformation;
@@ -131,6 +132,67 @@ class SideDishControllerTest {
     }
 
     @Test
+    @DisplayName("회원은 자기 지점의 반찬 총액을 계속 조회한다")
+    void memberFindOwnBranchTotals() throws Exception {
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId()));
+        sideDishRequestRepository.save(new SideDishRequest(
+                new SideDishReferenceInformation(member.getId(), branch.getId()),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        ));
+
+        mockMvc.perform(get("/api/side-dishes/totals")
+                        .param("date", "2026-06-19")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(member)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lunchTotal").value(9000))
+                .andExpect(jsonPath("$.dinnerTotal").value(0));
+    }
+
+    @Test
+    @DisplayName("관리자는 branchId로 다른 지점의 반찬 총액을 조회한다")
+    void adminFindTotalsAcrossBranches() throws Exception {
+        Branch firstBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch secondBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member admin = memberRepository.save(createManager("admin", firstBranch.getId(), MemberRole.ADMIN));
+        Member firstMember = memberRepository.save(createMember("kim", firstBranch.getId()));
+        Member secondMember = memberRepository.save(createMember("lee", secondBranch.getId()));
+        sideDishRequestRepository.save(new SideDishRequest(
+                new SideDishReferenceInformation(firstMember.getId(), firstBranch.getId()),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.LUNCH),
+                new SideDishOrderInformation("제육볶음: 9000", 9000)
+        ));
+        sideDishRequestRepository.save(new SideDishRequest(
+                new SideDishReferenceInformation(secondMember.getId(), secondBranch.getId()),
+                new SideDishMealInformation(LocalDate.of(2026, 6, 19), MealType.DINNER),
+                new SideDishOrderInformation("김치찌개: 8000", 8000)
+        ));
+
+        mockMvc.perform(get("/api/side-dishes/totals")
+                        .param("date", "2026-06-19")
+                        .param("branchId", secondBranch.getId().toString())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lunchTotal").value(0))
+                .andExpect(jsonPath("$.dinnerTotal").value(8000));
+    }
+
+    @Test
+    @DisplayName("스태프가 다른 지점의 반찬 총액을 조회하면 403을 반환한다")
+    void rejectStaffFindTotalsAcrossBranches() throws Exception {
+        Branch firstBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch secondBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member staff = memberRepository.save(createManager("staff", firstBranch.getId(), MemberRole.STAFF));
+
+        mockMvc.perform(get("/api/side-dishes/totals")
+                        .param("date", "2026-06-19")
+                        .param("branchId", secondBranch.getId().toString())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("인증된 사원이 본인 반찬 신청을 삭제한다")
     void deleteSideDish() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
@@ -221,6 +283,18 @@ class SideDishControllerTest {
                 LocalDate.of(2026, 7, 1),
                 3L,
                 "오전 교육 예정"
+        );
+    }
+
+    private Member createManager(String name, Long branchId, MemberRole role) {
+        return new Member(
+                branchId,
+                name,
+                "password123",
+                role,
+                role == MemberRole.ADMIN ? 99 : 98,
+                LocalDate.of(2026, 7, 1),
+                null
         );
     }
 

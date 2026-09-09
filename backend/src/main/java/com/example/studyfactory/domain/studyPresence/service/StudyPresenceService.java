@@ -1,9 +1,12 @@
 package com.example.studyfactory.domain.studyPresence.service;
 
+import com.example.studyfactory.domain.branch.exception.BranchException;
+import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import com.example.studyfactory.domain.studyBreak.service.StudyBreakLifecycleService;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceDoorQrResponse;
 import com.example.studyfactory.domain.studyPresence.dto.StudyPresenceManagerSessionResponse;
@@ -24,6 +27,7 @@ public class StudyPresenceService {
 
     private final StudyPresenceSessionRepository studyPresenceSessionRepository;
     private final MemberRepository memberRepository;
+    private final BranchRepository branchRepository;
     private final StudyPresenceQrTokenProvider studyPresenceQrTokenProvider;
     private final StudyPresenceAutoClosePolicy autoClosePolicy;
     private final StudyBreakLifecycleService studyBreakLifecycleService;
@@ -79,10 +83,18 @@ public class StudyPresenceService {
 
     @Transactional(readOnly = true)
     public StudyPresenceDoorQrResponse findDoorQr(Long currentMemberId) {
-        Member currentMember = findMember(currentMemberId);
-        validateAdmin(currentMember);
+        return findDoorQr(currentMemberId, null);
+    }
 
-        Long branchId = currentMember.getBranchId();
+    @Transactional(readOnly = true)
+    public StudyPresenceDoorQrResponse findDoorQr(Long currentMemberId, Long requestedBranchId) {
+        Member currentMember = findMember(currentMemberId);
+        ManagerAccessPolicy.validateAdmin(currentMember);
+
+        Long branchId = ManagerAccessPolicy.resolveRequiredBranch(currentMember, requestedBranchId);
+        if (!branchRepository.existsById(branchId)) {
+            throw BranchException.notFound();
+        }
         return new StudyPresenceDoorQrResponse(
                 branchId,
                 studyPresenceQrTokenProvider.createToken(branchId)
@@ -102,11 +114,10 @@ public class StudyPresenceService {
             String reason
     ) {
         Member manager = findMember(currentMemberId);
-        validateOperations(manager);
+        ManagerAccessPolicy.validateManager(manager);
 
-        Member target = findMemberForUpdate(memberId);
-        validateSameBranch(manager, target);
-        validateManualCheckInTarget(target);
+        Member target = findManagerTargetForUpdate(manager, memberId);
+        ManagerAccessPolicy.validateMemberTarget(manager, target);
 
         Optional<StudyPresenceSession> activeSession =
                 studyPresenceSessionRepository.findActiveByMemberIdForUpdate(memberId);
@@ -153,12 +164,8 @@ public class StudyPresenceService {
     @Transactional
     public StudyPresenceManagerSessionResponse managerCheckOut(Long currentMemberId, Long sessionId) {
         Member manager = findMember(currentMemberId);
-        validateOperations(manager);
-        StudyPresenceSession session = studyPresenceSessionRepository.findByIdAndBranchIdForUpdate(
-                        sessionId,
-                        manager.getBranchId()
-                )
-                .orElseThrow(StudyPresenceException::sessionNotFound);
+        ManagerAccessPolicy.validateManager(manager);
+        StudyPresenceSession session = findManagerSessionForUpdate(manager, sessionId);
 
         Instant checkedOutAt = clock.instant();
         if (!autoClosePolicy.automaticallyCloseIfStale(session, checkedOutAt)) {
@@ -202,33 +209,31 @@ public class StudyPresenceService {
                 .orElseThrow(MemberException::memberNotFound);
     }
 
+    private Member findManagerTargetForUpdate(Member manager, Long memberId) {
+        if (manager.getRole() == MemberRole.ADMIN) {
+            return findMemberForUpdate(memberId);
+        }
+
+        return memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(
+                        memberId,
+                        manager.getBranchId()
+                )
+                .orElseThrow(MemberException::memberNotFound);
+    }
+
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(MemberException::memberNotFound);
     }
 
-    private void validateAdmin(Member member) {
-        if (member.getRole() != MemberRole.ADMIN) {
-            throw MemberException.forbidden();
+    private StudyPresenceSession findManagerSessionForUpdate(Member manager, Long sessionId) {
+        if (manager.getRole() == MemberRole.ADMIN) {
+            return studyPresenceSessionRepository.findByIdForUpdate(sessionId)
+                    .orElseThrow(StudyPresenceException::sessionNotFound);
         }
-    }
 
-    private void validateOperations(Member member) {
-        if (!member.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
-    }
-
-    private void validateSameBranch(Member manager, Member target) {
-        if (!manager.getBranchId().equals(target.getBranchId())) {
-            throw MemberException.forbidden();
-        }
-    }
-
-    private void validateManualCheckInTarget(Member target) {
-        if (target.getRole() != MemberRole.MEMBER) {
-            throw MemberException.forbidden();
-        }
+        return studyPresenceSessionRepository.findByIdAndBranchIdForUpdate(sessionId, manager.getBranchId())
+                .orElseThrow(StudyPresenceException::sessionNotFound);
     }
 
     /**

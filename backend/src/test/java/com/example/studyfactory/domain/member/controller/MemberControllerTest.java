@@ -11,6 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
 import com.example.studyfactory.domain.beverage.entity.BeverageItem;
 import com.example.studyfactory.domain.beverage.repository.BeverageItemRepository;
+import com.example.studyfactory.domain.branch.entity.Branch;
+import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
@@ -40,6 +43,12 @@ class MemberControllerTest {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private BranchRepository branchRepository;
+
+    @Autowired
+    private CertificationRepository certificationRepository;
 
     @BeforeEach
     void setUp() {
@@ -163,6 +172,33 @@ class MemberControllerTest {
     }
 
     @Test
+    @DisplayName("관리자는 지점을 지정해 해당 지점의 사전등록 대기 회원만 조회한다")
+    void adminFiltersPendingPreRegistrationsByBranch() throws Exception {
+        Member admin = memberRepository.save(createMember("admin", 10, 1L, MemberRole.ADMIN));
+        memberRepository.save(createPendingMember("강남 회원", null, 1L));
+        Member target = memberRepository.save(createPendingMember("홍대 회원", null, 2L));
+
+        mockMvc.perform(get("/api/members/pre-registrations/pending")
+                        .param("branchId", "2")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(target.getId()))
+                .andExpect(jsonPath("$[0].branchId").value(2))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점의 사전등록 대기 목록을 지정할 수 없다")
+    void rejectStaffFilteringPendingPreRegistrationsByAnotherBranch() throws Exception {
+        Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
+
+        mockMvc.perform(get("/api/members/pre-registrations/pending")
+                        .param("branchId", "2")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("일반 회원은 사전등록 대기 사원 목록을 조회할 수 없다")
     void rejectMemberFindingPendingPreRegistrations() throws Exception {
         Member member = memberRepository.save(createMember("member", 10));
@@ -173,18 +209,31 @@ class MemberControllerTest {
     }
 
     @Test
-    @DisplayName("스태프는 다른 지점 회원 정보를 수정할 수 없다")
+    @DisplayName("스태프의 다른 지점 회원 수정은 존재하지 않는 회원과 같은 응답을 반환한다")
     void rejectStaffUpdatingCrossBranchMember() throws Exception {
         Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
         Member target = memberRepository.save(createMember("target", 11, 2L, MemberRole.MEMBER));
+        String accessToken = jwtTokenProvider.createAccessToken(staff);
 
-        mockMvc.perform(patch("/api/members/{memberId}", target.getId())
+        String foreignMemberResponse = mockMvc.perform(patch("/api/members/{memberId}", target.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(memberUpdateBody(2L, "MEMBER", "null"))
-                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
-                .andExpect(status().isForbidden());
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String missingMemberResponse = mockMvc.perform(patch("/api/members/{memberId}", Long.MAX_VALUE)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberUpdateBody(1L, "MEMBER", "null"))
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
         assertThat(memberRepository.findById(target.getId()).orElseThrow().getName()).isEqualTo("target");
+        assertThat(foreignMemberResponse).isEqualTo(missingMemberResponse);
     }
 
     @Test
@@ -205,12 +254,13 @@ class MemberControllerTest {
     @Test
     @DisplayName("회원 정보 수정으로 실제 좌석표에 없는 좌석을 배정할 수 없다")
     void rejectInvalidSeatWhenUpdatingMember() throws Exception {
-        Member admin = memberRepository.save(createMember("admin", 10, 1L, MemberRole.ADMIN));
-        Member target = memberRepository.save(createMember("target", 11));
+        Branch branch = branchRepository.save(new Branch("좌석 검증 지점 " + System.nanoTime()));
+        Member admin = memberRepository.save(createMember("admin", 10, branch.getId(), MemberRole.ADMIN));
+        Member target = memberRepository.save(createMember("target", 11, branch.getId(), MemberRole.MEMBER));
 
         mockMvc.perform(patch("/api/members/{memberId}", target.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(memberUpdateBody(1L, "MEMBER", "999"))
+                        .content(memberUpdateBody(branch.getId(), "MEMBER", "999"))
                         .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
                 .andExpect(status().isBadRequest());
 
@@ -218,16 +268,27 @@ class MemberControllerTest {
     }
 
     @Test
-    @DisplayName("스태프는 다른 지점 회원을 삭제할 수 없다")
+    @DisplayName("스태프의 다른 지점 회원 삭제는 존재하지 않는 회원과 같은 응답을 반환한다")
     void rejectStaffDeletingCrossBranchMember() throws Exception {
         Member staff = memberRepository.save(createMember("staff", 10, 1L, MemberRole.STAFF));
         Member target = memberRepository.save(createMember("target", 11, 2L, MemberRole.MEMBER));
+        String accessToken = jwtTokenProvider.createAccessToken(staff);
 
-        mockMvc.perform(delete("/api/members/{memberId}", target.getId())
-                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
-                .andExpect(status().isForbidden());
+        String foreignMemberResponse = mockMvc.perform(delete("/api/members/{memberId}", target.getId())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String missingMemberResponse = mockMvc.perform(delete("/api/members/{memberId}", Long.MAX_VALUE)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
         assertThat(memberRepository.existsById(target.getId())).isTrue();
+        assertThat(foreignMemberResponse).isEqualTo(missingMemberResponse);
     }
 
     @Test
@@ -246,16 +307,59 @@ class MemberControllerTest {
     @Test
     @DisplayName("관리자는 다른 지점 회원을 스태프로 변경할 수 있다")
     void adminUpdatesCrossBranchMember() throws Exception {
+        Branch targetBranch = branchRepository.save(new Branch("회원 이동 지점 " + System.nanoTime()));
         Member admin = memberRepository.save(createMember("admin", 10, 1L, MemberRole.ADMIN));
         Member target = memberRepository.save(createMember("target", 11, 1L, MemberRole.MEMBER));
 
         mockMvc.perform(patch("/api/members/{memberId}", target.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(memberUpdateBody(2L, "STAFF", "null"))
+                        .content(memberUpdateBody(targetBranch.getId(), "STAFF", "null"))
                         .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.branchId").value(2))
+                .andExpect(jsonPath("$.branchId").value(targetBranch.getId()))
                 .andExpect(jsonPath("$.role").value("STAFF"));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 지점으로 회원 정보를 수정할 수 없다")
+    void rejectInvalidBranchWhenUpdatingMember() throws Exception {
+        Member admin = memberRepository.save(createMember("admin", 10, 1L, MemberRole.ADMIN));
+        Member target = memberRepository.save(createMember("target", 11));
+
+        mockMvc.perform(patch("/api/members/{memberId}", target.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberUpdateBody(Long.MAX_VALUE, "MEMBER", "null"))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("존재하지 않는 지점입니다."));
+
+        assertThat(memberRepository.findById(target.getId()).orElseThrow().getName()).isEqualTo("target");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 자격증으로 회원 정보를 수정할 수 없다")
+    void rejectInvalidCertificationWhenUpdatingMember() throws Exception {
+        Branch branch = branchRepository.save(new Branch("자격증 검증 지점 " + System.nanoTime()));
+        Member admin = memberRepository.save(createMember("admin", 10, branch.getId(), MemberRole.ADMIN));
+        Member target = memberRepository.save(createMember("target", 11, branch.getId(), MemberRole.MEMBER));
+        long invalidCertificationId = certificationRepository.findAll().stream()
+                .mapToLong(certification -> certification.getId())
+                .max()
+                .orElse(0L) + 1_000L;
+
+        mockMvc.perform(patch("/api/members/{memberId}", target.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(memberUpdateBody(
+                                branch.getId(),
+                                "MEMBER",
+                                "11",
+                                String.valueOf(invalidCertificationId)
+                        ))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("존재하지 않는 자격증입니다."));
+
+        assertThat(memberRepository.findById(target.getId()).orElseThrow().getCertificationId()).isEqualTo(3L);
     }
 
     @Test
@@ -489,6 +593,15 @@ class MemberControllerTest {
     }
 
     private String memberUpdateBody(Long branchId, String role, String seatNumber) {
+        return memberUpdateBody(branchId, role, seatNumber, "null");
+    }
+
+    private String memberUpdateBody(
+            Long branchId,
+            String role,
+            String seatNumber,
+            String certificationId
+    ) {
         return """
                 {
                   "branchId": %d,
@@ -496,9 +609,9 @@ class MemberControllerTest {
                   "role": "%s",
                   "seatNumber": %s,
                   "joinDate": "2026-08-01",
-                  "certificationId": null,
+                  "certificationId": %s,
                   "preparingCertifications": ""
                 }
-                """.formatted(branchId, role, seatNumber);
+                """.formatted(branchId, role, seatNumber, certificationId);
     }
 }

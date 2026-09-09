@@ -169,7 +169,7 @@ class StudyPresenceControllerTest {
     }
 
     @Test
-    @DisplayName("관리자는 요청 지점 파라미터와 관계없이 현재 소속 지점의 영구 QR을 조회한다")
+    @DisplayName("관리자는 선택한 지점의 영구 QR을 조회하고 생략하면 현재 소속 지점을 사용한다")
     void findPermanentDoorQrForAdminBranch() throws Exception {
         Branch adminBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
         Branch otherBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
@@ -177,22 +177,23 @@ class StudyPresenceControllerTest {
                 createMember("김관리자", adminBranch.getId(), MemberRole.ADMIN)
         );
         String accessToken = jwtTokenProvider.createAccessToken(admin);
-        String expectedQrToken = studyPresenceQrTokenProvider.createToken(adminBranch.getId());
+        String ownBranchQrToken = studyPresenceQrTokenProvider.createToken(adminBranch.getId());
+        String selectedBranchQrToken = studyPresenceQrTokenProvider.createToken(otherBranch.getId());
 
         mockMvc.perform(get("/api/study-presence/door-qr")
                         .queryParam("branchId", otherBranch.getId().toString())
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", containsString("no-store")))
-                .andExpect(jsonPath("$.branchId").value(adminBranch.getId()))
-                .andExpect(jsonPath("$.qrToken").value(expectedQrToken))
+                .andExpect(jsonPath("$.branchId").value(otherBranch.getId()))
+                .andExpect(jsonPath("$.qrToken").value(selectedBranchQrToken))
                 .andExpect(jsonPath("$.expiresAt").doesNotExist());
 
         mockMvc.perform(get("/api/study-presence/door-qr")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.branchId").value(adminBranch.getId()))
-                .andExpect(jsonPath("$.qrToken").value(expectedQrToken));
+                .andExpect(jsonPath("$.qrToken").value(ownBranchQrToken));
     }
 
     @Test
@@ -477,8 +478,8 @@ class StudyPresenceControllerTest {
     }
 
     @Test
-    @DisplayName("운영용 입실 기능은 로그인한 관리자와 같은 지점으로 제한한다")
-    void isolatePresenceOperationsByManagerBranch() throws Exception {
+    @DisplayName("관리자는 기본 소속 지점과 명시적으로 선택한 다른 지점의 입실을 관리한다")
+    void adminSelectsPresenceOperationsBranch() throws Exception {
         Branch managerBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
         Branch otherBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
         Member admin = memberRepository.save(
@@ -499,17 +500,27 @@ class StudyPresenceControllerTest {
         mockMvc.perform(get("/api/study-presence/members/{memberId}/history", otherMember.getId())
                         .queryParam("from", "2026-08-28")
                         .queryParam("to", "2026-08-28")
+                        .queryParam("branchId", otherBranch.getId().toString())
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.memberId").value(otherMember.getId()))
-                .andExpect(jsonPath("$.sessionCount").value(0));
+                .andExpect(jsonPath("$.branchId").value(otherBranch.getId()))
+                .andExpect(jsonPath("$.sessionCount").value(1));
+
+        mockMvc.perform(get("/api/study-presence/live")
+                        .queryParam("branchId", otherBranch.getId().toString())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(otherBranch.getId()))
+                .andExpect(jsonPath("$.memberCount").value(1));
 
         mockMvc.perform(post("/api/study-presence/sessions/{sessionId}/manual-check-out", otherSession.getId())
                         .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("존재하지 않는 입퇴실 기록입니다."));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.branchId").value(otherBranch.getId()))
+                .andExpect(jsonPath("$.closedByMemberId").value(admin.getId()));
 
-        assertThat(studyPresenceSessionRepository.findByActiveMemberId(otherMember.getId())).isPresent();
+        assertThat(studyPresenceSessionRepository.findByActiveMemberId(otherMember.getId())).isEmpty();
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.suggestion.service;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import com.example.studyfactory.domain.suggestion.dto.SuggestionCreateRequest;
 import com.example.studyfactory.domain.suggestion.dto.SuggestionResponse;
 import com.example.studyfactory.domain.suggestion.entity.Suggestion;
@@ -45,11 +46,12 @@ public class SuggestionService {
                 .toList();
     }
 
-    /** Operations view: managers see their own branch's suggestions, nobody else's. */
+    /** Operations view: ADMIN may select a branch; STAFF is pinned to their own branch. */
     @Transactional(readOnly = true)
-    public List<SuggestionResponse> findAll(Long currentMemberId) {
-        Member currentMember = findOperationsMember(currentMemberId);
-        List<Suggestion> suggestions = suggestionRepository.findByBranchId(currentMember.getBranchId());
+    public List<SuggestionResponse> findAll(Long currentMemberId, Long branchId) {
+        Member currentMember = findCurrentMember(currentMemberId);
+        Long targetBranchId = ManagerAccessPolicy.resolveRequiredBranch(currentMember, branchId);
+        List<Suggestion> suggestions = suggestionRepository.findByBranchId(targetBranchId);
         Map<Long, String> memberNames = findMemberNames(suggestions);
 
         return suggestions.stream()
@@ -63,9 +65,10 @@ public class SuggestionService {
 
     @Transactional
     public SuggestionResponse resolve(Long currentMemberId, Long suggestionId) {
-        Member currentMember = findOperationsMember(currentMemberId);
+        Member currentMember = findCurrentMember(currentMemberId);
+        ManagerAccessPolicy.validateManager(currentMember);
         Suggestion suggestion = suggestionRepository.findById(suggestionId).orElseThrow(MemberException::forbidden);
-        validateSameBranch(currentMember, suggestion);
+        ManagerAccessPolicy.validateBranch(currentMember, suggestion.getBranchId());
         suggestion.toggleResolve(currentMember.getId());
 
         String memberName = memberRepository.findById(suggestion.getMemberId())
@@ -76,21 +79,9 @@ public class SuggestionService {
         return SuggestionResponse.from(suggestion, memberName, resolvedByMemberName);
     }
 
-    /** Reading or resolving other people's suggestions is a manager action. */
-    private Member findOperationsMember(Long currentMemberId) {
-        Member currentMember = memberRepository.findById(currentMemberId)
+    private Member findCurrentMember(Long currentMemberId) {
+        return memberRepository.findById(currentMemberId)
                 .orElseThrow(MemberException::memberNotFound);
-        if (!currentMember.hasAllPermissions()) {
-            throw MemberException.forbidden();
-        }
-
-        return currentMember;
-    }
-
-    private void validateSameBranch(Member currentMember, Suggestion suggestion) {
-        if (!currentMember.getBranchId().equals(suggestion.getBranchId())) {
-            throw MemberException.forbidden();
-        }
     }
 
     private Map<Long, String> findMemberNames(List<Suggestion> suggestions) {

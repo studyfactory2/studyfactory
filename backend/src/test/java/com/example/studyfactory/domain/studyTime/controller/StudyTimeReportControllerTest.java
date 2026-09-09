@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.studyTime.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -119,7 +120,7 @@ class StudyTimeReportControllerTest {
     }
 
     @Test
-    @DisplayName("스태프는 같은 지점 회원 리포트를 조회하고 일반 회원과 다른 지점 조회는 거절한다")
+    @DisplayName("스태프는 같은 지점만 조회하고 다른 지점과 없는 회원은 같은 404로 보인다")
     void authorizeManagerReport() throws Exception {
         TestMembers members = createMembers();
         Branch otherBranch = branchRepository.save(new Branch("부산점", "부산"));
@@ -147,11 +148,59 @@ class StudyTimeReportControllerTest {
                         .param("to", STUDY_DATE.toString()))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(get("/api/study-time/members/{memberId}/report", otherMember.getId())
+        String foreignTargetResponse = mockMvc.perform(
+                        get("/api/study-time/members/{memberId}/report", otherMember.getId())
                         .header("Authorization", bearer(members.staff()))
                         .param("from", STUDY_DATE.toString())
                         .param("to", STUDY_DATE.toString()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String missingTargetResponse = mockMvc.perform(
+                        get("/api/study-time/members/{memberId}/report", Long.MAX_VALUE)
+                        .header("Authorization", bearer(members.staff()))
+                        .param("from", STUDY_DATE.toString())
+                        .param("to", STUDY_DATE.toString()))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(foreignTargetResponse).isEqualTo(missingTargetResponse);
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 지점 회원의 학습시간 리포트도 조회한다")
+    void adminFindsAnotherBranchMemberReport() throws Exception {
+        TestMembers members = createMembers();
+        Branch otherBranch = branchRepository.save(new Branch("부산점", "부산"));
+        Member otherMember = memberRepository.save(new Member(
+                otherBranch.getId(),
+                "다른회원",
+                "password",
+                MemberRole.MEMBER,
+                20,
+                LocalDate.of(2026, 8, 1),
+                3L
+        ));
+        Member admin = memberRepository.save(new Member(
+                members.branch().getId(),
+                "관리자",
+                "password",
+                MemberRole.ADMIN,
+                null,
+                LocalDate.of(2026, 8, 1),
+                3L
+        ));
+
+        mockMvc.perform(get("/api/study-time/members/{memberId}/report", otherMember.getId())
+                        .header("Authorization", bearer(admin))
+                        .param("from", STUDY_DATE.toString())
+                        .param("to", STUDY_DATE.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberId").value(otherMember.getId()))
+                .andExpect(jsonPath("$.branchId").value(otherBranch.getId()));
     }
 
     @Test

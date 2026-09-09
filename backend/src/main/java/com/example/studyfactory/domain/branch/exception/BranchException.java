@@ -12,4 +12,8 @@ public class BranchException extends BaseException {
     public static BranchException duplicatedName() {
         return new BranchException(HttpStatus.CONFLICT, "이미 등록된 지점입니다.");
     }
+
+    public static BranchException notFound() {
+        return new BranchException(HttpStatus.NOT_FOUND, "존재하지 않는 지점입니다.");
+    }
 }

@@ -84,8 +84,8 @@ class SuggestionServiceTest {
     }
 
     @Test
-    @DisplayName("운영 권한자는 자기 지점의 건의사항만 조회한다")
-    void findAllWithinOperatorBranch() {
+    @DisplayName("지점을 지정하지 않으면 운영 권한자의 지점 건의사항을 조회한다")
+    void findAllDefaultsToOperatorBranch() {
         Suggestion branchSuggestion = new Suggestion(
                 new SuggestionReferenceInformation(1L, 2L, null),
                 SuggestionCategory.STUDY,
@@ -95,7 +95,7 @@ class SuggestionServiceTest {
         given(memberRepository.findById(9L)).willReturn(Optional.of(createOperator(9L, 2L, MemberRole.ADMIN)));
         given(suggestionRepository.findByBranchId(2L)).willReturn(List.of(branchSuggestion));
 
-        List<SuggestionResponse> responses = suggestionService.findAll(9L);
+        List<SuggestionResponse> responses = suggestionService.findAll(9L, null);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.getFirst().memberId()).isEqualTo(1L);
@@ -104,11 +104,42 @@ class SuggestionServiceTest {
     }
 
     @Test
+    @DisplayName("관리자는 다른 지점의 건의사항을 조회한다")
+    void adminFindAllAcrossBranches() {
+        Suggestion branchSuggestion = new Suggestion(
+                new SuggestionReferenceInformation(1L, 5L, null),
+                SuggestionCategory.GENERAL,
+                "화장실 비품이 부족해요.",
+                false
+        );
+        given(memberRepository.findById(9L)).willReturn(Optional.of(createOperator(9L, 2L, MemberRole.ADMIN)));
+        given(suggestionRepository.findByBranchId(5L)).willReturn(List.of(branchSuggestion));
+
+        List<SuggestionResponse> responses = suggestionService.findAll(9L, 5L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().branchId()).isEqualTo(5L);
+        then(suggestionRepository).should().findByBranchId(5L);
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점의 건의사항을 조회할 수 없다")
+    void rejectStaffFindAllAcrossBranches() {
+        given(memberRepository.findById(9L)).willReturn(Optional.of(createOperator(9L, 2L, MemberRole.STAFF)));
+
+        assertThatThrownBy(() -> suggestionService.findAll(9L, 5L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+
+        then(suggestionRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("일반 회원은 전체 건의사항 목록을 조회할 수 없다")
     void rejectFindAllForMember() {
         given(memberRepository.findById(7L)).willReturn(Optional.of(createOperator(7L, 2L, MemberRole.MEMBER)));
 
-        assertThatThrownBy(() -> suggestionService.findAll(7L))
+        assertThatThrownBy(() -> suggestionService.findAll(7L, null))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("권한이 없습니다.");
     }
@@ -124,21 +155,42 @@ class SuggestionServiceTest {
     }
 
     @Test
-    @DisplayName("다른 지점의 건의사항은 해결 처리할 수 없다")
-    void rejectResolveForOtherBranch() {
+    @DisplayName("스태프는 다른 지점의 건의사항을 해결 처리할 수 없다")
+    void rejectStaffResolveForOtherBranch() {
         Suggestion otherBranchSuggestion = new Suggestion(
                 new SuggestionReferenceInformation(1L, 5L, null),
                 SuggestionCategory.GENERAL,
                 "화장실 비품이 부족해요.",
                 false
         );
-        given(memberRepository.findById(9L)).willReturn(Optional.of(createOperator(9L, 2L, MemberRole.ADMIN)));
+        given(memberRepository.findById(9L)).willReturn(Optional.of(createOperator(9L, 2L, MemberRole.STAFF)));
         given(suggestionRepository.findById(1L)).willReturn(Optional.of(otherBranchSuggestion));
 
         assertThatThrownBy(() -> suggestionService.resolve(9L, 1L))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("권한이 없습니다.");
         assertThat(otherBranchSuggestion.isResolved()).isFalse();
+    }
+
+    @Test
+    @DisplayName("관리자는 다른 지점의 건의사항을 해결 처리한다")
+    void adminResolveAcrossBranches() {
+        Suggestion otherBranchSuggestion = new Suggestion(
+                new SuggestionReferenceInformation(1L, 5L, null),
+                SuggestionCategory.GENERAL,
+                "화장실 비품이 부족해요.",
+                false
+        );
+        Member admin = createOperator(9L, 2L, MemberRole.ADMIN);
+        given(memberRepository.findById(9L)).willReturn(Optional.of(admin));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(createOperator(1L, 5L, MemberRole.MEMBER)));
+        given(suggestionRepository.findById(1L)).willReturn(Optional.of(otherBranchSuggestion));
+
+        SuggestionResponse response = suggestionService.resolve(9L, 1L);
+
+        assertThat(response.isResolved()).isTrue();
+        assertThat(response.resolvedByMemberId()).isEqualTo(9L);
+        assertThat(response.resolvedByMemberName()).isEqualTo("운영자");
     }
 
     private Member createOperator(Long id, Long branchId, MemberRole role) {

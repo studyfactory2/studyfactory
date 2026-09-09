@@ -142,6 +142,49 @@ class SuggestionControllerTest {
     }
 
     @Test
+    @DisplayName("관리자는 branchId로 다른 지점의 건의사항을 조회한다")
+    void adminFindSuggestionsAcrossBranches() throws Exception {
+        Branch firstBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch secondBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member admin = memberRepository.save(createManager("admin", firstBranch.getId()));
+        Member firstMember = memberRepository.save(createMember("kim", firstBranch.getId()));
+        Member secondMember = memberRepository.save(createMember("lee", secondBranch.getId()));
+        suggestionRepository.save(new Suggestion(
+                new SuggestionReferenceInformation(firstMember.getId(), firstBranch.getId(), null),
+                SuggestionCategory.STUDY,
+                "스터디룸이 추워요.",
+                false
+        ));
+        suggestionRepository.save(new Suggestion(
+                new SuggestionReferenceInformation(secondMember.getId(), secondBranch.getId(), null),
+                SuggestionCategory.GENERAL,
+                "화장실 비품이 부족해요.",
+                false
+        ));
+
+        mockMvc.perform(get("/api/suggestions")
+                        .param("branchId", secondBranch.getId().toString())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].branchId").value(secondBranch.getId()))
+                .andExpect(jsonPath("$[0].content").value("화장실 비품이 부족해요."))
+                .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("스태프가 다른 지점의 건의사항을 조회하면 403을 반환한다")
+    void rejectStaffFindSuggestionsAcrossBranches() throws Exception {
+        Branch firstBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch secondBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member staff = memberRepository.save(createStaff("staff", firstBranch.getId()));
+
+        mockMvc.perform(get("/api/suggestions")
+                        .param("branchId", secondBranch.getId().toString())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("일반 회원은 전체 건의사항 목록을 조회할 수 없다")
     void rejectFindAllForMember() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
@@ -171,6 +214,52 @@ class SuggestionControllerTest {
         assertThat(suggestionRepository.findById(suggestion.getId()).orElseThrow().isResolved()).isFalse();
     }
 
+    @Test
+    @DisplayName("관리자는 다른 지점의 건의사항을 해결 처리한다")
+    void adminResolveSuggestionAcrossBranches() throws Exception {
+        Branch firstBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch secondBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member admin = memberRepository.save(createManager("admin", firstBranch.getId()));
+        Member member = memberRepository.save(createMember("kim", secondBranch.getId()));
+        Suggestion suggestion = suggestionRepository.save(new Suggestion(
+                new SuggestionReferenceInformation(member.getId(), secondBranch.getId(), null),
+                SuggestionCategory.STUDY,
+                "스터디룸이 추워요.",
+                false
+        ));
+
+        mockMvc.perform(patch("/api/suggestions/{suggestionId}/resolve", suggestion.getId())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isResolved").value(true))
+                .andExpect(jsonPath("$.resolvedByMemberId").value(admin.getId()));
+
+        Suggestion resolved = suggestionRepository.findById(suggestion.getId()).orElseThrow();
+        assertThat(resolved.isResolved()).isTrue();
+        assertThat(resolved.getResolvedByMemberId()).isEqualTo(admin.getId());
+    }
+
+    @Test
+    @DisplayName("스태프가 다른 지점의 건의사항을 해결 처리하면 403을 반환한다")
+    void rejectStaffResolveSuggestionAcrossBranches() throws Exception {
+        Branch firstBranch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Branch secondBranch = branchRepository.save(new Branch("서면점", "부산 부산진구"));
+        Member staff = memberRepository.save(createStaff("staff", firstBranch.getId()));
+        Member member = memberRepository.save(createMember("kim", secondBranch.getId()));
+        Suggestion suggestion = suggestionRepository.save(new Suggestion(
+                new SuggestionReferenceInformation(member.getId(), secondBranch.getId(), null),
+                SuggestionCategory.STUDY,
+                "스터디룸이 추워요.",
+                false
+        ));
+
+        mockMvc.perform(patch("/api/suggestions/{suggestionId}/resolve", suggestion.getId())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(staff)))
+                .andExpect(status().isForbidden());
+
+        assertThat(suggestionRepository.findById(suggestion.getId()).orElseThrow().isResolved()).isFalse();
+    }
+
     private Member createManager(String name, Long branchId) {
         return new Member(
                 branchId,
@@ -178,6 +267,18 @@ class SuggestionControllerTest {
                 "password123",
                 MemberRole.ADMIN,
                 99,
+                LocalDate.of(2026, 7, 1),
+                null
+        );
+    }
+
+    private Member createStaff(String name, Long branchId) {
+        return new Member(
+                branchId,
+                name,
+                "password123",
+                MemberRole.STAFF,
+                98,
                 LocalDate.of(2026, 7, 1),
                 null
         );

@@ -37,7 +37,7 @@ public class PreRegistrationService {
         validateAssignableRole(operator, request.role());
         validateBranchScope(operator, request.branchId());
         validateRequest(request);
-        Long certificationId = getCertificationId(request);
+        Long certificationId = getCertificationId(operator, request);
         Member member = new Member(
                 request.branchId(),
                 request.name().trim(),
@@ -56,11 +56,11 @@ public class PreRegistrationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PreRegistrationResponse> findPending(Long currentMemberId) {
+    public List<PreRegistrationResponse> findPending(Long currentMemberId, Long requestedBranchId) {
         Member operator = findOperator(currentMemberId);
-        Long branchId = ManagerAccessPolicy.resolveOptionalAdminBranch(operator, null);
+        Long branchId = ManagerAccessPolicy.resolveOptionalAdminBranch(operator, requestedBranchId);
 
-        return findPendingMembers(branchId)
+        return findPendingMembers(operator, branchId)
                 .stream()
                 .map(member -> PreRegistrationResponse.from(member, beverageService.findItems(member.getId())))
                 .toList();
@@ -73,7 +73,7 @@ public class PreRegistrationService {
             PreRegistrationCreateRequest request
     ) {
         Member operator = findOperator(currentMemberId);
-        Member member = findPendingMember(memberId);
+        Member member = findPendingMemberForUpdate(operator, memberId);
         validateTargetAccess(operator, member);
         // both the record's current branch and the requested one must be in scope,
         // so a branch-bound operator cannot move a member in or out of their branch
@@ -81,7 +81,7 @@ public class PreRegistrationService {
         validateAssignableRole(operator, request.role());
         validateBranchScope(operator, request.branchId());
         validateUpdateRequest(member, request);
-        Long certificationId = getCertificationId(request);
+        Long certificationId = getCertificationId(operator, request);
         member.updatePreRegistration(
                 request.branchId(),
                 request.name().trim(),
@@ -100,7 +100,7 @@ public class PreRegistrationService {
     @Transactional
     public void delete(Long currentMemberId, Long memberId) {
         Member operator = findOperator(currentMemberId);
-        Member member = findPendingMember(memberId);
+        Member member = findPendingMemberForUpdate(operator, memberId);
         validateTargetAccess(operator, member);
         validateBranchScope(operator, member.getBranchId());
         memberDeletionCleanupService.cleanup(member.getId());
@@ -155,22 +155,27 @@ public class PreRegistrationService {
         }
     }
 
-    private Long getCertificationId(PreRegistrationCreateRequest request) {
+    private Long getCertificationId(Member operator, PreRegistrationCreateRequest request) {
         if (request.certification() == null || request.certification().isBlank()) {
             return null;
         }
 
-        return saveOrGetCertificationId(request.certification().trim());
-    }
-
-    private Long saveOrGetCertificationId(String content) {
+        String content = request.certification().trim();
         return certificationRepository.findByContent(content)
                 .map(Certification::getId)
-                .orElseGet(() -> certificationRepository.save(new Certification(content)).getId());
+                .orElseGet(() -> createCertification(operator, content));
     }
 
-    private Member findPendingMember(Long memberId) {
-        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::preRegistrationNotFound);
+    private Long createCertification(Member operator, String content) {
+        if (operator.getRole() != MemberRole.ADMIN) {
+            throw PreRegistrationException.invalidCertification();
+        }
+
+        return certificationRepository.save(new Certification(content)).getId();
+    }
+
+    private Member findPendingMemberForUpdate(Member operator, Long memberId) {
+        Member member = findManagedMemberForUpdate(operator, memberId);
         if (member.getPassword() != null) {
             throw MemberException.alreadySignedUp();
         }
@@ -178,15 +183,28 @@ public class PreRegistrationService {
         return member;
     }
 
-    private List<Member> findPendingMembers(Long branchId) {
-        if (branchId != null) {
-            return memberRepository.findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
-                    branchId,
-                    MemberRole.MEMBER
-            );
+    private Member findManagedMemberForUpdate(Member operator, Long memberId) {
+        if (operator.getRole() == MemberRole.ADMIN) {
+            return memberRepository.findByIdForUpdate(memberId)
+                    .orElseThrow(MemberException::preRegistrationNotFound);
         }
 
-        return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"));
+        return memberRepository.findByIdAndReferenceInformationBranchIdForUpdate(memberId, operator.getBranchId())
+                .orElseThrow(MemberException::preRegistrationNotFound);
+    }
+
+    private List<Member> findPendingMembers(Member operator, Long branchId) {
+        if (branchId == null) {
+            return memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id"));
+        }
+        if (operator.getRole() == MemberRole.ADMIN) {
+            return memberRepository.findByReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(branchId);
+        }
+
+        return memberRepository.findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                branchId,
+                MemberRole.MEMBER
+        );
     }
 
 }

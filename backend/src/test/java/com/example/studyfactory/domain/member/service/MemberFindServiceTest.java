@@ -176,11 +176,37 @@ class MemberFindServiceTest {
         given(memberRepository.findPendingPreRegistrations(Sort.by(Sort.Direction.ASC, "id")))
                 .willReturn(List.of(member));
 
-        List<MemberResponse> responses = memberService.findPendingPreRegistrations(OPERATOR_ID);
+        List<MemberResponse> responses = memberService.findPendingPreRegistrations(OPERATOR_ID, null);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).id()).isEqualTo(1L);
         assertThat(responses.get(0).name()).isEqualTo("kim");
+    }
+
+    @Test
+    @DisplayName("관리자는 지점을 지정해 해당 지점의 사전등록 대기 회원만 조회한다")
+    void adminFiltersPendingPreRegistrationsByBranch() {
+        givenAdminOperator();
+        Member pending = new Member(
+                2L,
+                "pending staff",
+                null,
+                MemberRole.STAFF,
+                10,
+                LocalDate.of(2026, 7, 1),
+                3L,
+                null
+        );
+        ReflectionTestUtils.setField(pending, "id", 1L);
+        given(memberRepository.findByReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(2L))
+                .willReturn(List.of(pending));
+
+        List<MemberResponse> responses = memberService.findPendingPreRegistrations(OPERATOR_ID, 2L);
+
+        assertThat(responses).extracting(MemberResponse::branchId).containsExactly(2L);
+        assertThat(responses).extracting(MemberResponse::role).containsExactly(MemberRole.STAFF);
+        org.mockito.BDDMockito.then(memberRepository).should(org.mockito.Mockito.never())
+                .findPendingPreRegistrations(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -197,7 +223,7 @@ class MemberFindServiceTest {
         ))
                 .willReturn(List.of(pending));
 
-        List<MemberResponse> responses = memberService.findPendingPreRegistrations(OPERATOR_ID);
+        List<MemberResponse> responses = memberService.findPendingPreRegistrations(OPERATOR_ID, null);
 
         assertThat(responses).extracting(MemberResponse::branchId).containsExactly(2L);
         org.mockito.BDDMockito.then(memberRepository).should()
@@ -207,13 +233,31 @@ class MemberFindServiceTest {
     }
 
     @Test
+    @DisplayName("스태프는 다른 지점의 사전등록 대기 목록을 지정할 수 없다")
+    void rejectStaffFilteringPendingPreRegistrationsByAnotherBranch() {
+        Member staff = createMember("staff", 1, 2L, MemberRole.STAFF);
+        ReflectionTestUtils.setField(staff, "id", OPERATOR_ID);
+        given(memberRepository.findById(OPERATOR_ID)).willReturn(java.util.Optional.of(staff));
+
+        assertThatThrownBy(() -> memberService.findPendingPreRegistrations(OPERATOR_ID, 3L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+
+        org.mockito.BDDMockito.then(memberRepository).should(org.mockito.Mockito.never())
+                .findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                        org.mockito.ArgumentMatchers.anyLong(),
+                        org.mockito.ArgumentMatchers.any()
+                );
+    }
+
+    @Test
     @DisplayName("일반 회원은 사전등록 대기 목록을 조회할 수 없다")
     void memberCannotFindPendingPreRegistrations() {
         Member member = createMember("member", 1, 1L, MemberRole.MEMBER);
         ReflectionTestUtils.setField(member, "id", OPERATOR_ID);
         given(memberRepository.findById(OPERATOR_ID)).willReturn(java.util.Optional.of(member));
 
-        assertThatThrownBy(() -> memberService.findPendingPreRegistrations(OPERATOR_ID))
+        assertThatThrownBy(() -> memberService.findPendingPreRegistrations(OPERATOR_ID, null))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("권한이 없습니다.");
     }
