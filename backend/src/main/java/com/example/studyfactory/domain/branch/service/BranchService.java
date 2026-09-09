@@ -5,6 +5,10 @@ import com.example.studyfactory.domain.branch.dto.BranchResponse;
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.exception.BranchException;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.exception.MemberException;
+import com.example.studyfactory.domain.member.repository.MemberRepository;
+import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -16,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BranchService {
 
     private final BranchRepository branchRepository;
+    private final MemberRepository memberRepository;
 
     @Transactional(readOnly = true)
     public List<BranchResponse> findAll() {
@@ -26,7 +31,11 @@ public class BranchService {
     }
 
     @Transactional
-    public BranchResponse create(BranchCreateRequest request) {
+    public BranchResponse create(Long currentMemberId, BranchCreateRequest request) {
+        Member operator = memberRepository.findById(currentMemberId)
+                .orElseThrow(MemberException::memberNotFound);
+        ManagerAccessPolicy.validateAdmin(operator);
+
         String name = request.name().trim();
         if (branchRepository.existsByName(name)) {
             throw BranchException.duplicatedName();

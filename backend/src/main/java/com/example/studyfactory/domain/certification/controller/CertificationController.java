@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.certification.controller;
 
+import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.certification.dto.CertificationCreateRequest;
 import com.example.studyfactory.domain.certification.dto.CertificationResponse;
 import com.example.studyfactory.domain.certification.service.CertificationService;
@@ -28,7 +29,10 @@ public class CertificationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CertificationResponse create(@Valid @RequestBody CertificationCreateRequest request) {
-        return certificationService.create(request);
+    public CertificationResponse create(
+            @CurrentMember Long currentMemberId,
+            @Valid @RequestBody CertificationCreateRequest request
+    ) {
+        return certificationService.create(currentMemberId, request);
     }
 }

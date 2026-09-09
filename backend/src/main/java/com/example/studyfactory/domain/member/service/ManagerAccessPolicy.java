@@ -17,6 +17,12 @@ public final class ManagerAccessPolicy {
     private ManagerAccessPolicy() {
     }
 
+    public static void validateAdmin(Member operator) {
+        if (operator.getRole() != MemberRole.ADMIN) {
+            throw MemberException.forbidden();
+        }
+    }
+
     public static void validateManager(Member operator) {
         if (operator.getRole() != MemberRole.ADMIN && operator.getRole() != MemberRole.STAFF) {
             throw MemberException.forbidden();

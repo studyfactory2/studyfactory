@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.branch.controller;
 
+import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.branch.dto.BranchCreateRequest;
 import com.example.studyfactory.domain.branch.dto.BranchResponse;
 import com.example.studyfactory.domain.branch.service.BranchService;
@@ -28,7 +29,10 @@ public class BranchController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BranchResponse create(@Valid @RequestBody BranchCreateRequest request) {
-        return branchService.create(request);
+    public BranchResponse create(
+            @CurrentMember Long currentMemberId,
+            @Valid @RequestBody BranchCreateRequest request
+    ) {
+        return branchService.create(currentMemberId, request);
     }
 }
