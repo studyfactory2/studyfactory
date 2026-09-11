@@ -68,6 +68,17 @@ class StudyPresenceSessionRepositoryTest {
     }
 
     @Test
+    @DisplayName("관리자 수동 입실은 사유 없이도 담당자 감사 정보를 저장한다")
+    void allowManagerCheckInWithoutReason() {
+        StudyPresenceSession saved = studyPresenceSessionRepository.saveAndFlush(
+                StudyPresenceSession.managerCheckIn(1L, 2L, WINDOW_START, 9L, null)
+        );
+
+        assertThat(saved.getCheckedInByMemberId()).isEqualTo(9L);
+        assertThat(saved.getManualCheckInReason()).isNull();
+    }
+
+    @Test
     @DisplayName("입실 기록 ID 조회는 비관적 쓰기 잠금을 사용한다")
     void findPresenceByIdForUpdate() throws NoSuchMethodException {
         StudyPresenceSession session = studyPresenceSessionRepository.saveAndFlush(

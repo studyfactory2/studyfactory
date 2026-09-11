@@ -232,16 +232,22 @@ class StudyPresenceManualCheckInServiceTest {
     }
 
     @Test
-    @DisplayName("공백 사유로는 수동 입실 처리할 수 없다")
-    void rejectBlankManualCheckInReason() {
+    @DisplayName("생략하거나 공백인 수동 입실 사유는 빈 감사 메모로 정규화한다")
+    void normalizeBlankManualCheckInReasonToNull() {
         Member admin = createMember(9L, 2L, MemberRole.ADMIN);
         Member target = createMember(1L, 2L, MemberRole.MEMBER);
-        givenManualCheckInReachesCreation(admin, target, BEFORE_FIRST_PERIOD);
+        givenManualCheckInIsPossible(admin, target, BEFORE_FIRST_PERIOD);
 
-        assertThatThrownBy(() ->
-                studyPresenceService.managerCheckIn(9L, 1L, BEFORE_FIRST_PERIOD, "   "))
-                .isInstanceOf(StudyPresenceException.class)
-                .hasMessageContaining("수동 입실 사유는 필수입니다.");
+        StudyPresenceManagerSessionResponse response = studyPresenceService.managerCheckIn(
+                9L,
+                1L,
+                BEFORE_FIRST_PERIOD,
+                "   "
+        );
+
+        assertThat(response.checkInMethod()).isEqualTo(StudyPresenceCheckInMethod.MANAGER);
+        assertThat(response.checkedInByMemberId()).isEqualTo(9L);
+        assertThat(response.manualCheckInReason()).isNull();
     }
 
     @Test
@@ -314,6 +320,13 @@ class StudyPresenceManualCheckInServiceTest {
         assertThat(managerSession.getManualCheckInReason()).isEqualTo(REASON);
         assertThat(managerSession.isManuallyCheckedIn()).isTrue();
         assertThat(managerSession.isActive()).isTrue();
+
+        StudyPresenceSession managerSessionWithoutReason =
+                StudyPresenceSession.managerCheckIn(2L, 2L, NOW, 9L, null);
+
+        assertThat(managerSessionWithoutReason.getCheckInMethod()).isEqualTo(StudyPresenceCheckInMethod.MANAGER);
+        assertThat(managerSessionWithoutReason.getCheckedInByMemberId()).isEqualTo(9L);
+        assertThat(managerSessionWithoutReason.getManualCheckInReason()).isNull();
     }
 
     @Test

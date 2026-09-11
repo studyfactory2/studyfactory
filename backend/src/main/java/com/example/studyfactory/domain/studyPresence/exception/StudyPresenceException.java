@@ -49,10 +49,6 @@ public class StudyPresenceException extends BaseException {
         return new StudyPresenceException(HttpStatus.FORBIDDEN, "입실한 지점의 출입 QR 코드만 사용할 수 있습니다.");
     }
 
-    public static StudyPresenceException manualCheckInReasonRequired() {
-        return new StudyPresenceException(HttpStatus.BAD_REQUEST, "수동 입실 사유는 필수입니다.");
-    }
-
     public static StudyPresenceException manualCheckInReasonTooLong() {
         return new StudyPresenceException(HttpStatus.BAD_REQUEST, "수동 입실 사유는 200자를 넘을 수 없습니다.");
     }

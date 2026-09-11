@@ -1,4 +1,4 @@
--- Study presence: check-in audit columns (method / author / manual reason).
+-- Study presence: check-in audit columns (method / author / optional manual note).
 --
 -- deploy.yml applies every file in db/migrations/*.sql, in glob order, on each
 -- deploy, BEFORE the new backend container is built and swapped in. Two
@@ -9,7 +9,7 @@
 --      mention the audit columns at all. The same is true permanently after
 --      restore_previous_backend() rolls the image back. So the columns stay
 --      nullable and the CHECK explicitly admits that legacy shape. Manager
---      rows are not softened: they still require an author and a reason.
+--      rows still require an author; their explanatory note is optional.
 --   2. It is re-applied on every deploy, so every statement is idempotent and
 --      the backfill re-heals any legacy rows written in the meantime.
 
@@ -55,8 +55,8 @@ BEGIN
                     AND manual_check_in_reason IS NULL)
                 OR (check_in_method = 'MANAGER'
                     AND checked_in_by_member_id IS NOT NULL
-                    AND manual_check_in_reason IS NOT NULL
-                    AND manual_check_in_reason <> '')
+                    AND (manual_check_in_reason IS NULL
+                        OR manual_check_in_reason <> ''))
             );
     END IF;
 END $$;

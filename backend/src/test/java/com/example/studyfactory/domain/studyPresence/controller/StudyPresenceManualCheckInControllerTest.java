@@ -123,6 +123,26 @@ class StudyPresenceManualCheckInControllerTest {
     }
 
     @Test
+    @DisplayName("수동 입실 사유를 생략해도 담당자 감사 정보와 함께 저장된다")
+    void manualCheckInAllowsOmittedReason() throws Exception {
+        Member admin = memberRepository.save(createMember("관리자", branch.getId(), MemberRole.ADMIN));
+        String request = objectMapper.writeValueAsString(Map.of(
+                "checkedInAt", BEFORE_FIRST_PERIOD.toString()
+        ));
+
+        mockMvc.perform(manualCheckInBody(target.getId(), admin, request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.checkInMethod").value("MANAGER"))
+                .andExpect(jsonPath("$.checkedInByMemberId").value(admin.getId()))
+                .andExpect(jsonPath("$.manualCheckInReason").doesNotExist());
+
+        StudyPresenceSession stored = studyPresenceSessionRepository.findAll().getFirst();
+        assertThat(stored.getCheckInMethod()).isEqualTo(StudyPresenceCheckInMethod.MANAGER);
+        assertThat(stored.getCheckedInByMemberId()).isEqualTo(admin.getId());
+        assertThat(stored.getManualCheckInReason()).isNull();
+    }
+
+    @Test
     @DisplayName("QR 입실은 본인 명의의 QR 감사 정보로 저장된다")
     void qrCheckInPersistsSelfAuthoredAudit() throws Exception {
         StudyPresenceSession saved = studyPresenceSessionRepository.save(
@@ -207,14 +227,12 @@ class StudyPresenceManualCheckInControllerTest {
     }
 
     @Test
-    @DisplayName("입실 시각과 사유는 필수이며 사유 길이는 제한된다")
+    @DisplayName("입실 시각은 필수이고 선택 사유의 길이는 제한된다")
     void rejectInvalidManualCheckInPayloads() throws Exception {
         Member admin = memberRepository.save(createMember("관리자", branch.getId(), MemberRole.ADMIN));
 
         mockMvc.perform(manualCheckInBody(target.getId(), admin,
                         objectMapper.writeValueAsString(Map.of("reason", REASON))))
-                .andExpect(status().isBadRequest());
-        mockMvc.perform(manualCheckIn(target.getId(), admin, BEFORE_FIRST_PERIOD, "   "))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(manualCheckIn(target.getId(), admin, BEFORE_FIRST_PERIOD, "가".repeat(201)))
                 .andExpect(status().isBadRequest());

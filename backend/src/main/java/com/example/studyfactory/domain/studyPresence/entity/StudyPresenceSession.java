@@ -42,8 +42,8 @@ import lombok.NoArgsConstructor;
                                     and manual_check_in_reason is null)
                                 or (check_in_method = 'MANAGER'
                                     and checked_in_by_member_id is not null
-                                    and manual_check_in_reason is not null
-                                    and manual_check_in_reason <> '')
+                                    and (manual_check_in_reason is null
+                                        or manual_check_in_reason <> ''))
                                 """
                 )
         },
@@ -143,7 +143,7 @@ public class StudyPresenceSession extends BaseEntity {
         );
     }
 
-    /** An ADMIN or STAFF operator recorded the check-in, with a required reason. */
+    /** An ADMIN or STAFF operator recorded the check-in, optionally with a note. */
     public static StudyPresenceSession managerCheckIn(
             Long memberId,
             Long branchId,
@@ -155,11 +155,8 @@ public class StudyPresenceSession extends BaseEntity {
             throw new IllegalArgumentException("operatorMemberId must not be null");
         }
 
-        String normalizedReason = reason == null ? "" : reason.trim();
-        if (normalizedReason.isEmpty()) {
-            throw StudyPresenceException.manualCheckInReasonRequired();
-        }
-        if (normalizedReason.length() > MANUAL_CHECK_IN_REASON_MAX_LENGTH) {
+        String normalizedReason = reason == null || reason.isBlank() ? null : reason.trim();
+        if (normalizedReason != null && normalizedReason.length() > MANUAL_CHECK_IN_REASON_MAX_LENGTH) {
             throw StudyPresenceException.manualCheckInReasonTooLong();
         }
 
