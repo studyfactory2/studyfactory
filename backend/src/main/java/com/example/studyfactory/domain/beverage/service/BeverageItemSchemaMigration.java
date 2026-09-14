@@ -72,6 +72,7 @@ class BeverageItemSchemaMigration implements ApplicationRunner {
                         SELECT p.member_id, i.name, i.note
                         FROM beverage_preference_items i
                         JOIN beverage_preferences p ON p.id = i.beverage_preference_id
+                        JOIN members m ON m.id = p.member_id
                         """)
                 .forEach(row -> insertIfMissing(
                         ((Number) row.get("member_id")).longValue(),
@@ -84,8 +85,9 @@ class BeverageItemSchemaMigration implements ApplicationRunner {
         if (!hasColumn("beverage_preferences", "drinks")) {
             return;
         }
-        String notesColumn = hasColumn("beverage_preferences", "notes") ? "notes" : "NULL AS notes";
-        jdbcTemplate.queryForList("SELECT id, member_id, drinks, " + notesColumn + " FROM beverage_preferences")
+        String notesColumn = hasColumn("beverage_preferences", "notes") ? "p.notes AS notes" : "NULL AS notes";
+        jdbcTemplate.queryForList("SELECT p.id, p.member_id, p.drinks, " + notesColumn
+                        + " FROM beverage_preferences p JOIN members m ON m.id = p.member_id")
                 .forEach(row -> {
                     Long preferenceId = ((Number) row.get("id")).longValue();
                     Long memberId = ((Number) row.get("member_id")).longValue();

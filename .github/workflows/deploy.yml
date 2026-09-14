@@ -135,8 +135,11 @@ jobs:
               fi
               for attempt in $(seq 1 30); do
                 if curl --fail --silent --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/api/branches > /dev/null; then
-                  echo "Previous backend image restored successfully."
-                  return 0
+                  sleep 5
+                  if curl --fail --silent --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/api/branches > /dev/null; then
+                    echo "Previous backend image restored successfully."
+                    return 0
+                  fi
                 fi
                 sleep 2
               done
@@ -155,7 +158,10 @@ jobs:
             fi
             for attempt in $(seq 1 30); do
               if curl --fail --silent --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/api/branches > /dev/null; then
-                exit 0
+                sleep 5
+                if curl --fail --silent --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/api/branches > /dev/null; then
+                  exit 0
+                fi
               fi
               sleep 2
             done

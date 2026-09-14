@@ -96,6 +96,15 @@ BEGIN
     END IF;
     changed_at := clock_timestamp();
 
+    -- Legacy beverage rows can outlive a deleted member. They must not block
+    -- application startup or cleanup by attempting to create an orphan audit.
+    IF NOT EXISTS (SELECT 1 FROM members WHERE id = affected_member_id) THEN
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        END IF;
+        RETURN NEW;
+    END IF;
+
     INSERT INTO beverage_preference_audits (member_id, created_at, updated_at)
     VALUES (affected_member_id, changed_at, changed_at)
     ON CONFLICT (member_id) DO UPDATE
