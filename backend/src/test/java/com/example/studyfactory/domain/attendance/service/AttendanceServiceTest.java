@@ -212,6 +212,31 @@ class AttendanceServiceTest {
         ));
 
         verify(attendanceRepository).deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(2L, date, 3);
+        ArgumentCaptor<Attendance> captor = ArgumentCaptor.forClass(Attendance.class);
+        verify(attendanceRepository).save(captor.capture());
+        assertThat(captor.getValue().getMemberId()).isEqualTo(2L);
+        assertThat(captor.getValue().getBranchId()).isEqualTo(1L);
+        assertThat(captor.getValue().getMarkedByMemberId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("스태프는 같은 지점 스태프의 출석을 기록할 수 있다")
+    void staffMayUpdateSameBranchStaffAttendance() {
+        LocalDate date = LocalDate.of(2026, 6, 24);
+        Member operator = createMember(1L, "최민지", MemberRole.STAFF, 1, 1L);
+        Member targetStaff = createMember(2L, "김지원", MemberRole.STAFF, 7, 1L);
+        AttendanceStatusType statusType = new AttendanceStatusType("출석", false);
+        ReflectionTestUtils.setField(statusType, "id", 1L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(operator));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(targetStaff));
+        given(attendanceStatusTypeRepository.findByName("출석")).willReturn(Optional.of(statusType));
+        given(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
+
+        attendanceService.updateSlotStatus(1L, new AttendanceSlotStatusUpdateRequest(
+                2L, date, 3, AttendanceSlotStatusUpdateType.PRESENT, null
+        ));
+
+        verify(attendanceRepository).deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(2L, date, 3);
         verify(attendanceRepository).save(org.mockito.ArgumentMatchers.any(Attendance.class));
     }
 
@@ -332,17 +357,71 @@ class AttendanceServiceTest {
     }
 
     @Test
-    @DisplayName("관리자라도 스태프 계정의 출석을 회원 출석부에서 수정할 수 없다")
-    void rejectUpdatingStaffTarget() {
+    @DisplayName("관리자는 스태프 계정의 출석을 초기화할 수 있다")
+    void adminMayResetStaffAttendance() {
         LocalDate date = LocalDate.of(2026, 6, 24);
         Member admin = createMember(1L, "관리자", MemberRole.ADMIN, 1, 1L);
         Member targetStaff = createMember(2L, "스태프", MemberRole.STAFF, 7, 2L);
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
         given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(targetStaff));
 
-        assertThatThrownBy(() -> attendanceService.resetDailyStatus(
+        attendanceService.resetDailyStatus(
                 1L,
                 new com.example.studyfactory.domain.attendance.dto.AttendanceDailyResetRequest(2L, date)
+        );
+
+        verify(attendanceRepository).deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDate(2L, date);
+        verify(attendanceDailyInitializationRepository).save(org.mockito.ArgumentMatchers.any(AttendanceDailyInitialization.class));
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점 스태프의 출석을 기록할 수 없다")
+    void rejectStaffUpdatingCrossBranchStaffAttendance() {
+        LocalDate date = LocalDate.of(2026, 6, 24);
+        Member operator = createMember(1L, "최민지", MemberRole.STAFF, 1, 1L);
+        Member targetStaff = createMember(2L, "김지원", MemberRole.STAFF, 7, 2L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(operator));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(targetStaff));
+
+        assertThatThrownBy(() -> attendanceService.updateSlotStatus(
+                1L, new AttendanceSlotStatusUpdateRequest(2L, date, 3, AttendanceSlotStatusUpdateType.PRESENT, null)
+        ))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("스태프는 다른 지점 스태프의 출석을 초기화할 수 없다")
+    void rejectStaffResettingCrossBranchStaffAttendance() {
+        LocalDate date = LocalDate.of(2026, 6, 24);
+        Member operator = createMember(1L, "최민지", MemberRole.STAFF, 1, 1L);
+        Member targetStaff = createMember(2L, "김지원", MemberRole.STAFF, 7, 2L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(operator));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(targetStaff));
+
+        assertThatThrownBy(() -> attendanceService.resetDailyStatus(
+                1L, new com.example.studyfactory.domain.attendance.dto.AttendanceDailyResetRequest(2L, date)
+        ))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+    }
+
+    @Test
+    @DisplayName("관리자 계정은 출석 수정 대상이 아니다")
+    void rejectAdminAttendanceTarget() {
+        LocalDate date = LocalDate.of(2026, 6, 24);
+        Member operator = createMember(1L, "관리자", MemberRole.ADMIN, 1, 1L);
+        Member targetAdmin = createMember(2L, "다른 관리자", MemberRole.ADMIN, 7, 1L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(operator));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(targetAdmin));
+
+        assertThatThrownBy(() -> attendanceService.updateSlotStatus(
+                1L, new AttendanceSlotStatusUpdateRequest(2L, date, 3, AttendanceSlotStatusUpdateType.PRESENT, null)
+        ))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("권한이 없습니다.");
+        assertThatThrownBy(() -> attendanceService.resetDailyStatus(
+                1L, new com.example.studyfactory.domain.attendance.dto.AttendanceDailyResetRequest(2L, date)
         ))
                 .isInstanceOf(MemberException.class)
                 .hasMessageContaining("권한이 없습니다.");

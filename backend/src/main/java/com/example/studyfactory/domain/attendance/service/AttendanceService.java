@@ -95,7 +95,7 @@ public class AttendanceService {
         Member currentMember = findMember(currentMemberId);
         ManagerAccessPolicy.validateManager(currentMember);
         Member member = findMemberForUpdate(request.memberId());
-        ManagerAccessPolicy.validateMemberTarget(currentMember, member);
+        ManagerAccessPolicy.validateAttendanceTarget(currentMember, member);
 
         boolean cancelsFixedLeave = request.status() == AttendanceSlotStatusUpdateType.ABSENT
                 && hasFixedLeaveAt(member.getId(), request.date(), request.slot());
@@ -123,7 +123,7 @@ public class AttendanceService {
         Member currentMember = findMember(currentMemberId);
         ManagerAccessPolicy.validateManager(currentMember);
         Member member = findMemberForUpdate(request.memberId());
-        ManagerAccessPolicy.validateMemberTarget(currentMember, member);
+        ManagerAccessPolicy.validateAttendanceTarget(currentMember, member);
 
         attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDate(member.getId(), request.date());
         attendanceReviewedAbsenceRepository.deleteByMemberIdAndAttendanceDate(member.getId(), request.date());

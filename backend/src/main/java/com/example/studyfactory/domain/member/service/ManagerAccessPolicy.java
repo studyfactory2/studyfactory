@@ -70,6 +70,15 @@ public final class ManagerAccessPolicy {
         validateManagerTarget(operator, targetMember);
     }
 
+    /** Attendance edits may target members or staff, but not administrators. */
+    public static void validateAttendanceTarget(Member operator, Member targetMember) {
+        validateManager(operator);
+        if (targetMember.getRole() != MemberRole.MEMBER && targetMember.getRole() != MemberRole.STAFF) {
+            throw MemberException.forbidden();
+        }
+        validateManagerTarget(operator, targetMember);
+    }
+
     public static void validateManagerTarget(Member operator, Member targetMember) {
         validateManager(operator);
         validateBranch(operator, targetMember.getBranchId());
