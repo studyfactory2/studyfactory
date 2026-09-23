@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.member.controller;
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
+import com.example.studyfactory.domain.member.dto.RegistrationCodeIssueResponse;
 import com.example.studyfactory.domain.member.service.PreRegistrationService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -50,6 +51,14 @@ public class PreRegistrationController {
             @Valid @RequestBody PreRegistrationCreateRequest request
     ) {
         return preRegistrationService.update(currentMemberId, memberId, request);
+    }
+
+    @PostMapping("/{memberId}/registration-code")
+    public RegistrationCodeIssueResponse reissueRegistrationCode(
+            @CurrentMember Long currentMemberId,
+            @PathVariable Long memberId
+    ) {
+        return preRegistrationService.reissueRegistrationCode(currentMemberId, memberId);
     }
 
     @DeleteMapping("/{memberId}")

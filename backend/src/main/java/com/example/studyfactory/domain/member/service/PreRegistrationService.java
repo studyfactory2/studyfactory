@@ -7,6 +7,7 @@ import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.member.dto.PreRegistrationCreateRequest;
 import com.example.studyfactory.domain.member.dto.PreRegistrationResponse;
+import com.example.studyfactory.domain.member.dto.RegistrationCodeIssueResponse;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.exception.PreRegistrationException;
 import com.example.studyfactory.domain.room.service.SeatService;
@@ -16,6 +17,7 @@ import com.example.studyfactory.domain.certification.repository.CertificationRep
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,7 @@ public class PreRegistrationService {
     private final BranchRepository branchRepository;
     private final CertificationRepository certificationRepository;
     private final SeatService seatService;
+    private final RegistrationCodeService registrationCodeService;
 
     @Transactional
     public PreRegistrationResponse create(Long currentMemberId, PreRegistrationCreateRequest request) {
@@ -37,22 +40,32 @@ public class PreRegistrationService {
         validateAssignableRole(operator, request.role());
         validateBranchScope(operator, request.branchId());
         validateRequest(request);
+        String normalizedName = request.name().trim();
+        validateAvailableName(request.branchId(), normalizedName, null);
         Long certificationId = getCertificationId(operator, request);
         Member member = new Member(
                 request.branchId(),
-                request.name().trim(),
+                normalizedName,
                 null,
                 request.role(),
                 request.seatNumber(),
                 request.expectedJoinDate(),
                 certificationId
         );
-        Member savedMember = memberRepository.save(member);
+        Member savedMember;
+        try {
+            savedMember = memberRepository.save(member);
+            memberRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            MemberConstraintViolationTranslator.rethrow(exception);
+            throw exception;
+        }
         List<BeverageItem> beverageItems = request.drinkNotes() == null
                 ? beverageService.createPreference(savedMember.getId(), request.drinkSetting(), request.drinkNote())
                 : beverageService.createPreference(savedMember.getId(), request.drinkSetting(), request.drinkNotes());
+        RegistrationCodeService.IssuedCode issuedCode = issueCodeIfRequired(savedMember);
 
-        return PreRegistrationResponse.from(savedMember, beverageItems);
+        return toResponse(savedMember, beverageItems, issuedCode);
     }
 
     @Transactional(readOnly = true)
@@ -81,20 +94,37 @@ public class PreRegistrationService {
         validateAssignableRole(operator, request.role());
         validateBranchScope(operator, request.branchId());
         validateUpdateRequest(member, request);
+        String normalizedName = request.name().trim();
+        validateAvailableName(request.branchId(), normalizedName, member.getId());
         Long certificationId = getCertificationId(operator, request);
         member.updatePreRegistration(
                 request.branchId(),
-                request.name().trim(),
+                normalizedName,
                 request.role(),
                 request.seatNumber(),
                 request.expectedJoinDate(),
                 certificationId
         );
+        flushMemberChanges();
         List<BeverageItem> beverageItems = request.drinkNotes() == null
                 ? beverageService.updatePreference(member, request.drinkSetting(), request.drinkNote())
                 : beverageService.updatePreference(member, request.drinkSetting(), request.drinkNotes());
+        RegistrationCodeService.IssuedCode issuedCode = issueCodeIfRequired(member);
 
-        return PreRegistrationResponse.from(member, beverageItems);
+        return toResponse(member, beverageItems, issuedCode);
+    }
+
+    @Transactional
+    public RegistrationCodeIssueResponse reissueRegistrationCode(Long currentMemberId, Long memberId) {
+        Member operator = findOperator(currentMemberId);
+        ManagerAccessPolicy.validateAdmin(operator);
+        Member member = findPendingMemberForUpdate(operator, memberId);
+        if (!registrationCodeService.requiresCode(member.getRole())) {
+            throw MemberException.invalidRegistrationCodeTarget();
+        }
+        validateUnambiguousLoginName(member);
+        RegistrationCodeService.IssuedCode issuedCode = registrationCodeService.issue(member);
+        return new RegistrationCodeIssueResponse(issuedCode.value(), issuedCode.expiresAt());
     }
 
     @Transactional
@@ -204,6 +234,58 @@ public class PreRegistrationService {
         return memberRepository.findByReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
                 branchId,
                 MemberRole.MEMBER
+        );
+    }
+
+    private RegistrationCodeService.IssuedCode issueCodeIfRequired(Member member) {
+        if (!registrationCodeService.requiresCode(member.getRole())) {
+            member.clearRegistrationCode();
+            return null;
+        }
+        validateUnambiguousLoginName(member);
+        return registrationCodeService.issue(member);
+    }
+
+    private void validateUnambiguousLoginName(Member member) {
+        boolean duplicateNameExists = memberRepository
+                .findAllByNameAndBranchId(member.getName(), member.getBranchId())
+                .stream()
+                .anyMatch(candidate -> !Objects.equals(candidate.getId(), member.getId()));
+        if (duplicateNameExists) {
+            throw MemberException.duplicateBranchName();
+        }
+    }
+
+    private void validateAvailableName(Long branchId, String name, Long memberId) {
+        boolean duplicateExists = memberId == null
+                ? memberRepository.existsByNameAndBranchId(name, branchId)
+                : memberRepository.existsByNameAndBranchIdExcludingMember(name, branchId, memberId);
+        if (duplicateExists) {
+            throw MemberException.duplicateBranchName();
+        }
+    }
+
+    private void flushMemberChanges() {
+        try {
+            memberRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            MemberConstraintViolationTranslator.rethrow(exception);
+        }
+    }
+
+    private PreRegistrationResponse toResponse(
+            Member member,
+            List<BeverageItem> beverageItems,
+            RegistrationCodeService.IssuedCode issuedCode
+    ) {
+        if (issuedCode == null) {
+            return PreRegistrationResponse.from(member, beverageItems);
+        }
+        return PreRegistrationResponse.from(
+                member,
+                beverageItems,
+                issuedCode.value(),
+                issuedCode.expiresAt()
         );
     }
 

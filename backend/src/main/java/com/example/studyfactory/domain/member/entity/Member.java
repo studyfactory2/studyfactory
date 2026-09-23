@@ -10,14 +10,23 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "members")
+@Table(
+        name = "members",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_members_branch_name",
+                columnNames = {"branch_id", "name"}
+        )
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member extends BaseEntity {
 
@@ -43,6 +52,15 @@ public class Member extends BaseEntity {
 
     @Column(columnDefinition = "text")
     private String preparingCertifications;
+
+    @Column(length = 64)
+    private String registrationCodeHash;
+
+    @Column
+    private LocalDateTime registrationCodeExpiresAt;
+
+    @Column
+    private Integer registrationCodeFailedAttempts = 0;
 
     public Member(Long branchId, String name, String password, Integer seatNumber, LocalDate joinDate, Long certificationId) {
         this(branchId, name, password, MemberRole.MEMBER, seatNumber, joinDate, certificationId);
@@ -111,6 +129,7 @@ public class Member extends BaseEntity {
 
     public void signup(String password) {
         this.password = password;
+        clearRegistrationCode();
     }
 
     public void updatePreRegistration(
@@ -121,6 +140,7 @@ public class Member extends BaseEntity {
             LocalDate joinDate,
             Long certificationId
     ) {
+        clearRegistrationCode();
         referenceInformation.update(branchId, certificationId);
         this.name = name;
         this.role = role;
@@ -143,11 +163,34 @@ public class Member extends BaseEntity {
             Long certificationId,
             String preparingCertifications
     ) {
+        if (password == null) {
+            clearRegistrationCode();
+        }
         referenceInformation.update(branchId, certificationId);
         this.name = name;
         this.role = role;
         workInformation.update(seatNumber, joinDate);
         this.preparingCertifications = preparingCertifications;
+    }
+
+    public void issueRegistrationCode(String codeHash, LocalDateTime expiresAt) {
+        this.registrationCodeHash = Objects.requireNonNull(codeHash);
+        this.registrationCodeExpiresAt = Objects.requireNonNull(expiresAt);
+        this.registrationCodeFailedAttempts = 0;
+    }
+
+    public void recordRegistrationCodeFailure() {
+        registrationCodeFailedAttempts = getRegistrationCodeFailedAttempts() + 1;
+    }
+
+    public void clearRegistrationCode() {
+        registrationCodeHash = null;
+        registrationCodeExpiresAt = null;
+        registrationCodeFailedAttempts = 0;
+    }
+
+    public int getRegistrationCodeFailedAttempts() {
+        return registrationCodeFailedAttempts == null ? 0 : registrationCodeFailedAttempts;
     }
 
     /** @deprecated 회원 참고사항은 더 이상 저장하지 않습니다. */

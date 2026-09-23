@@ -222,7 +222,7 @@ class PreRegistrationControllerTest {
         mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody)
-                        .header("Authorization", "Bearer " + createAccessToken()))
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/pre-registrations/pending")
@@ -407,7 +407,7 @@ class PreRegistrationControllerTest {
         String createResponse = mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody)
-                        .header("Authorization", "Bearer " + createAccessToken()))
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -487,7 +487,7 @@ class PreRegistrationControllerTest {
         String createResponse = mockMvc.perform(post("/api/pre-registrations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody)
-                        .header("Authorization", "Bearer " + createAccessToken()))
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()

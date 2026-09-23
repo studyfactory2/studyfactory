@@ -19,7 +19,9 @@ public record PreRegistrationResponse(
         String drinkSetting,
         Map<String, String> drinkNotes,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        String registrationCode,
+        LocalDateTime registrationCodeExpiresAt
 ) {
 
     public static PreRegistrationResponse from(Member member, List<BeverageItem> items) {
@@ -34,7 +36,33 @@ public record PreRegistrationResponse(
                 toDrinkText(items),
                 toDrinkNotes(items),
                 member.getCreatedAt(),
-                member.getUpdatedAt()
+                member.getUpdatedAt(),
+                null,
+                null
+        );
+    }
+
+    public static PreRegistrationResponse from(
+            Member member,
+            List<BeverageItem> items,
+            String registrationCode,
+            LocalDateTime registrationCodeExpiresAt
+    ) {
+        PreRegistrationResponse response = from(member, items);
+        return new PreRegistrationResponse(
+                response.id(),
+                response.branchId(),
+                response.name(),
+                response.role(),
+                response.seatNumber(),
+                response.expectedJoinDate(),
+                response.certificationId(),
+                response.drinkSetting(),
+                response.drinkNotes(),
+                response.createdAt(),
+                response.updatedAt(),
+                registrationCode,
+                registrationCodeExpiresAt
         );
     }
 

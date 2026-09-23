@@ -68,10 +68,40 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("branchId") Long branchId
     );
 
+    @Query("""
+            select count(m) > 0
+            from Member m
+            where m.name = :name
+              and m.referenceInformation.branchId = :branchId
+            """)
+    boolean existsByNameAndBranchId(
+            @Param("name") String name,
+            @Param("branchId") Long branchId
+    );
+
+    @Query("""
+            select count(m) > 0
+            from Member m
+            where m.name = :name
+              and m.referenceInformation.branchId = :branchId
+              and m.id <> :memberId
+            """)
+    boolean existsByNameAndBranchIdExcludingMember(
+            @Param("name") String name,
+            @Param("branchId") Long branchId,
+            @Param("memberId") Long memberId
+    );
+
     List<Member> findByNameAndReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
             String name,
             Long branchId,
             MemberRole role
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Member> findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(
+            String name,
+            Long branchId
     );
 
     List<Member> findAllByOrderByIdAsc();

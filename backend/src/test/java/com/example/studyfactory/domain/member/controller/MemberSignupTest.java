@@ -67,8 +67,8 @@ class MemberSignupTest {
     @Test
     @DisplayName("공개 사전등록 확인은 같은 이름의 관리자나 스태프 계정을 제외한다")
     void verifyPreRegistrationReturnsOnlyMemberAccounts() throws Exception {
-        memberRepository.save(createPreRegisteredMember(MemberRole.ADMIN));
-        memberRepository.save(createPreRegisteredMember(MemberRole.STAFF));
+        memberRepository.save(createPreRegisteredMember("admin", MemberRole.ADMIN));
+        memberRepository.save(createPreRegisteredMember("staff", MemberRole.STAFF));
         Member member = memberRepository.save(createPreRegisteredMember());
         String requestBody = """
                 {
@@ -110,7 +110,7 @@ class MemberSignupTest {
         String requestBody = """
                 {
                   "memberId": %d,
-                  "password": "password123"
+                  "password": "4827"
                 }
                 """.formatted(member.getId());
 
@@ -124,7 +124,7 @@ class MemberSignupTest {
                 .andExpect(jsonPath("$.joinDate").value("2026-07-01"))
                 .andExpect(jsonPath("$.certificationId").value(3));
 
-        assertThat(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "password123")).isTrue();
+        assertThat(memberRepository.existsByNameAndBranchIdAndPassword("hong", 1L, "4827")).isTrue();
     }
 
     @Test
@@ -134,7 +134,7 @@ class MemberSignupTest {
         String requestBody = """
                 {
                   "memberId": %d,
-                  "password": "password123"
+                  "password": "4827"
                 }
                 """.formatted(pendingAdmin.getId());
 
@@ -151,7 +151,7 @@ class MemberSignupTest {
                         .content("""
                                 {
                                   "memberId": 9223372036854775807,
-                                  "password": "password123"
+                                  "password": "4827"
                                 }
                                 """))
                 .andExpect(status().isNotFound())
@@ -200,9 +200,13 @@ class MemberSignupTest {
     }
 
     private Member createPreRegisteredMember(MemberRole role) {
+        return createPreRegisteredMember("hong", role);
+    }
+
+    private Member createPreRegisteredMember(String name, MemberRole role) {
         return new Member(
                 1L,
-                "hong",
+                name,
                 null,
                 role,
                 12,

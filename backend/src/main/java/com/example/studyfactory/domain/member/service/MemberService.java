@@ -12,11 +12,13 @@ import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyResponse;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
+import com.example.studyfactory.domain.member.exception.RegistrationCodeException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.room.service.SeatService;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ public class MemberService {
     private final SeatService seatService;
     private final BranchRepository branchRepository;
     private final CertificationRepository certificationRepository;
+    private final RegistrationCodeService registrationCodeService;
 
     @Transactional(readOnly = true)
     public List<MemberResponse> findAll(Long currentMemberId, String name, Long branchId) {
@@ -67,18 +70,21 @@ public class MemberService {
         Member member = findManagedMemberForUpdate(currentMember, memberId);
         validateUpdateAccess(currentMember, member, request);
         validateUpdateReferences(request);
+        String normalizedName = request.name().trim();
+        validateAvailableName(request.branchId(), normalizedName, member.getId());
         if (seatAssignmentChanges(member, request)) {
             seatService.validateAssignment(member.getId(), request.branchId(), request.seatNumber());
         }
         member.update(
                 request.branchId(),
-                request.name().trim(),
+                normalizedName,
                 request.role(),
                 request.seatNumber(),
                 request.joinDate(),
                 request.certificationId(),
                 request.preparingCertifications()
         );
+        flushMemberChanges();
 
         return MemberResponse.from(member);
     }
@@ -93,15 +99,28 @@ public class MemberService {
         memberRepository.delete(member);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(noRollbackFor = RegistrationCodeException.class)
     public List<PreRegistrationVerifyResponse> verifyPreRegistration(PreRegistrationVerifyRequest request) {
-        List<Member> members = memberRepository.findByNameAndReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
-                request.name().trim(),
-                request.branchId(),
-                MemberRole.MEMBER
-        );
+        List<Member> members;
+        if (request.registrationCode() == null) {
+            members = memberRepository.findByNameAndReferenceInformationBranchIdAndRoleAndPasswordIsNullOrderByIdAsc(
+                    request.name().trim(),
+                    request.branchId(),
+                    MemberRole.MEMBER
+            );
+        } else {
+            members = memberRepository
+                    .findByNameAndReferenceInformationBranchIdAndPasswordIsNullOrderByIdAsc(
+                            request.name().trim(),
+                            request.branchId()
+                    )
+                    .stream()
+                    .filter(member -> registrationCodeService.requiresCode(member.getRole()))
+                    .filter(member -> registrationCodeService.validate(member, request.registrationCode()))
+                    .toList();
+        }
         if (members.isEmpty()) {
-            throw MemberException.preRegistrationNotFound();
+            throw RegistrationCodeException.invalid();
         }
 
         return members.stream()
@@ -109,9 +128,15 @@ public class MemberService {
                 .toList();
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = RegistrationCodeException.class)
     public MemberSignupResponse signup(MemberSignupRequest request) {
         Member member = findSignupCandidateForUpdate(request.memberId());
+        if (registrationCodeService.requiresCode(member.getRole())) {
+            if (!registrationCodeService.validate(member, request.registrationCode())) {
+                throw RegistrationCodeException.invalid();
+            }
+            validateUnambiguousLoginName(member);
+        }
         validateDuplicatedPassword(member, request.password());
         member.signup(request.password());
 
@@ -138,9 +163,6 @@ public class MemberService {
     private Member findSignupCandidateForUpdate(Long memberId) {
         Member member = memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(MemberException::preRegistrationNotFound);
-        if (member.getRole() != MemberRole.MEMBER) {
-            throw MemberException.preRegistrationNotFound();
-        }
         validateNotSignedUp(member);
 
         return member;
@@ -226,6 +248,30 @@ public class MemberService {
     private void validateDuplicatedPassword(Member member, String password) {
         if (memberRepository.existsByNameAndBranchIdAndPassword(member.getName(), member.getBranchId(), password)) {
             throw MemberException.alreadySignedUp();
+        }
+    }
+
+    private void validateUnambiguousLoginName(Member member) {
+        boolean duplicateNameExists = memberRepository
+                .findAllByNameAndBranchId(member.getName(), member.getBranchId())
+                .stream()
+                .anyMatch(candidate -> !Objects.equals(candidate.getId(), member.getId()));
+        if (duplicateNameExists) {
+            throw MemberException.duplicateBranchName();
+        }
+    }
+
+    private void validateAvailableName(Long branchId, String name, Long memberId) {
+        if (memberRepository.existsByNameAndBranchIdExcludingMember(name, branchId, memberId)) {
+            throw MemberException.duplicateBranchName();
+        }
+    }
+
+    private void flushMemberChanges() {
+        try {
+            memberRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            MemberConstraintViolationTranslator.rethrow(exception);
         }
     }
 

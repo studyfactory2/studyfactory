@@ -19,6 +19,7 @@ import com.example.studyfactory.domain.member.dto.PreRegistrationVerifyResponse;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
+import com.example.studyfactory.domain.member.exception.RegistrationCodeException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.room.exception.SeatException;
 import com.example.studyfactory.domain.room.service.SeatService;
@@ -58,6 +59,9 @@ class MemberServiceTest {
     @Mock
     private CertificationRepository certificationRepository;
 
+    @Mock
+    private RegistrationCodeService registrationCodeService;
+
     @Test
     @DisplayName("이름과 지점에 해당하는 사전등록 사원 정보를 확인한다")
     void verifyPreRegistration() {
@@ -96,7 +100,7 @@ class MemberServiceTest {
         assertThatThrownBy(() -> memberService.verifyPreRegistration(
                 new PreRegistrationVerifyRequest("manager", 1L)
         ))
-                .isInstanceOf(MemberException.class)
+                .isInstanceOf(RegistrationCodeException.class)
                 .hasMessageContaining("일치하는 사전등록 정보가 없습니다.");
 
         then(beverageService).shouldHaveNoInteractions();
@@ -131,7 +135,7 @@ class MemberServiceTest {
                 .willReturn(List.of());
 
         assertThatThrownBy(() -> memberService.verifyPreRegistration(new PreRegistrationVerifyRequest("hong", 1L)))
-                .isInstanceOf(MemberException.class)
+                .isInstanceOf(RegistrationCodeException.class)
                 .hasMessageContaining("일치하는 사전등록 정보가 없습니다.");
     }
 
@@ -151,9 +155,11 @@ class MemberServiceTest {
     void rejectPrivilegedPublicSignupWithoutRevealingAccount() {
         Member pendingAdmin = createPreRegisteredMember(MemberRole.ADMIN);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(pendingAdmin));
+        given(registrationCodeService.requiresCode(MemberRole.ADMIN)).willReturn(true);
+        given(registrationCodeService.validate(pendingAdmin, null)).willReturn(false);
 
         assertThatThrownBy(() -> memberService.signup(new MemberSignupRequest(1L, "password123")))
-                .isInstanceOf(MemberException.class)
+                .isInstanceOf(RegistrationCodeException.class)
                 .hasMessageContaining("일치하는 사전등록 정보가 없습니다.");
 
         assertThat(pendingAdmin.getPassword()).isNull();
@@ -194,6 +200,34 @@ class MemberServiceTest {
         assertThat(member.getCertificationId()).isEqualTo(4L);
         assertThat(member.getPreparingCertifications()).isEqualTo("회계사\n세무사");
         then(seatService).should().validateAssignment(1L, 3L, 20);
+    }
+
+    @Test
+    @DisplayName("회원 정보를 같은 지점의 기존 이름으로 수정할 수 없다")
+    void rejectDuplicateNameWhenUpdatingMember() {
+        Member admin = createRegisteredMember(MemberRole.ADMIN);
+        Member member = createRegisteredMember();
+        ReflectionTestUtils.setField(admin, "id", 2L);
+        given(memberRepository.findById(2L)).willReturn(Optional.of(admin));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(memberRepository.existsByNameAndBranchIdExcludingMember("kim", 1L, 1L)).willReturn(true);
+
+        MemberUpdateRequest request = new MemberUpdateRequest(
+                1L,
+                " kim ",
+                MemberRole.MEMBER,
+                12,
+                LocalDate.of(2026, 8, 1),
+                null,
+                ""
+        );
+
+        assertThatThrownBy(() -> memberService.update(2L, 1L, request))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("같은 지점에 동일한 이름이 이미 있습니다.");
+
+        assertThat(member.getName()).isEqualTo("hong");
     }
 
     @Test

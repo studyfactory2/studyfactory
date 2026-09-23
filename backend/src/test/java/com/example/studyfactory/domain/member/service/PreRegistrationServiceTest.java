@@ -63,6 +63,9 @@ class PreRegistrationServiceTest {
     @Mock
     private SeatService seatService;
 
+    @Mock
+    private RegistrationCodeService registrationCodeService;
+
     @Test
     @DisplayName("사전등록 요청으로 사원과 음료 정보를 저장하고 응답을 반환한다")
     void createPreRegistration() {
@@ -158,6 +161,22 @@ class PreRegistrationServiceTest {
 
         assertThat(response.certificationId()).isNull();
         then(certificationRepository).should(never()).findByContent(any());
+    }
+
+    @Test
+    @DisplayName("같은 지점에 동일한 이름으로 일반 회원을 사전등록할 수 없다")
+    void rejectDuplicateMemberNameWithinBranch() {
+        PreRegistrationCreateRequest request = createMemberRequest();
+        givenOperator(ADMIN_ID, MemberRole.ADMIN, 1L);
+        given(branchRepository.existsById(1L)).willReturn(true);
+        given(memberRepository.existsByNameAndBranchId("hong", 1L)).willReturn(true);
+
+        assertThatThrownBy(() -> preRegistrationService.create(ADMIN_ID, request))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("같은 지점에 동일한 이름이 이미 있습니다.");
+
+        then(memberRepository).should(never()).save(any(Member.class));
+        then(beverageService).shouldHaveNoInteractions();
     }
 
     @Test
