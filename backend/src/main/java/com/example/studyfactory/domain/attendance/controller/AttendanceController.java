@@ -1,6 +1,8 @@
 package com.example.studyfactory.domain.attendance.controller;
 
 import com.example.studyfactory.domain.attendance.dto.AttendanceDailyResetRequest;
+import com.example.studyfactory.domain.attendance.dto.AttendanceReasonCreateRequest;
+import com.example.studyfactory.domain.attendance.dto.AttendanceReasonCreateResponse;
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateRequest;
 import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardResponse;
 import com.example.studyfactory.domain.attendance.service.AttendanceService;
@@ -14,6 +16,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,6 +50,14 @@ public class AttendanceController {
             @Valid @RequestBody AttendanceSlotStatusUpdateRequest request
     ) {
         attendanceService.updateSlotStatus(currentMemberId, request);
+    }
+
+    @PostMapping("/daily-board/reasons")
+    public AttendanceReasonCreateResponse createReasons(
+            @CurrentMember Long currentMemberId,
+            @Valid @RequestBody AttendanceReasonCreateRequest request
+    ) {
+        return attendanceService.createReasons(currentMemberId, request);
     }
 
     @PatchMapping("/daily-board/member/reset")

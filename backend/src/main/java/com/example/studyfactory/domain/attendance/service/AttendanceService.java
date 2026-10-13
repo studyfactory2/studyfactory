@@ -2,6 +2,8 @@ package com.example.studyfactory.domain.attendance.service;
 
 import com.example.studyfactory.domain.attendance.dto.AttendanceBoardRowResponse;
 import com.example.studyfactory.domain.attendance.dto.AttendanceDailyResetRequest;
+import com.example.studyfactory.domain.attendance.dto.AttendanceReasonCreateRequest;
+import com.example.studyfactory.domain.attendance.dto.AttendanceReasonCreateResponse;
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateRequest;
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateType;
 import com.example.studyfactory.domain.attendance.dto.DailyAttendanceBoardResponse;
@@ -39,6 +41,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -130,6 +133,86 @@ public class AttendanceService {
         if (cancelsFixedLeave) {
             createFixedLeaveCancellation(currentMember, member, request);
         }
+    }
+
+    @Transactional
+    public AttendanceReasonCreateResponse createReasons(Long currentMemberId, AttendanceReasonCreateRequest request) {
+        validateReasonRequest(request);
+        Member currentMember = findMember(currentMemberId);
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member member = findMemberForUpdate(request.memberId());
+        ManagerAccessPolicy.validateAttendanceTarget(currentMember, member);
+        if (member.getJoinDate() != null && request.dates().stream().anyMatch(date -> date.isBefore(member.getJoinDate()))) {
+            throw AttendanceException.reasonBeforeJoinDate();
+        }
+
+        String reason = request.reason().trim();
+        List<Integer> requestedSlots = request.slots().stream().sorted().toList();
+        int requestedPeriodCount = request.dates().size() * requestedSlots.size();
+        int appliedPeriodCount = 0;
+        for (LocalDate date : request.dates().stream().sorted().toList()) {
+            List<Attendance> attendances = attendanceRepository.findByMemberIdAndAttendanceDateBetween(member.getId(), date, date);
+            Set<Integer> presentSlots = attendances.stream()
+                    .filter(attendance -> !Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()))
+                    .map(Attendance::getSlot)
+                    .collect(Collectors.toSet());
+            List<Integer> eligibleSlots = requestedSlots.stream().filter(slot -> !presentSlots.contains(slot)).toList();
+            if (eligibleSlots.isEmpty()) {
+                continue;
+            }
+
+            // An ordinary reason replaces only explicit blank/absence overrides.
+            // Real attendance and every existing leave record remain untouched.
+            eligibleSlots.forEach(slot -> attendanceReviewedAbsenceRepository
+                    .deleteByMemberIdAndAttendanceDateAndSlot(member.getId(), date, slot));
+            attendances.stream()
+                    .filter(attendance -> eligibleSlots.contains(attendance.getSlot()))
+                    .filter(attendance -> Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()))
+                    .forEach(attendanceRepository::delete);
+            attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDateAndSlotIn(member.getId(), date, eligibleSlots);
+
+            // A retry of the same effective reason need not add redundant history.
+            if (!alreadyHasReason(member.getId(), date, eligibleSlots, reason)) {
+                specialLeaveRepository.save(new SpecialLeave(
+                        member.getId(), member.getBranchId(), date,
+                        eligibleSlots.stream().map(String::valueOf).collect(Collectors.joining(",")),
+                        reason, null, false, currentMember.getId()
+                ));
+            }
+            appliedPeriodCount += eligibleSlots.size();
+        }
+        return new AttendanceReasonCreateResponse(
+                member.getId(), member.getBranchId(), requestedPeriodCount, appliedPeriodCount,
+                requestedPeriodCount - appliedPeriodCount
+        );
+    }
+
+    private void validateReasonRequest(AttendanceReasonCreateRequest request) {
+        if (request == null || request.memberId() == null || request.memberId() < 1
+                || request.dates() == null || request.dates().isEmpty() || request.dates().size() > 31
+                || request.dates().stream().anyMatch(Objects::isNull)
+                || request.dates().stream().distinct().count() != request.dates().size()
+                || request.slots() == null || request.slots().isEmpty() || request.slots().size() > SLOT_COUNT
+                || request.slots().stream().anyMatch(slot -> slot == null || slot < 1 || slot > SLOT_COUNT)
+                || request.slots().stream().distinct().count() != request.slots().size()
+                || request.reason() == null || request.reason().isBlank() || request.reason().trim().length() > 40) {
+            throw AttendanceException.invalidReasonRequest();
+        }
+        LocalDate today = LocalDate.now(clock);
+        if (request.dates().stream().anyMatch(date -> date.isBefore(today))) {
+            throw AttendanceException.pastReasonDate();
+        }
+    }
+
+    private boolean alreadyHasReason(Long memberId, LocalDate date, List<Integer> slots, String reason) {
+        Map<Integer, SpecialLeave> latestLeaveBySlot = new HashMap<>();
+        specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(memberId, date).forEach(leave ->
+                parseSlots(leave.getSlots()).forEach(slot -> latestLeaveBySlot.put(slot, leave))
+        );
+        return slots.stream().allMatch(slot -> {
+            SpecialLeave latest = latestLeaveBySlot.get(slot);
+            return latest != null && reason.equals(latest.getReason()) && latest.getCustomReason() == null;
+        });
     }
 
     @Transactional
