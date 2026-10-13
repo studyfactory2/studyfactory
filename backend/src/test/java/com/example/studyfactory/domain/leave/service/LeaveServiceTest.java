@@ -14,6 +14,7 @@ import com.example.studyfactory.domain.leave.dto.FixedLeaveGenerationResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
+import com.example.studyfactory.domain.leave.dto.MemberLeavePlanResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
@@ -114,6 +115,109 @@ class LeaveServiceTest {
         assertThat(responses.get(0).branchId()).isEqualTo(2L);
         assertThat(responses.get(0).leaveDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(responses.get(0).leaveType()).isEqualTo(LeaveType.FULL);
+    }
+
+    @Test
+    @DisplayName("같은 날짜와 사유의 고정 휴무는 모든 교시를 합쳐 반환하고 원본은 유지한다")
+    void findMyLeavePlanMergesAllFixedLeaveSlots() {
+        FixedLeave morning = new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "1", "학교", true);
+        FixedLeave afternoon = new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5", "학교", true);
+        ReflectionTestUtils.setField(morning, "id", 10L);
+        ReflectionTestUtils.setField(afternoon, "id", 11L);
+        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L))
+                .willReturn(List.of(morning, afternoon));
+
+        List<MemberLeavePlanResponse> responses = leaveService.findMyLeavePlan(1L, 2026, 10);
+
+        assertThat(responses).extracting(MemberLeavePlanResponse::leaveDate).containsExactly(
+                LocalDate.of(2026, 10, 27), LocalDate.of(2026, 10, 20),
+                LocalDate.of(2026, 10, 13), LocalDate.of(2026, 10, 6)
+        );
+        assertThat(responses).allSatisfy(response -> {
+            assertThat(response.id()).isEqualTo(10L);
+            assertThat(response.label()).isEqualTo("학교");
+            assertThat(response.source()).isEqualTo("FIXED_LEAVE");
+            assertThat(response.leaveType()).isNull();
+            assertThat(response.slots()).isEqualTo("1,5");
+        });
+        assertThat(morning.getSlots()).isEqualTo("1");
+        assertThat(afternoon.getSlots()).isEqualTo("5");
+        then(fixedLeaveRepository).should().findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L);
+        then(fixedLeaveRepository).shouldHaveNoMoreInteractions();
+        then(leaveRequestRepository).should().findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L);
+        then(leaveRequestRepository).shouldHaveNoMoreInteractions();
+        then(specialLeaveRepository).should().findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L);
+        then(specialLeaveRepository).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    @DisplayName("같은 사유의 고정 휴무 교시는 여러 규칙에 걸쳐 중복 없이 정렬한다")
+    void findMyLeavePlanSortsAndDeduplicatesFixedLeaveSlots() {
+        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(
+                new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "7,5", "학교", true),
+                new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5, 1", "학교", true),
+                new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "3,1", "학교", true)
+        ));
+
+        List<MemberLeavePlanResponse> responses = leaveService.findMyLeavePlan(1L, 2026, 10);
+
+        assertThat(responses).hasSize(4).allSatisfy(response ->
+                assertThat(response.slots()).isEqualTo("1,3,5,7"));
+    }
+
+    @Test
+    @DisplayName("고정 휴무의 다른 사유와 다른 요일은 합치지 않는다")
+    void findMyLeavePlanKeepsFixedLeaveReasonsAndDatesSeparate() {
+        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(
+                new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "1", "학교", true),
+                new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5", "학교", true),
+                new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "6", "알바", true),
+                new FixedLeave(1L, 2L, DayOfWeek.WEDNESDAY, "2", "학교", true)
+        ));
+
+        List<MemberLeavePlanResponse> responses = leaveService.findMyLeavePlan(1L, 2026, 10);
+
+        assertThat(responses).hasSize(12).allSatisfy(response -> {
+            assertThat(response.leaveDate().getYear()).isEqualTo(2026);
+            assertThat(response.leaveDate().getMonthValue()).isEqualTo(10);
+            if (response.leaveDate().getDayOfWeek() == DayOfWeek.WEDNESDAY) {
+                assertThat(response.label()).isEqualTo("학교");
+                assertThat(response.slots()).isEqualTo("2");
+            } else {
+                assertThat(response.leaveDate().getDayOfWeek()).isEqualTo(DayOfWeek.TUESDAY);
+                assertThat(response.slots()).isEqualTo(response.label().equals("학교") ? "1,5" : "6");
+            }
+        });
+        assertThat(responses).filteredOn(response -> response.label().equals("알바")).hasSize(4);
+    }
+
+    @Test
+    @DisplayName("고정 휴무 교시를 합쳐도 직접 신청과 특별 휴무의 출처 및 교시는 유지한다")
+    void findMyLeavePlanKeepsOtherLeaveSourcesSeparate() {
+        LocalDate date = LocalDate.of(2026, 10, 13);
+        LeaveRequest ownLeave = new LeaveRequest(1L, 2L, date, LeaveType.AFTERNOON);
+        ReflectionTestUtils.setField(ownLeave, "id", 20L);
+        given(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L))
+                .willReturn(List.of(ownLeave));
+        given(specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L)).willReturn(List.of(
+                new SpecialLeave(1L, 2L, date, "3", "학교", null, false, 99L),
+                new SpecialLeave(1L, 2L, date, "2", "학교", null, false, 99L)
+        ));
+        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(
+                new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "1", "학교", true),
+                new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5", "학교", true)
+        ));
+
+        List<MemberLeavePlanResponse> responses = leaveService.findMyLeavePlan(1L, 2026, 10);
+
+        assertThat(responses).hasSize(6);
+        assertThat(responses).filteredOn(response -> response.source().equals("LEAVE"))
+                .containsExactly(new MemberLeavePlanResponse(20L, date, LeaveType.AFTERNOON,
+                        "오후반차", "LEAVE", "4,5,6,7"));
+        assertThat(responses).filteredOn(response -> response.source().equals("SPECIAL_LEAVE"))
+                .containsExactly(new MemberLeavePlanResponse(null, date, null, "학교", "SPECIAL_LEAVE", "2,3"));
+        assertThat(responses).filteredOn(response -> response.source().equals("FIXED_LEAVE"))
+                .hasSize(4).allSatisfy(response -> assertThat(response.slots()).isEqualTo("1,5"));
     }
 
     @Test

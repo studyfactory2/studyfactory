@@ -108,9 +108,10 @@ public class LeaveService {
             LocalDate leaveDate = date;
             fixedLeaves.stream()
                     .filter(fixedLeave -> fixedLeave.getDayOfWeek() == leaveDate.getDayOfWeek())
-                    .forEach(fixedLeave -> fixedLeavesByDateAndReason.putIfAbsent(
+                    .forEach(fixedLeave -> fixedLeavesByDateAndReason.merge(
                             leaveDate + "|" + fixedLeave.getReason(),
-                            MemberLeavePlanResponse.fromFixedLeave(fixedLeave, leaveDate, fixedLeave.getReason())
+                            MemberLeavePlanResponse.fromFixedLeave(fixedLeave, leaveDate, fixedLeave.getReason()),
+                            (existing, candidate) -> existing.withSlots(mergeSlots(existing.slots(), candidate.slots()))
                     ));
             date = date.plusDays(1);
         }

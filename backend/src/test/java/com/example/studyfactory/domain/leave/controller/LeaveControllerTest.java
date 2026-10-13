@@ -10,22 +10,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.studyfactory.domain.auth.jwt.JwtTokenProvider;
 import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
+import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
+import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -40,6 +47,9 @@ class LeaveControllerTest {
 
     @Autowired
     private LeaveRequestRepository leaveRequestRepository;
+
+    @Autowired
+    private FixedLeaveRepository fixedLeaveRepository;
 
     @Autowired
     private MemberRepository memberRepository;
@@ -119,6 +129,48 @@ class LeaveControllerTest {
                 .andExpect(jsonPath("$[0].leaveDate").value("2026-07-01"))
                 .andExpect(jsonPath("$[0].leaveType").value("FULL"))
                 .andExpect(jsonPath("$[1]").doesNotExist());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "STAFF"})
+    @Transactional
+    @DisplayName("본인 휴무계획은 같은 사유의 활성 고정휴무 교시를 날짜별로 합친다")
+    void findMyLeavePlanMergesActiveRecurringPeriodsForCurrentMember(MemberRole role) throws Exception {
+        // Flush the setup deletes before reusing the unique branch name in this transaction.
+        branchRepository.flush();
+        Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
+        Member member = memberRepository.save(createMember("kim", branch.getId(), role));
+        Member otherMember = memberRepository.save(createMember("lee", branch.getId()));
+        FixedLeave firstPeriod = fixedLeaveRepository.save(new FixedLeave(
+                member.getId(), branch.getId(), DayOfWeek.MONDAY, "1", "학교", true));
+        FixedLeave fifthPeriod = fixedLeaveRepository.save(new FixedLeave(
+                member.getId(), branch.getId(), DayOfWeek.MONDAY, "5", "학교", true));
+        fixedLeaveRepository.save(new FixedLeave(
+                member.getId(), branch.getId(), DayOfWeek.MONDAY, "2", "학교", false));
+        fixedLeaveRepository.save(new FixedLeave(
+                otherMember.getId(), branch.getId(), DayOfWeek.MONDAY, "3", "학교", true));
+        String accessToken = jwtTokenProvider.createAccessToken(member);
+
+        var result = mockMvc.perform(get("/api/leaves/me/plan")
+                        .param("year", "2026")
+                        .param("month", "11")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5));
+
+        List<Integer> mondaysInDescendingOrder = List.of(30, 23, 16, 9, 2);
+        for (int index = 0; index < mondaysInDescendingOrder.size(); index++) {
+            String entry = "$[" + index + "]";
+            result.andExpect(jsonPath(entry + ".leaveDate")
+                            .value(LocalDate.of(2026, 11, mondaysInDescendingOrder.get(index)).toString()))
+                    .andExpect(jsonPath(entry + ".label").value("학교"))
+                    .andExpect(jsonPath(entry + ".source").value("FIXED_LEAVE"))
+                    .andExpect(jsonPath(entry + ".slots").value("1,5"))
+                    .andExpect(jsonPath(entry + ".leaveType").isEmpty());
+        }
+
+        assertThat(fixedLeaveRepository.findById(firstPeriod.getId()).orElseThrow().getSlots()).isEqualTo("1");
+        assertThat(fixedLeaveRepository.findById(fifthPeriod.getId()).orElseThrow().getSlots()).isEqualTo("5");
     }
 
     @Test
