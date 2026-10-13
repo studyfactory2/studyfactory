@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.leave.service;
 
+import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveGenerationResponse;
@@ -52,12 +53,13 @@ public class LeaveService {
     private final SpecialLeaveRepository specialLeaveRepository;
     private final FixedLeaveRepository fixedLeaveRepository;
     private final MemberRepository memberRepository;
+    private final AttendanceUnconfirmedSlotRepository attendanceUnconfirmedSlotRepository;
     private final Clock clock;
 
     @Transactional
     public LeaveResponse create(Long memberId, LeaveCreateRequest request) {
         validateLeaveDate(request.leaveDate());
-        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        Member member = findMemberForUpdate(memberId);
         LeaveRequest leaveRequest = new LeaveRequest(
                 member.getId(),
                 member.getBranchId(),
@@ -65,6 +67,11 @@ public class LeaveService {
                 request.leaveType()
         );
 
+        attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDateAndSlotIn(
+                memberId,
+                request.leaveDate(),
+                List.of(toSlotsForLeaveType(request.leaveType()).split(",")).stream().map(Integer::parseInt).toList()
+        );
         return LeaveResponse.from(leaveRequestRepository.save(leaveRequest));
     }
 
@@ -227,12 +234,16 @@ public class LeaveService {
     public List<SpecialLeaveResponse> createSpecial(Long currentMemberId, SpecialLeaveCreateRequest request) {
         Member currentMember = findMember(currentMemberId);
         ManagerAccessPolicy.validateManager(currentMember);
-        Member targetMember = findMember(request.memberId());
+        Member targetMember = findMemberForUpdate(request.memberId());
         ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
         validateSpecialLeaveRequest(request);
         String slots = toSlots(request.slots());
         String reason = request.reason().trim();
         String customReason = toNullableText(request.customReason());
+
+        // A new explicit leave replaces the manual blank only where it applies.
+        request.leaveDates().forEach(date -> attendanceUnconfirmedSlotRepository
+                .deleteByMemberIdAndAttendanceDateAndSlotIn(targetMember.getId(), date, request.slots()));
 
         return request.leaveDates()
                 .stream()
@@ -256,7 +267,7 @@ public class LeaveService {
     public FixedLeaveResponse createFixed(Long currentMemberId, FixedLeaveCreateRequest request) {
         Member currentMember = findMember(currentMemberId);
         ManagerAccessPolicy.validateManager(currentMember);
-        Member targetMember = findMember(request.memberId());
+        Member targetMember = findMemberForUpdate(request.memberId());
         ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
         validateFixedLeaveRequest(request);
         if (hasFixedLeaveSlotConflict(targetMember.getId(), request.leaveDate().getDayOfWeek(), request.slots())) {
@@ -271,6 +282,11 @@ public class LeaveService {
                 true
         );
 
+        // Fixed rules have no effective date in the existing model: they apply
+        // to every matching weekday, including already displayed calendar dates.
+        attendanceUnconfirmedSlotRepository.findByMemberIdAndSlotIn(targetMember.getId(), request.slots()).stream()
+                .filter(slot -> slot.getAttendanceDate().getDayOfWeek() == fixedLeave.getDayOfWeek())
+                .forEach(attendanceUnconfirmedSlotRepository::delete);
         return FixedLeaveResponse.from(fixedLeaveRepository.save(fixedLeave));
     }
 
@@ -380,6 +396,10 @@ public class LeaveService {
 
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+    }
+
+    private Member findMemberForUpdate(Long memberId) {
+        return memberRepository.findByIdForUpdate(memberId).orElseThrow(MemberException::memberNotFound);
     }
 
     private LocalDate resolveDate(LocalDate date) {

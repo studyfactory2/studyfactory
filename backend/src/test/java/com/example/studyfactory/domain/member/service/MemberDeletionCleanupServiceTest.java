@@ -6,6 +6,7 @@ import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInit
 import com.example.studyfactory.domain.attendance.repository.AttendanceNoteRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedAbsenceRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
 import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
@@ -40,6 +41,9 @@ class MemberDeletionCleanupServiceTest {
 
     @Mock
     private AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
+
+    @Mock
+    private AttendanceUnconfirmedSlotRepository attendanceUnconfirmedSlotRepository;
 
     @Mock
     private AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
@@ -88,6 +92,7 @@ class MemberDeletionCleanupServiceTest {
         then(beverageService).should().deleteAllByMemberId(1L);
         then(attendanceRepository).should().deleteByReferenceInformationMemberId(1L);
         then(attendanceReviewedAbsenceRepository).should().deleteByMemberId(1L);
+        then(attendanceUnconfirmedSlotRepository).should().deleteByMemberId(1L);
         then(attendanceDailyInitializationRepository).should().deleteByMemberId(1L);
         then(attendanceDailyInitializationRepository).should().deleteByInitializedByMemberId(1L);
         then(attendanceNoteRepository).should().deleteByCreatedByMemberId(1L);

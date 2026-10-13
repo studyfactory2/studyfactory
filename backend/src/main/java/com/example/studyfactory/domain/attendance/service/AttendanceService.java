@@ -11,10 +11,13 @@ import com.example.studyfactory.domain.attendance.entity.AttendanceReferenceInfo
 import com.example.studyfactory.domain.attendance.entity.AttendanceReviewedAbsence;
 import com.example.studyfactory.domain.attendance.entity.AttendanceSlotInformation;
 import com.example.studyfactory.domain.attendance.entity.AttendanceStatusType;
+import com.example.studyfactory.domain.attendance.entity.AttendanceUnconfirmedSlot;
+import com.example.studyfactory.domain.attendance.exception.AttendanceException;
 import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedAbsenceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTypeRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
 import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
@@ -55,6 +58,7 @@ public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
+    private final AttendanceUnconfirmedSlotRepository attendanceUnconfirmedSlotRepository;
     private final AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
     private final AttendanceStatusTypeRepository attendanceStatusTypeRepository;
     private final MemberRepository memberRepository;
@@ -85,6 +89,8 @@ public class AttendanceService {
         // 예: 오후반차(4~7교시) 중 4교시만 출석 처리해도 5~7교시는 오후반차로 유지한다.
         applyAttendances(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
         applyReviewedAbsences(statusesByMemberId, statusSourcesByMemberId, reviewedAbsences);
+        applyUnconfirmedSlots(statusesByMemberId, statusSourcesByMemberId, attendanceUnconfirmedSlotRepository
+                .findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(targetBranchId, targetDate));
         Set<Long> initializedMemberIds = findInitializedMemberIds(targetBranchId, targetDate);
 
         return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId, statusSourcesByMemberId, initializedMemberIds));
@@ -97,6 +103,14 @@ public class AttendanceService {
         Member member = findMemberForUpdate(request.memberId());
         ManagerAccessPolicy.validateAttendanceTarget(currentMember, member);
 
+        if (request.status() == AttendanceSlotStatusUpdateType.UNCONFIRMED) {
+            clearPresentToUnconfirmed(currentMember, member, request);
+            return;
+        }
+        attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDateAndSlot(
+                member.getId(), request.date(), request.slot()
+        );
+        attendanceUnconfirmedSlotRepository.flush();
         boolean cancelsFixedLeave = request.status() == AttendanceSlotStatusUpdateType.ABSENT
                 && hasFixedLeaveAt(member.getId(), request.date(), request.slot());
         if (request.status() == AttendanceSlotStatusUpdateType.PRESENT) {
@@ -127,6 +141,7 @@ public class AttendanceService {
 
         attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDate(member.getId(), request.date());
         attendanceReviewedAbsenceRepository.deleteByMemberIdAndAttendanceDate(member.getId(), request.date());
+        attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDate(member.getId(), request.date());
         leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), request.date())
                 .forEach(leaveRequestRepository::delete);
         specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), request.date())
@@ -152,6 +167,31 @@ public class AttendanceService {
         clearReviewedAbsence(memberId, date, slot);
         deleteLeaveRequestsBySlot(memberId, date, slot);
         deleteSpecialLeavesBySlot(memberId, date, slot);
+    }
+
+    private void clearPresentToUnconfirmed(
+            Member currentMember,
+            Member member,
+            AttendanceSlotStatusUpdateRequest request
+    ) {
+        Long memberId = member.getId();
+        LocalDate date = request.date();
+        int slot = request.slot();
+        if (attendanceUnconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(memberId, date, slot)) {
+            return;
+        }
+        boolean present = attendanceRepository
+                .findByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot)
+                .stream()
+                .anyMatch(attendance -> !Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()));
+        if (!present || attendanceReviewedAbsenceRepository.existsByMemberIdAndAttendanceDateAndSlot(memberId, date, slot)) {
+            throw AttendanceException.presentStatusChanged();
+        }
+        // Unlike the legacy clear operation, canceling O must never delete leave records.
+        attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
+        attendanceUnconfirmedSlotRepository.save(new AttendanceUnconfirmedSlot(
+                memberId, member.getBranchId(), date, slot, currentMember.getId(), clock.instant()
+        ));
     }
 
     private void clearPresentSlotStatus(Long memberId, LocalDate date, Integer slot) {
@@ -326,6 +366,20 @@ public class AttendanceService {
                         EMPTY_STATUS,
                         REVIEWED_ABSENT_SOURCE
                 );
+            }
+        }
+    }
+
+    private void applyUnconfirmedSlots(
+            Map<Long, List<String>> statusesByMemberId,
+            Map<Long, List<String>> statusSourcesByMemberId,
+            List<AttendanceUnconfirmedSlot> unconfirmedSlots
+    ) {
+        for (AttendanceUnconfirmedSlot unconfirmedSlot : unconfirmedSlots) {
+            List<String> statuses = statusesByMemberId.get(unconfirmedSlot.getMemberId());
+            List<String> sources = statusSourcesByMemberId.get(unconfirmedSlot.getMemberId());
+            if (statuses != null && sources != null) {
+                setStatus(statuses, sources, unconfirmedSlot.getSlot(), EMPTY_STATUS, "NONE");
             }
         }
     }

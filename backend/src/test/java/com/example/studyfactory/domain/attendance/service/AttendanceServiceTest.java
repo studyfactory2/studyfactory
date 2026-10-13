@@ -17,6 +17,7 @@ import com.example.studyfactory.domain.attendance.entity.AttendanceStatusType;
 import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedAbsenceRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTypeRepository;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
@@ -62,6 +63,9 @@ class AttendanceServiceTest {
 
     @Mock
     private AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
+
+    @Mock
+    private AttendanceUnconfirmedSlotRepository attendanceUnconfirmedSlotRepository;
 
     @Mock
     private AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;

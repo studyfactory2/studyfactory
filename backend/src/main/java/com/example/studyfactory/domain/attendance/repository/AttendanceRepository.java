@@ -9,6 +9,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
+    List<Attendance> findByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(
+            Long memberId, LocalDate attendanceDate, int slot
+    );
+
     @Query("""
             select a
             from Attendance a

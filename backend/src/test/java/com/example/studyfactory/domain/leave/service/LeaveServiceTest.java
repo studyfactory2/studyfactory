@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
+import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveGenerationResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
@@ -75,13 +76,16 @@ class LeaveServiceTest {
     @Mock
     private MemberRepository memberRepository;
 
+    @Mock
+    private AttendanceUnconfirmedSlotRepository attendanceUnconfirmedSlotRepository;
+
     @Test
     @DisplayName("토큰의 사원과 휴무 정보로 휴무를 신청한다")
     void createLeave() {
         LeaveCreateRequest request = new LeaveCreateRequest(LocalDate.now(clock), LeaveType.FULL);
         Member member = createMember();
         ReflectionTestUtils.setField(member, "id", 1L);
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(leaveRequestRepository.save(any(LeaveRequest.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         LeaveResponse response = leaveService.create(1L, request);
@@ -467,7 +471,7 @@ class LeaveServiceTest {
                 false
         );
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
-        given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(target));
         given(specialLeaveRepository.save(any(SpecialLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         List<SpecialLeaveResponse> responses = leaveService.createSpecial(1L, request);
@@ -493,7 +497,7 @@ class LeaveServiceTest {
                 "알바"
         );
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
-        given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(target));
         given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of());
         given(fixedLeaveRepository.save(any(FixedLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -520,7 +524,7 @@ class LeaveServiceTest {
                 "알바"
         );
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
-        given(memberRepository.findById(2L)).willReturn(Optional.of(target));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(target));
         given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of(existing));
 
         assertThatThrownBy(() -> leaveService.createFixed(1L, request))
