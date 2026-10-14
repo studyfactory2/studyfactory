@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.attendance.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.example.studyfactory.domain.attendance.dto.AttendanceSlotStatusUpdateRequest;
@@ -40,6 +41,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -221,6 +224,40 @@ class AttendanceServiceTest {
         assertThat(captor.getValue().getMemberId()).isEqualTo(2L);
         assertThat(captor.getValue().getBranchId()).isEqualTo(1L);
         assertThat(captor.getValue().getMarkedByMemberId()).isEqualTo(1L);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"STAFF", "ADMIN"})
+    @DisplayName("관리자는 첫 교시 시작 전에도 오늘의 1~7교시를 출석 처리할 수 있다")
+    void managersMayMarkEveryPeriodPresentBeforeFirstPeriod(MemberRole managerRole) {
+        LocalDate date = LocalDate.of(2026, 10, 14);
+        ZoneId studyZone = ZoneId.of("Asia/Seoul");
+        ReflectionTestUtils.setField(attendanceService, "clock", Clock.fixed(
+                date.atTime(8, 0).atZone(studyZone).toInstant(), studyZone
+        ));
+        Member manager = createMember(1L, "관리자", managerRole, 1);
+        Member member = createMember(2L, "회원", MemberRole.MEMBER, 7);
+        AttendanceStatusType statusType = new AttendanceStatusType("출석", false);
+        ReflectionTestUtils.setField(statusType, "id", 1L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(manager));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(member));
+        given(attendanceStatusTypeRepository.findByName("출석")).willReturn(Optional.of(statusType));
+
+        for (int slot = 1; slot <= 7; slot++) {
+            attendanceService.updateSlotStatus(1L, new AttendanceSlotStatusUpdateRequest(
+                    2L, date, slot, AttendanceSlotStatusUpdateType.PRESENT, null
+            ));
+        }
+
+        ArgumentCaptor<Attendance> captor = ArgumentCaptor.forClass(Attendance.class);
+        verify(attendanceRepository, times(7)).save(captor.capture());
+        assertThat(captor.getAllValues()).extracting(Attendance::getSlot)
+                .containsExactly(1, 2, 3, 4, 5, 6, 7);
+        assertThat(captor.getAllValues()).allSatisfy(attendance -> {
+            assertThat(attendance.getAttendanceDate()).isEqualTo(date);
+            assertThat(attendance.getMemberId()).isEqualTo(2L);
+            assertThat(attendance.getMarkedByMemberId()).isEqualTo(1L);
+        });
     }
 
     @Test

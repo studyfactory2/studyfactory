@@ -6,6 +6,15 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import com.example.studyfactory.domain.attendance.entity.Attendance;
+import com.example.studyfactory.domain.attendance.entity.AttendanceReferenceInformation;
+import com.example.studyfactory.domain.attendance.entity.AttendanceSlotInformation;
+import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
+import com.example.studyfactory.domain.leave.entity.LeaveRequest;
+import com.example.studyfactory.domain.leave.entity.LeaveType;
+import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
+import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
+import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
@@ -31,6 +40,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -53,6 +64,18 @@ class StudyTimeReportServiceTest {
 
     @Mock
     private StudyTimeLeaveExclusionService leaveExclusionService;
+
+    @Mock
+    private AttendanceRepository attendanceRepository;
+
+    @Mock
+    private LeaveRequestRepository leaveRequestRepository;
+
+    @Mock
+    private FixedLeaveRepository fixedLeaveRepository;
+
+    @Mock
+    private SpecialLeaveRepository specialLeaveRepository;
 
     private StudyTimeReportService studyTimeReportService;
 
@@ -146,6 +169,58 @@ class StudyTimeReportServiceTest {
 
         assertThat(response.totals().presenceDuration().formatted()).isEqualTo("01:30:00");
         assertThat(response.totals().recognizedPeriodDuration().formatted()).isEqualTo("01:30:00");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"8, 0, false, 0, 0", "8, 30, true, 1800, 0", "9, 30, true, 5400, 1800"})
+    @DisplayName("미리 기록한 출석은 입실이나 미래 교시의 학습시간을 만들지 않는다")
+    void earlyAttendanceMarksOnlyRecognizeActualElapsedPresence(
+            int hour, int minute, boolean checkedIn, long presenceSeconds, long recognizedSeconds
+    ) {
+        Instant now = atSeoul(STUDY_DATE, hour, minute);
+        Instant rangeStart = atSeoul(STUDY_DATE, 0, 0);
+        StudyTimeReportService service = new StudyTimeReportService(
+                studyPresenceSessionRepository,
+                studyBreakSessionRepository,
+                memberRepository,
+                new StudyTimeCalculator(),
+                new StudyTimeLeaveExclusionService(
+                        leaveRequestRepository, fixedLeaveRepository, specialLeaveRepository, attendanceRepository
+                ),
+                new StudyPresenceAutoClosePolicy(true),
+                Clock.fixed(now, ZoneOffset.UTC)
+        );
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member(1L, 2L, MemberRole.MEMBER)));
+        given(studyPresenceSessionRepository.findIntervalRowsByMemberId(1L, rangeStart, now))
+                .willReturn(checkedIn
+                        ? List.of(new StudyPresenceIntervalRow(101L, 1L, 2L, atSeoul(STUDY_DATE, 8, 0), null))
+                        : List.of());
+        given(leaveRequestRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
+                1L, STUDY_DATE, STUDY_DATE
+        )).willReturn(List.of(new LeaveRequest(1L, 2L, STUDY_DATE, LeaveType.FULL)));
+        given(attendanceRepository.findByMemberIdAndAttendanceDateBetween(1L, STUDY_DATE, STUDY_DATE))
+                .willReturn(List.of(
+                        new Attendance(new AttendanceReferenceInformation(1L, 2L, 3L, 9L),
+                                new AttendanceSlotInformation(STUDY_DATE, 1, null)),
+                        new Attendance(new AttendanceReferenceInformation(1L, 2L, 3L, 9L),
+                                new AttendanceSlotInformation(STUDY_DATE, 7, null))
+                ));
+
+        var response = service.findMine(1L, STUDY_DATE, STUDY_DATE);
+
+        assertThat(response.totals().presenceDuration().totalSeconds()).isEqualTo(presenceSeconds);
+        assertThat(response.totals().totalRecognizedStudyDuration().totalSeconds()).isEqualTo(recognizedSeconds);
+        assertThat(response.days()).singleElement().satisfies(day -> {
+            assertThat(day.excludedPeriods()).doesNotContain(StudyPeriod.FIRST, StudyPeriod.SEVENTH);
+            assertThat(day.periods()).allSatisfy(period -> assertThat(period.recognizedDuration().totalSeconds())
+                    .isEqualTo(period.period() == StudyPeriod.FIRST ? recognizedSeconds : 0L));
+        });
+        then(studyPresenceSessionRepository).should().findIntervalRowsByMemberId(1L, rangeStart, now);
+        then(studyPresenceSessionRepository).shouldHaveNoMoreInteractions();
+        then(studyBreakSessionRepository).should().findIntervalRowsByMemberId(
+                1L, STUDY_DATE, STUDY_DATE, rangeStart, now
+        );
+        then(studyBreakSessionRepository).shouldHaveNoMoreInteractions();
     }
 
     @Test
