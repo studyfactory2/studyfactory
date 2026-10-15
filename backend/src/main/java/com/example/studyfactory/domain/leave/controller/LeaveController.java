@@ -12,6 +12,9 @@ import com.example.studyfactory.domain.leave.dto.MemberLeavePlanResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveBatchCreateRequest;
+import com.example.studyfactory.domain.leave.dto.LeaveCancellationRequest;
+import com.example.studyfactory.domain.leave.dto.LeaveCancellationResponse;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.service.LeaveService;
 import jakarta.validation.Valid;
@@ -105,6 +108,19 @@ public class LeaveController {
             @RequestParam(required = false) Long branchId
     ) {
         return leaveService.findFixedLeaves(currentMemberId, name, branchId);
+    }
+
+    @PostMapping("/fixed/batch")
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<FixedLeaveResponse> createFixedBatch(@CurrentMember Long currentMemberId,
+                                                    @Valid @RequestBody FixedLeaveBatchCreateRequest request) {
+        return leaveService.createFixedBatch(currentMemberId, request);
+    }
+
+    @PostMapping("/cancellations")
+    public LeaveCancellationResponse cancelOccurrences(@CurrentMember Long currentMemberId,
+                                                       @Valid @RequestBody LeaveCancellationRequest request) {
+        return leaveService.cancelOccurrences(currentMemberId, request);
     }
 
     @DeleteMapping("/fixed/{fixedLeaveId}")

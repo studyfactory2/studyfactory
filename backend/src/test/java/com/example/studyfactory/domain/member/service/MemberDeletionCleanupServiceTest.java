@@ -11,6 +11,7 @@ import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.room.repository.SeatRepository;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
@@ -61,6 +62,9 @@ class MemberDeletionCleanupServiceTest {
     private FixedLeaveRepository fixedLeaveRepository;
 
     @Mock
+    private LeaveOccurrenceCancellationRepository leaveOccurrenceCancellationRepository;
+
+    @Mock
     private SuggestionRepository suggestionRepository;
 
     @Mock
@@ -99,6 +103,7 @@ class MemberDeletionCleanupServiceTest {
         then(leaveRequestRepository).should().deleteByMemberId(1L);
         then(specialLeaveRepository).should().deleteByMemberId(1L);
         then(fixedLeaveRepository).should().deleteByMemberId(1L);
+        then(leaveOccurrenceCancellationRepository).should().deleteByMemberId(1L);
         then(todoReplyRepository).should().deleteByMemberId(1L);
         then(todoItemRepository).should().deleteByTargetMemberId(1L);
         then(todoItemRepository).should().deleteByCreatedByMemberId(1L);

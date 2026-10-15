@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -43,6 +44,12 @@ public class FixedLeave extends BaseEntity {
     @Column(nullable = false)
     private boolean active;
 
+    /** Null preserves the unbounded historical meaning of legacy rules. */
+    private LocalDate startDate;
+
+    /** Exclusive: occurrences on this date and afterwards are stopped. */
+    private LocalDate stopDate;
+
     public FixedLeave(Long memberId, Long branchId, DayOfWeek dayOfWeek, String slots, String reason, boolean active) {
         this.memberId = memberId;
         this.branchId = branchId;
@@ -50,5 +57,27 @@ public class FixedLeave extends BaseEntity {
         this.slots = slots;
         this.reason = reason;
         this.active = active;
+    }
+
+    public FixedLeave(Long memberId, Long branchId, DayOfWeek dayOfWeek, String slots, String reason, boolean active, LocalDate startDate) {
+        this(memberId, branchId, dayOfWeek, slots, reason, active);
+        this.startDate = startDate;
+    }
+
+    public boolean appliesOn(LocalDate date) {
+        return active && date.getDayOfWeek() == dayOfWeek
+                && (startDate == null || !date.isBefore(startDate))
+                && (stopDate == null || date.isBefore(stopDate));
+    }
+
+    public boolean continuesOnOrAfter(LocalDate date) {
+        return active && (stopDate == null || stopDate.isAfter(date))
+                && (startDate == null || stopDate == null || startDate.isBefore(stopDate));
+    }
+
+    public void stopFrom(LocalDate date) {
+        if (stopDate == null || date.isBefore(stopDate)) {
+            stopDate = date;
+        }
     }
 }

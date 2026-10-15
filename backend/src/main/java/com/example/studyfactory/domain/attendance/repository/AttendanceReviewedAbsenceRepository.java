@@ -7,6 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AttendanceReviewedAbsenceRepository extends JpaRepository<AttendanceReviewedAbsence, Long> {
 
+    List<AttendanceReviewedAbsence> findByMemberIdAndBranchIdAndAttendanceDateGreaterThanEqualAndSlotIn(
+            Long memberId, Long branchId, LocalDate startDate, List<Integer> slots
+    );
+
     boolean existsByMemberIdAndAttendanceDateAndSlot(Long memberId, LocalDate attendanceDate, int slot);
 
     List<AttendanceReviewedAbsence> findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(

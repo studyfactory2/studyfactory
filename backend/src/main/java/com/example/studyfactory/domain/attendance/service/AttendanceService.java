@@ -22,13 +22,14 @@ import com.example.studyfactory.domain.attendance.repository.AttendanceStatusTyp
 import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
 import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
-import com.example.studyfactory.domain.leave.entity.FixedLeave;
+import com.example.studyfactory.domain.leave.dto.EffectiveLeaveOccurrence;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
+import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.entity.SpecialLeave;
-import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
+import com.example.studyfactory.domain.leave.service.EffectiveLeaveService;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
@@ -66,7 +67,7 @@ public class AttendanceService {
     private final AttendanceStatusTypeRepository attendanceStatusTypeRepository;
     private final MemberRepository memberRepository;
     private final LeaveRequestRepository leaveRequestRepository;
-    private final FixedLeaveRepository fixedLeaveRepository;
+    private final EffectiveLeaveService effectiveLeaveService;
     private final SpecialLeaveRepository specialLeaveRepository;
     private final CertificationRepository certificationRepository;
     private final Clock clock;
@@ -84,9 +85,7 @@ public class AttendanceService {
         List<Attendance> dailyAttendances = attendanceRepository.findDailyBoardAttendances(targetBranchId, targetDate);
         List<AttendanceReviewedAbsence> reviewedAbsences = attendanceReviewedAbsenceRepository
                 .findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(targetBranchId, targetDate);
-        applyLeaveRequests(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
-        applyFixedLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
-        applySpecialLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
+        applyEffectiveLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
         applyFixedLeaveCancellations(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
         // 관리자가 특정 교시를 출석으로 바꾸면 해당 교시만 휴무보다 우선한다.
         // 예: 오후반차(4~7교시) 중 4교시만 출석 처리해도 5~7교시는 오후반차로 유지한다.
@@ -205,13 +204,13 @@ public class AttendanceService {
     }
 
     private boolean alreadyHasReason(Long memberId, LocalDate date, List<Integer> slots, String reason) {
-        Map<Integer, SpecialLeave> latestLeaveBySlot = new HashMap<>();
-        specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(memberId, date).forEach(leave ->
-                parseSlots(leave.getSlots()).forEach(slot -> latestLeaveBySlot.put(slot, leave))
-        );
+        Map<Integer, EffectiveLeaveOccurrence> latestLeaveBySlot = new HashMap<>();
+        effectiveLeaveService.findForMember(memberId, date, date).stream()
+                .filter(leave -> leave.sourceType() == LeaveSourceType.SPECIAL_LEAVE)
+                .forEach(leave -> leave.slots().forEach(slot -> latestLeaveBySlot.put(slot, leave)));
         return slots.stream().allMatch(slot -> {
-            SpecialLeave latest = latestLeaveBySlot.get(slot);
-            return latest != null && reason.equals(latest.getReason()) && latest.getCustomReason() == null;
+            EffectiveLeaveOccurrence latest = latestLeaveBySlot.get(slot);
+            return latest != null && reason.equals(latest.reason());
         });
     }
 
@@ -485,64 +484,35 @@ public class AttendanceService {
     }
 
     private boolean hasFixedLeaveAt(Long memberId, LocalDate date, Integer slot) {
-        return fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(memberId).stream()
-                .anyMatch(fixedLeave -> fixedLeave.getDayOfWeek() == date.getDayOfWeek()
-                        && parseSlots(fixedLeave.getSlots()).contains(slot));
+        return effectiveLeaveService.findForMember(memberId, date, date).stream()
+                .anyMatch(leave -> leave.sourceType() == LeaveSourceType.FIXED_LEAVE
+                        && leave.slots().contains(slot));
     }
 
-    private void applyLeaveRequests(
+    private void applyEffectiveLeaves(
             Map<Long, List<String>> statusesByMemberId,
             Map<Long, List<String>> statusSourcesByMemberId,
             Long branchId,
             LocalDate date
     ) {
-        for (LeaveRequest leaveRequest : leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(branchId, date)) {
-            List<String> statuses = statusesByMemberId.get(leaveRequest.getMemberId());
-            List<String> sources = statusSourcesByMemberId.get(leaveRequest.getMemberId());
+        // Keep member leave < recurring leave < date-specific manager leave.
+        // The resolver owns date applicability and source-scoped exceptions.
+        List<EffectiveLeaveOccurrence> leaves = effectiveLeaveService.findForBranch(branchId, date, date).stream()
+                .sorted(Comparator.comparingInt(leave -> switch (leave.sourceType()) {
+                    case MEMBER_LEAVE -> 0;
+                    case FIXED_LEAVE -> 1;
+                    case SPECIAL_LEAVE -> 2;
+                }))
+                .toList();
+        for (EffectiveLeaveOccurrence leave : leaves) {
+            List<String> statuses = statusesByMemberId.get(leave.memberId());
+            List<String> sources = statusSourcesByMemberId.get(leave.memberId());
             if (statuses == null || sources == null) {
                 continue;
             }
-            for (Integer slot : toLeaveSlots(leaveRequest.getLeaveType())) {
-                setStatus(statuses, sources, slot, toLeaveTypeLabel(leaveRequest.getLeaveType()), "MEMBER_LEAVE");
-            }
-        }
-    }
-
-    private void applyFixedLeaves(
-            Map<Long, List<String>> statusesByMemberId,
-            Map<Long, List<String>> statusSourcesByMemberId,
-            Long branchId,
-            LocalDate date
-    ) {
-        for (FixedLeave fixedLeave : fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(branchId)) {
-            if (fixedLeave.getDayOfWeek() != date.getDayOfWeek()) {
-                continue;
-            }
-            List<String> statuses = statusesByMemberId.get(fixedLeave.getMemberId());
-            List<String> sources = statusSourcesByMemberId.get(fixedLeave.getMemberId());
-            if (statuses == null || sources == null) {
-                continue;
-            }
-            for (Integer slot : parseSlots(fixedLeave.getSlots())) {
-                setStatus(statuses, sources, slot, toAttendanceLeaveLabel(fixedLeave.getReason()), "MANAGER_LEAVE");
-            }
-        }
-    }
-
-    private void applySpecialLeaves(
-            Map<Long, List<String>> statusesByMemberId,
-            Map<Long, List<String>> statusSourcesByMemberId,
-            Long branchId,
-            LocalDate date
-    ) {
-        for (SpecialLeave specialLeave : specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(branchId, date)) {
-            List<String> statuses = statusesByMemberId.get(specialLeave.getMemberId());
-            List<String> sources = statusSourcesByMemberId.get(specialLeave.getMemberId());
-            if (statuses == null || sources == null) {
-                continue;
-            }
-            for (Integer slot : parseSlots(specialLeave.getSlots())) {
-                setStatus(statuses, sources, slot, toAttendanceLeaveLabel(toSpecialLeaveLabel(specialLeave)), "MANAGER_LEAVE");
+            for (Integer slot : leave.slots()) {
+                setStatus(statuses, sources, slot, toAttendanceLeaveLabel(leave.reason()),
+                        leave.sourceType() == LeaveSourceType.MEMBER_LEAVE ? "MEMBER_LEAVE" : "MANAGER_LEAVE");
             }
         }
     }
@@ -580,17 +550,6 @@ public class AttendanceService {
                 .toList();
     }
 
-    private String toLeaveTypeLabel(LeaveType leaveType) {
-        if (leaveType == LeaveType.FULL) {
-            return "월차";
-        }
-        if (leaveType == LeaveType.MORNING) {
-            return "오전";
-        }
-
-        return "오후";
-    }
-
     private String toAttendanceLeaveLabel(String reason) {
         if ("오전반차".equals(reason)) {
             return "오전";
@@ -600,14 +559,6 @@ public class AttendanceService {
         }
 
         return reason;
-    }
-
-    private String toSpecialLeaveLabel(SpecialLeave specialLeave) {
-        if ("기타".equals(specialLeave.getReason()) && specialLeave.getCustomReason() != null) {
-            return specialLeave.getCustomReason();
-        }
-
-        return specialLeave.getReason();
     }
 
     private List<AttendanceBoardRowResponse> toRows(

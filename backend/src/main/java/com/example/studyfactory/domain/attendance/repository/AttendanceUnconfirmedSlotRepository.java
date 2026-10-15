@@ -7,6 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AttendanceUnconfirmedSlotRepository extends JpaRepository<AttendanceUnconfirmedSlot, Long> {
 
+    List<AttendanceUnconfirmedSlot> findByMemberIdAndBranchIdAndAttendanceDateGreaterThanEqualAndSlotIn(
+            Long memberId, Long branchId, LocalDate startDate, List<Integer> slots
+    );
+
     List<AttendanceUnconfirmedSlot> findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(
             Long branchId,
             LocalDate attendanceDate

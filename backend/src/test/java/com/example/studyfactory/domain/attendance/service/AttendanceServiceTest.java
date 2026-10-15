@@ -26,7 +26,9 @@ import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.entity.SpecialLeave;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
+import com.example.studyfactory.domain.leave.service.EffectiveLeaveService;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.entity.WorkInformation;
@@ -39,6 +41,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -88,6 +91,15 @@ class AttendanceServiceTest {
     @Mock
     private SpecialLeaveRepository specialLeaveRepository;
 
+    @Mock
+    private LeaveOccurrenceCancellationRepository cancellationRepository;
+
+    @BeforeEach
+    void configureEffectiveLeaves() {
+        ReflectionTestUtils.setField(attendanceService, "effectiveLeaveService", new EffectiveLeaveService(
+                leaveRequestRepository, specialLeaveRepository, fixedLeaveRepository, cancellationRepository));
+    }
+
     @Test
     @DisplayName("스태프는 일반 휴무, 고정 휴무, 기타 휴무가 반영된 일별 출석부를 조회한다")
     void staffFindDailyBoard() {
@@ -105,9 +117,9 @@ class AttendanceServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L)).willReturn(List.of(staff, member, unassignedMember));
         given(attendanceRepository.findDailyBoardAttendances(1L, date)).willReturn(List.of(attendance));
-        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of(leaveRequest));
-        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(fixedLeave));
-        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of(specialLeave));
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L, date, date)).willReturn(List.of(leaveRequest));
+        given(fixedLeaveRepository.findByBranchIdOrderByCreatedAtAsc(1L)).willReturn(List.of(fixedLeave));
+        given(specialLeaveRepository.findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L, date, date)).willReturn(List.of(specialLeave));
         given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date)).willReturn(List.of());
 
         DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, null);
@@ -133,9 +145,7 @@ class AttendanceServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L)).willReturn(List.of(staff));
         given(attendanceRepository.findDailyBoardAttendances(1L, date)).willReturn(List.of());
-        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of(leaveRequest));
-        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of());
-        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L, date, date)).willReturn(List.of(leaveRequest));
         given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date)).willReturn(List.of());
 
         DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, null);
@@ -163,9 +173,7 @@ class AttendanceServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L)).willReturn(List.of(staff, member));
         given(attendanceRepository.findDailyBoardAttendances(1L, date)).willReturn(List.of(presentAtFourthSlot));
-        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of(afternoonLeave));
-        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of());
-        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L, date, date)).willReturn(List.of(afternoonLeave));
         given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date)).willReturn(List.of());
 
         DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, null);
@@ -188,9 +196,6 @@ class AttendanceServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L)).willReturn(List.of(staff, member));
         given(attendanceRepository.findDailyBoardAttendances(1L, date)).willReturn(List.of());
-        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
-        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of());
-        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
         given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date))
                 .willReturn(List.of(new AttendanceDailyInitialization(2L, 1L, date, 1L)));
 
@@ -289,7 +294,6 @@ class AttendanceServiceTest {
         Member member = createMember(2L, "김태환", MemberRole.MEMBER, 7);
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(member));
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of());
         given(leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
         given(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
 
@@ -331,9 +335,7 @@ class AttendanceServiceTest {
         given(attendanceReviewedAbsenceRepository
                 .findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(1L, date))
                 .willReturn(List.of(reviewedAbsent));
-        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
-        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(fixedLeave));
-        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(1L, date)).willReturn(List.of());
+        given(fixedLeaveRepository.findByBranchIdOrderByCreatedAtAsc(1L)).willReturn(List.of(fixedLeave));
         given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(1L, date)).willReturn(List.of());
 
         DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, null);
@@ -360,7 +362,7 @@ class AttendanceServiceTest {
         ReflectionTestUtils.setField(statusType, "id", 1L);
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(member));
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of(fixedLeave));
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(2L)).willReturn(List.of(fixedLeave));
         given(attendanceStatusTypeRepository.findByName("출석")).willReturn(Optional.of(statusType));
         given(leaveRequestRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
         given(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
@@ -523,9 +525,6 @@ class AttendanceServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
         given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(2L)).willReturn(List.of());
         given(attendanceRepository.findDailyBoardAttendances(2L, date)).willReturn(List.of());
-        given(leaveRequestRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
-        given(fixedLeaveRepository.findByBranchIdAndActiveTrueOrderByCreatedAtAsc(2L)).willReturn(List.of());
-        given(specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
         given(attendanceDailyInitializationRepository.findByBranchIdAndAttendanceDate(2L, date)).willReturn(List.of());
 
         DailyAttendanceBoardResponse response = attendanceService.findDailyBoard(1L, date, 2L);

@@ -1,6 +1,16 @@
 package com.example.studyfactory.domain.leave.service;
 
 import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedAbsenceRepository;
+import com.example.studyfactory.domain.attendance.entity.Attendance;
+import com.example.studyfactory.domain.leave.dto.EffectiveLeaveOccurrence;
+import com.example.studyfactory.domain.leave.dto.FixedLeaveBatchCreateRequest;
+import com.example.studyfactory.domain.leave.dto.LeaveCancellationRequest;
+import com.example.studyfactory.domain.leave.dto.LeaveCancellationResponse;
+import com.example.studyfactory.domain.leave.entity.LeaveOccurrenceCancellation;
+import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveGenerationResponse;
@@ -39,6 +49,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
@@ -54,6 +66,10 @@ public class LeaveService {
     private final FixedLeaveRepository fixedLeaveRepository;
     private final MemberRepository memberRepository;
     private final AttendanceUnconfirmedSlotRepository attendanceUnconfirmedSlotRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
+    private final LeaveOccurrenceCancellationRepository cancellationRepository;
+    private final EffectiveLeaveService effectiveLeaveService;
     private final Clock clock;
 
     @Transactional
@@ -77,54 +93,31 @@ public class LeaveService {
 
     @Transactional(readOnly = true)
     public List<LeaveResponse> findMine(Long memberId) {
-        return leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
-                .stream()
+        List<LeaveRequest> leaves = leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId);
+        if (leaves.isEmpty()) return List.of();
+        Set<Long> effectiveIds = effectiveLeaveService.findMemberRequestOccurrences(memberId,
+                        leaves.stream().map(LeaveRequest::getLeaveDate).min(LocalDate::compareTo).orElseThrow(),
+                        leaves.stream().map(LeaveRequest::getLeaveDate).max(LocalDate::compareTo).orElseThrow()).stream()
+                .map(EffectiveLeaveOccurrence::sourceId).collect(Collectors.toSet());
+        return leaves.stream().filter(leave -> effectiveIds.contains(leave.getId()))
                 .map(LeaveResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<MemberLeavePlanResponse> findMyLeavePlan(Long memberId, Integer year, Integer month) {
-        List<MemberLeavePlanResponse> responses = new ArrayList<>();
-        Map<String, MemberLeavePlanResponse> managerLeavesByDateAndReason = new LinkedHashMap<>();
-        Map<String, MemberLeavePlanResponse> fixedLeavesByDateAndReason = new LinkedHashMap<>();
         YearMonth visibleMonth = resolveYearMonth(year, month);
-
-        leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
-                .forEach(leaveRequest -> responses.add(MemberLeavePlanResponse.fromLeaveRequest(
-                        leaveRequest,
-                        toLeaveHistoryLabel(leaveRequest.getLeaveType())
-                )));
-        specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
-                .forEach(specialLeave -> {
-                    String label = toSpecialLeaveLabel(specialLeave);
-                    String key = specialLeave.getLeaveDate() + "|" + label;
-                    MemberLeavePlanResponse response = MemberLeavePlanResponse.fromSpecialLeave(specialLeave, label);
-                    managerLeavesByDateAndReason.merge(
-                            key,
-                            response,
-                            (existing, candidate) -> existing.withSlots(mergeSlots(existing.slots(), candidate.slots()))
-                    );
+        Map<String, MemberLeavePlanResponse> responses = new LinkedHashMap<>();
+        effectiveLeaveService.findMemberHistory(memberId, visibleMonth.atDay(1), visibleMonth.atEndOfMonth()).stream()
+                .forEach(leave -> {
+                    String source = responseSource(leave);
+                    Long id = leave.sourceType() == LeaveSourceType.SPECIAL_LEAVE ? null : leave.sourceId();
+                    MemberLeavePlanResponse value = new MemberLeavePlanResponse(id, leave.date(), leave.leaveType(),
+                            leave.reason(), source, toSlots(leave.slots().stream().toList()));
+                    String key = source + "|" + leave.date() + "|" + (leave.sourceType() == LeaveSourceType.MEMBER_LEAVE ? leave.sourceId() : leave.reason());
+                    responses.merge(key, value, (first, next) -> first.withSlots(mergeSlots(first.slots(), next.slots())));
                 });
-        responses.addAll(managerLeavesByDateAndReason.values());
-
-        LocalDate date = visibleMonth.atDay(1);
-        LocalDate endDate = visibleMonth.atEndOfMonth();
-        List<FixedLeave> fixedLeaves = fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(memberId);
-        while (!date.isAfter(endDate)) {
-            LocalDate leaveDate = date;
-            fixedLeaves.stream()
-                    .filter(fixedLeave -> fixedLeave.getDayOfWeek() == leaveDate.getDayOfWeek())
-                    .forEach(fixedLeave -> fixedLeavesByDateAndReason.merge(
-                            leaveDate + "|" + fixedLeave.getReason(),
-                            MemberLeavePlanResponse.fromFixedLeave(fixedLeave, leaveDate, fixedLeave.getReason()),
-                            (existing, candidate) -> existing.withSlots(mergeSlots(existing.slots(), candidate.slots()))
-                    ));
-            date = date.plusDays(1);
-        }
-        responses.addAll(fixedLeavesByDateAndReason.values());
-
-        return responses.stream()
+        return responses.values().stream()
                 .sorted(Comparator.comparing(MemberLeavePlanResponse::leaveDate).reversed())
                 .toList();
     }
@@ -134,6 +127,7 @@ public class LeaveService {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(leaveId).orElseThrow(LeaveException::leaveNotFound);
         Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
         validateOwner(member, leaveRequest);
+        findMemberForUpdate(leaveRequest.getMemberId());
         leaveRequestRepository.delete(leaveRequest);
     }
 
@@ -149,55 +143,27 @@ public class LeaveService {
         LocalDate targetDate = resolveDate(date);
         String searchName = toSearchName(name);
         Long targetBranchId = ManagerAccessPolicy.resolveOptionalAdminBranch(currentMember, branchId);
-        List<DailyLeaveStatusResponse> responses = new ArrayList<>(
-                leaveRequestRepository.findDailyStatuses(targetDate, searchName, targetBranchId, leaveType)
-                        .stream()
-                        .map(this::withRequestedAfterEight)
-                        .toList()
-        );
-        Map<String, DailyLeaveStatusResponse> managerLeaveStatuses = new LinkedHashMap<>();
-        List<SpecialLeave> specialLeaves = targetBranchId == null
-                ? specialLeaveRepository.findByLeaveDateOrderByCreatedAtAsc(targetDate)
-                : specialLeaveRepository.findByBranchIdAndLeaveDateOrderByCreatedAtAsc(targetBranchId, targetDate);
+        List<EffectiveLeaveOccurrence> effective = effectiveLeaveService.findForBranch(targetBranchId, targetDate, targetDate);
+        Map<Long, String> branchNames = new LinkedHashMap<>();
+        leaveRequestRepository.findDailyStatuses(targetDate, searchName, targetBranchId, leaveType)
+                .forEach(value -> branchNames.putIfAbsent(value.memberId(), value.branch()));
         Map<Long, Member> membersById = memberRepository.findAllById(
-                        specialLeaves.stream().map(SpecialLeave::getMemberId).distinct().toList()
+                        effective.stream().map(EffectiveLeaveOccurrence::memberId).distinct().toList()
                 )
                 .stream()
                 .collect(Collectors.toMap(Member::getId, member -> member));
-
-        for (SpecialLeave specialLeave : specialLeaves) {
-            LeaveType managerLeaveType = toManagerLeaveType(specialLeave.getReason());
-            Member member = membersById.get(specialLeave.getMemberId());
-            if (member == null) {
-                continue;
-            }
-            if (searchName != null && !member.getName().contains(searchName)) {
-                continue;
-            }
-            if (leaveType != null && leaveType != managerLeaveType) {
-                continue;
-            }
-
-            managerLeaveStatuses.putIfAbsent(
-                    String.valueOf(member.getId()),
-                    new DailyLeaveStatusResponse(
-                            member.getId(),
-                            member.getBranchId(),
-                            member.getSeatNumber(),
-                            member.getName(),
-                            "",
-                            specialLeave.getLeaveDate(),
-                            managerLeaveType,
-                            specialLeave.getCreatedAt(),
-                            toSpecialLeaveLabel(specialLeave),
-                            "SPECIAL_LEAVE",
-                            isCreatedAfterEightInKorea(specialLeave)
-                    )
-            );
+        Map<String, DailyLeaveStatusResponse> responses = new LinkedHashMap<>();
+        for (EffectiveLeaveOccurrence leave : effective) {
+            Member member = membersById.get(leave.memberId());
+            LeaveType type = leave.leaveType() == null ? toManagerLeaveType(leave.reason()) : leave.leaveType();
+            if (member == null || (searchName != null && !member.getName().contains(searchName))
+                    || (leaveType != null && leaveType != type)) continue;
+            responses.putIfAbsent(member.getId() + "|" + responseSource(leave) + "|" + leave.reason(),
+                    new DailyLeaveStatusResponse(member.getId(), member.getBranchId(), member.getSeatNumber(), member.getName(),
+                            branchNames.getOrDefault(member.getId(), ""), leave.date(), type, leave.createdAt(), leave.reason(), responseSource(leave),
+                            isCreatedAfterEightInKorea(leave.createdAt(), leave.date())));
         }
-        responses.addAll(managerLeaveStatuses.values());
-
-        return responses;
+        return List.copyOf(responses.values());
     }
 
     @Transactional(readOnly = true)
@@ -209,25 +175,11 @@ public class LeaveService {
         YearMonth yearMonth = resolveYearMonth(year, month);
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
-        List<MonthlyLeaveCalendarResponse> responses = new ArrayList<>();
-
-        leaveRequestRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(memberId, startDate, endDate)
-                .forEach(leaveRequest -> responses.add(new MonthlyLeaveCalendarResponse(
-                        leaveRequest.getLeaveDate(),
-                        toLeaveTypeLabel(leaveRequest.getLeaveType()),
-                        "LEAVE",
-                        toSlotsForLeaveType(leaveRequest.getLeaveType())
-                )));
-
-        specialLeaveRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(memberId, startDate, endDate)
-                .forEach(specialLeave -> responses.add(new MonthlyLeaveCalendarResponse(
-                        specialLeave.getLeaveDate(),
-                        toSpecialLeaveLabel(specialLeave),
-                        "SPECIAL_LEAVE",
-                        specialLeave.getSlots()
-                )));
-
-        return responses;
+        return effectiveLeaveService.findForMember(memberId, startDate, endDate).stream()
+                .map(leave -> new MonthlyLeaveCalendarResponse(leave.date(),
+                        leave.leaveType() == null ? leave.reason() : toLeaveTypeLabel(leave.leaveType()),
+                        responseSource(leave), toSlots(leave.slots().stream().toList())))
+                .toList();
     }
 
     @Transactional
@@ -270,24 +222,106 @@ public class LeaveService {
         Member targetMember = findMemberForUpdate(request.memberId());
         ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
         validateFixedLeaveRequest(request);
-        if (hasFixedLeaveSlotConflict(targetMember.getId(), request.leaveDate().getDayOfWeek(), request.slots())) {
+        validateSelectedDates(targetMember, List.of(request.leaveDate()), request.slots());
+        return createFixedRule(targetMember, request.leaveDate(), request.slots(), request.reason());
+    }
+
+    @Transactional
+    public List<FixedLeaveResponse> createFixedBatch(Long currentMemberId, FixedLeaveBatchCreateRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member targetMember = findMemberForUpdate(request.memberId());
+        ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
+        validateSelectedDates(targetMember, request.dates(), request.slots());
+        if (request.reason() == null || request.reason().isBlank() || request.reason().trim().length() > 40) {
+            throw LeaveException.invalidSpecialLeaveRequest();
+        }
+        Map<DayOfWeek, LocalDate> firstDates = new LinkedHashMap<>();
+        request.dates().stream().sorted().forEach(date -> firstDates.putIfAbsent(date.getDayOfWeek(), date));
+        // Validate the full batch before saving any rule, including for callers outside a transaction proxy.
+        firstDates.values().forEach(date -> {
+            if (hasFixedLeaveSlotConflict(targetMember.getId(), date, request.slots())) {
+                throw LeaveException.fixedLeaveSlotAlreadyExists();
+            }
+        });
+        return firstDates.values().stream()
+                .map(date -> createFixedRule(targetMember, date, request.slots(), request.reason())).toList();
+    }
+
+    private FixedLeaveResponse createFixedRule(Member targetMember, LocalDate startDate, List<Integer> slots, String reason) {
+        if (hasFixedLeaveSlotConflict(targetMember.getId(), startDate, slots)) {
             throw LeaveException.fixedLeaveSlotAlreadyExists();
         }
         FixedLeave fixedLeave = new FixedLeave(
                 targetMember.getId(),
                 targetMember.getBranchId(),
-                request.leaveDate().getDayOfWeek(),
-                toSlots(request.slots()),
-                request.reason().trim(),
-                true
+                startDate.getDayOfWeek(),
+                toSlots(slots),
+                reason.trim(),
+                true,
+                startDate
         );
-
-        // Fixed rules have no effective date in the existing model: they apply
-        // to every matching weekday, including already displayed calendar dates.
-        attendanceUnconfirmedSlotRepository.findByMemberIdAndSlotIn(targetMember.getId(), request.slots()).stream()
-                .filter(slot -> slot.getAttendanceDate().getDayOfWeek() == fixedLeave.getDayOfWeek())
-                .forEach(attendanceUnconfirmedSlotRepository::delete);
+        clearReplacedAttendanceOverrides(targetMember, fixedLeave, slots);
         return FixedLeaveResponse.from(fixedLeaveRepository.save(fixedLeave));
+    }
+
+    private void clearReplacedAttendanceOverrides(Member member, FixedLeave rule, List<Integer> slots) {
+        List<Attendance> selectedAttendances = attendanceRepository.findFutureSelectedSlots(
+                member.getId(), member.getBranchId(), rule.getStartDate(), slots).stream()
+                .filter(attendance -> rule.appliesOn(attendance.getAttendanceDate())).toList();
+        Set<AttendanceCell> presentCells = selectedAttendances.stream()
+                .filter(attendance -> !Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()))
+                .map(attendance -> new AttendanceCell(attendance.getAttendanceDate(), attendance.getSlot()))
+                .collect(Collectors.toSet());
+        // A new rule replaces previous explicit non-attendance overrides only where it now applies.
+        // Never mutate real O rows, past dates, other weekdays, branches or unselected periods.
+        selectedAttendances.stream()
+                .filter(attendance -> Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()))
+                .filter(attendance -> !presentCells.contains(new AttendanceCell(attendance.getAttendanceDate(), attendance.getSlot())))
+                .forEach(attendanceRepository::delete);
+        attendanceReviewedAbsenceRepository.findByMemberIdAndBranchIdAndAttendanceDateGreaterThanEqualAndSlotIn(
+                        member.getId(), member.getBranchId(), rule.getStartDate(), slots).stream()
+                .filter(value -> rule.appliesOn(value.getAttendanceDate()))
+                .filter(value -> !presentCells.contains(new AttendanceCell(value.getAttendanceDate(), value.getSlot())))
+                .forEach(attendanceReviewedAbsenceRepository::delete);
+        attendanceUnconfirmedSlotRepository.findByMemberIdAndBranchIdAndAttendanceDateGreaterThanEqualAndSlotIn(
+                        member.getId(), member.getBranchId(), rule.getStartDate(), slots).stream()
+                .filter(value -> rule.appliesOn(value.getAttendanceDate()))
+                .filter(value -> !presentCells.contains(new AttendanceCell(value.getAttendanceDate(), value.getSlot())))
+                .forEach(attendanceUnconfirmedSlotRepository::delete);
+    }
+
+    private record AttendanceCell(LocalDate date, int slot) {}
+
+    @Transactional
+    public LeaveCancellationResponse cancelOccurrences(Long currentMemberId, LeaveCancellationRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member member = findMemberForUpdate(request.memberId());
+        ManagerAccessPolicy.validateManagerTarget(currentMember, member);
+        validateSelectedDates(member, request.dates(), request.slots());
+        int cancelled = 0;
+        int present = 0;
+        for (LocalDate date : request.dates().stream().sorted().toList()) {
+            Set<Integer> presentSlots = attendanceRepository.findByMemberIdAndAttendanceDateBetween(member.getId(), date, date).stream()
+                    .filter(attendance -> !Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()))
+                    .map(Attendance::getSlot).collect(Collectors.toSet());
+            List<EffectiveLeaveOccurrence> occurrences = effectiveLeaveService.findForMember(member.getId(), date, date);
+            for (Integer slot : request.slots()) {
+                if (presentSlots.contains(slot)) {
+                    present++;
+                }
+                boolean changed = false;
+                for (EffectiveLeaveOccurrence leave : occurrences) {
+                    if (!leave.slots().contains(slot)) continue;
+                    cancellationRepository.save(new LeaveOccurrenceCancellation(member.getId(), member.getBranchId(),
+                            leave.sourceType(), leave.sourceId(), date, slot, currentMember.getId()));
+                    changed = true;
+                }
+                if (changed) cancelled++;
+            }
+        }
+        return new LeaveCancellationResponse(member.getId(), member.getBranchId(), request.dates().size() * request.slots().size(), cancelled, present);
     }
 
     @Transactional(readOnly = true)
@@ -301,6 +335,7 @@ public class LeaveService {
                 .collect(Collectors.toMap(Member::getId, member -> member));
 
         return fixedLeaves.stream()
+                .filter(fixedLeave -> fixedLeave.continuesOnOrAfter(LocalDate.now(clock)))
                 .filter(fixedLeave -> targetBranchId == null || fixedLeave.getBranchId().equals(targetBranchId))
                 .filter(fixedLeave -> matchesFixedLeaveMember(fixedLeave, membersById, searchName))
                 .map(fixedLeave -> FixedLeaveManagementResponse.from(fixedLeave, membersById.get(fixedLeave.getMemberId())))
@@ -311,13 +346,16 @@ public class LeaveService {
     public void deleteFixed(Long currentMemberId, Long fixedLeaveId) {
         Member currentMember = findMember(currentMemberId);
         ManagerAccessPolicy.validateManager(currentMember);
+        Long ownerId = fixedLeaveRepository.findOwnerIdById(fixedLeaveId).orElseThrow(LeaveException::leaveNotFound);
+        Member owner = findMemberForUpdate(ownerId);
+        ManagerAccessPolicy.validateManagerTarget(currentMember, owner);
         FixedLeave fixedLeave = fixedLeaveRepository.findById(fixedLeaveId).orElseThrow(LeaveException::leaveNotFound);
         ManagerAccessPolicy.validateBranch(currentMember, fixedLeave.getBranchId());
+        fixedLeave.stopFrom(LocalDate.now(clock));
         specialLeaveRepository.deleteByFixedLeaveIdAndLeaveDateGreaterThanEqual(
                 fixedLeave.getId(),
                 LocalDate.now(clock)
         );
-        fixedLeaveRepository.delete(fixedLeave);
     }
 
     @Transactional
@@ -334,30 +372,22 @@ public class LeaveService {
     }
 
     private FixedLeaveGenerationResponse generateFixedLeaves(Member createdByMember) {
-        LocalDate startDate = LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate endDate = startDate.plusDays(13);
-        specialLeaveRepository.deleteAll(specialLeaveRepository.findByRecurringTrueAndLeaveDateBetween(startDate, endDate));
-
+        LocalDate startDate = LocalDate.now(clock);
+        LocalDate endDate = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusDays(13);
         int createdCount = 0;
-        List<FixedLeave> fixedLeaves = fixedLeaveRepository.findByActiveTrueOrderByCreatedAtAsc();
-        for (FixedLeave fixedLeave : fixedLeaves) {
-            LocalDate leaveDate = startDate;
-            while (!leaveDate.isAfter(endDate)) {
-                if (leaveDate.getDayOfWeek() == fixedLeave.getDayOfWeek()) {
-                    specialLeaveRepository.save(new SpecialLeave(
-                            fixedLeave.getMemberId(),
-                            fixedLeave.getBranchId(),
-                            leaveDate,
-                            fixedLeave.getSlots(),
-                            fixedLeave.getReason(),
-                            null,
-                            true,
-                            createdByMember.getId(),
-                            fixedLeave.getId()
-                    ));
-                    createdCount++;
-                }
-                leaveDate = leaveDate.plusDays(1);
+        // Discover only IDs before locking so a waiting generator cannot retain stale rule entities.
+        for (Long memberId : fixedLeaveRepository.findRuleMemberIds()) {
+            findMemberForUpdate(memberId);
+            List<FixedLeave> rules = fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(memberId);
+            List<EffectiveLeaveOccurrence> occurrences = effectiveLeaveService.findForMember(memberId, startDate, endDate);
+            // Preserve all historical rows and every unrelated/null-origin legacy record.
+            rules.stream().filter(FixedLeave::isActive)
+                    .forEach(rule -> specialLeaveRepository.deleteByFixedLeaveIdAndLeaveDateGreaterThanEqual(rule.getId(), startDate));
+            for (EffectiveLeaveOccurrence leave : occurrences) {
+                if (leave.sourceType() != LeaveSourceType.FIXED_LEAVE) continue;
+                specialLeaveRepository.save(new SpecialLeave(leave.memberId(), leave.branchId(), leave.date(),
+                        toSlots(leave.slots().stream().toList()), leave.reason(), null, true, createdByMember.getId(), leave.sourceId()));
+                createdCount++;
             }
         }
 
@@ -371,10 +401,19 @@ public class LeaveService {
         Member targetMember = findMember(memberId);
         ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
 
-        return specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId)
-                .stream()
-                .map(SpecialLeaveResponse::from)
-                .toList();
+        List<SpecialLeave> leaves = specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId);
+        if (leaves.isEmpty()) return List.of();
+        List<EffectiveLeaveOccurrence> effective = effectiveLeaveService.findMemberSpecialHistory(memberId);
+        List<SpecialLeaveResponse> responses = new ArrayList<>();
+        for (SpecialLeave leave : leaves) {
+            effective.stream().filter(value -> value.date().equals(leave.getLeaveDate()))
+                    .filter(value -> (value.sourceType() == LeaveSourceType.SPECIAL_LEAVE && Objects.equals(value.sourceId(), leave.getId()))
+                            || (value.sourceType() == LeaveSourceType.FIXED_LEAVE && Objects.equals(value.sourceId(), leave.getFixedLeaveId())))
+                    .findFirst().ifPresent(value -> responses.add(new SpecialLeaveResponse(leave.getId(), leave.getMemberId(),
+                            leave.getBranchId(), leave.getLeaveDate(), toSlots(value.slots().stream().toList()), leave.getReason(),
+                            leave.getCustomReason(), leave.isRecurring(), leave.getCreatedByMemberId(), leave.getCreatedAt(), leave.getUpdatedAt())));
+        }
+        return responses;
     }
 
     @Transactional
@@ -384,14 +423,13 @@ public class LeaveService {
         validateSlot(slot);
         SpecialLeave specialLeave = specialLeaveRepository.findById(specialLeaveId).orElseThrow(LeaveException::leaveNotFound);
         ManagerAccessPolicy.validateBranch(currentMember, specialLeave.getBranchId());
-        boolean empty = specialLeave.removeSlot(slot);
-
-        if (!empty && !specialLeave.getSlots().contains(String.valueOf(slot))) {
-            return;
-        }
-        if (empty) {
-            specialLeaveRepository.delete(specialLeave);
-        }
+        Member member = findMemberForUpdate(specialLeave.getMemberId());
+        effectiveLeaveService.findForMember(member.getId(), specialLeave.getLeaveDate(), specialLeave.getLeaveDate()).stream()
+                .filter(value -> (value.sourceType() == LeaveSourceType.SPECIAL_LEAVE && Objects.equals(value.sourceId(), specialLeaveId))
+                        || (value.sourceType() == LeaveSourceType.FIXED_LEAVE && Objects.equals(value.sourceId(), specialLeave.getFixedLeaveId())))
+                .filter(value -> value.slots().contains(slot))
+                .forEach(value -> cancellationRepository.save(new LeaveOccurrenceCancellation(member.getId(), member.getBranchId(),
+                        value.sourceType(), value.sourceId(), value.date(), slot, currentMemberId)));
     }
 
     private Member findMember(Long memberId) {
@@ -457,7 +495,7 @@ public class LeaveService {
     }
 
     private void validateFixedLeaveRequest(FixedLeaveCreateRequest request) {
-        if (request.reason().isBlank()) {
+        if (request.reason() == null || request.reason().isBlank() || request.reason().trim().length() > 40) {
             throw LeaveException.invalidSpecialLeaveRequest();
         }
         if (request.slots().stream().anyMatch(slot -> slot < 1 || slot > 7)) {
@@ -465,14 +503,28 @@ public class LeaveService {
         }
     }
 
-    private boolean hasFixedLeaveSlotConflict(Long memberId, DayOfWeek dayOfWeek, List<Integer> requestedSlots) {
+    private boolean hasFixedLeaveSlotConflict(Long memberId, LocalDate startDate, List<Integer> requestedSlots) {
         return fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(memberId)
                 .stream()
-                .filter(fixedLeave -> fixedLeave.getDayOfWeek() == dayOfWeek)
-                .flatMap(fixedLeave -> List.of(fixedLeave.getSlots().split(",")).stream())
-                .map(String::trim)
-                .map(Integer::parseInt)
+                .filter(fixedLeave -> fixedLeave.getDayOfWeek() == startDate.getDayOfWeek())
+                .filter(fixedLeave -> fixedLeave.continuesOnOrAfter(startDate))
+                .flatMap(fixedLeave -> EffectiveLeaveService.parseSlots(fixedLeave.getSlots()).stream())
                 .anyMatch(requestedSlots::contains);
+    }
+
+    private void validateSelectedDates(Member member, List<LocalDate> dates, List<Integer> slots) {
+        if (dates == null || dates.isEmpty() || dates.size() > 31 || dates.stream().anyMatch(Objects::isNull)
+                || dates.stream().distinct().count() != dates.size()
+                || slots == null || slots.isEmpty() || slots.size() > 7 || slots.stream().anyMatch(slot -> slot == null || slot < 1 || slot > 7)
+                || slots.stream().distinct().count() != slots.size()) throw LeaveException.invalidSpecialLeaveRequest();
+        for (LocalDate date : dates) {
+            validateLeaveDate(date);
+            if (member.getJoinDate() != null && date.isBefore(member.getJoinDate())) throw LeaveException.invalidSpecialLeaveRequest();
+        }
+    }
+
+    private String responseSource(EffectiveLeaveOccurrence leave) {
+        return leave.sourceType() == LeaveSourceType.MEMBER_LEAVE ? "LEAVE" : leave.sourceType().name();
     }
 
     private void validateSlot(Integer slot) {
@@ -546,17 +598,6 @@ public class LeaveService {
         return "4,5,6,7";
     }
 
-    private String toLeaveHistoryLabel(LeaveType leaveType) {
-        if (leaveType == LeaveType.FULL) {
-            return "월차";
-        }
-        if (leaveType == LeaveType.MORNING) {
-            return "오전반차";
-        }
-
-        return "오후반차";
-    }
-
     private LeaveType toManagerLeaveType(String reason) {
         if ("오전반차".equals(reason)) {
             return LeaveType.MORNING;
@@ -566,34 +607,6 @@ public class LeaveService {
         }
 
         return LeaveType.FULL;
-    }
-
-    private String toSpecialLeaveLabel(SpecialLeave specialLeave) {
-        if ("기타".equals(specialLeave.getReason()) && specialLeave.getCustomReason() != null) {
-            return specialLeave.getCustomReason();
-        }
-
-        return specialLeave.getReason();
-    }
-
-    private boolean isCreatedAfterEightInKorea(SpecialLeave specialLeave) {
-        return isCreatedAfterEightInKorea(specialLeave.getCreatedAt(), specialLeave.getLeaveDate());
-    }
-
-    private DailyLeaveStatusResponse withRequestedAfterEight(DailyLeaveStatusResponse response) {
-        return new DailyLeaveStatusResponse(
-                response.memberId(),
-                response.branchId(),
-                response.seatNumber(),
-                response.name(),
-                response.branch(),
-                response.leaveDate(),
-                response.leaveType(),
-                response.createdAt(),
-                response.label(),
-                response.source(),
-                isCreatedAfterEightInKorea(response.createdAt(), response.leaveDate())
-        );
     }
 
     private boolean isCreatedAfterEightInKorea(LocalDateTime createdAt, LocalDate leaveDate) {

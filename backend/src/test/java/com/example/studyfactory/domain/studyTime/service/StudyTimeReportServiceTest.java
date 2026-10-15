@@ -13,8 +13,10 @@ import com.example.studyfactory.domain.attendance.repository.AttendanceRepositor
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
+import com.example.studyfactory.domain.leave.service.EffectiveLeaveService;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
@@ -76,6 +78,9 @@ class StudyTimeReportServiceTest {
 
     @Mock
     private SpecialLeaveRepository specialLeaveRepository;
+
+    @Mock
+    private LeaveOccurrenceCancellationRepository cancellationRepository;
 
     private StudyTimeReportService studyTimeReportService;
 
@@ -185,7 +190,8 @@ class StudyTimeReportServiceTest {
                 memberRepository,
                 new StudyTimeCalculator(),
                 new StudyTimeLeaveExclusionService(
-                        leaveRequestRepository, fixedLeaveRepository, specialLeaveRepository, attendanceRepository
+                        new EffectiveLeaveService(leaveRequestRepository, specialLeaveRepository,
+                                fixedLeaveRepository, cancellationRepository), attendanceRepository
                 ),
                 new StudyPresenceAutoClosePolicy(true),
                 Clock.fixed(now, ZoneOffset.UTC)

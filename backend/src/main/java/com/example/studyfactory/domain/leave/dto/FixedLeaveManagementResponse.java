@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.leave.dto;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.member.entity.Member;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record FixedLeaveManagementResponse(
@@ -14,7 +15,9 @@ public record FixedLeaveManagementResponse(
         String slots,
         String reason,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        LocalDate startDate,
+        LocalDate stopDate
 ) {
 
     public static FixedLeaveManagementResponse from(FixedLeave fixedLeave, Member member) {
@@ -27,7 +30,9 @@ public record FixedLeaveManagementResponse(
                 fixedLeave.getSlots(),
                 fixedLeave.getReason(),
                 fixedLeave.getCreatedAt(),
-                fixedLeave.getUpdatedAt()
+                fixedLeave.getUpdatedAt(),
+                fixedLeave.getStartDate(),
+                fixedLeave.getStopDate()
         );
     }
 }

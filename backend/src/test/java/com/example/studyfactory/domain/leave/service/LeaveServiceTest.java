@@ -10,6 +10,10 @@ import static org.mockito.Mockito.times;
 
 import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
+import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedAbsenceRepository;
+import com.example.studyfactory.domain.leave.entity.LeaveOccurrenceCancellation;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveGenerationResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
@@ -41,6 +45,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.ArgumentCaptor;
@@ -79,6 +84,21 @@ class LeaveServiceTest {
     @Mock
     private AttendanceUnconfirmedSlotRepository attendanceUnconfirmedSlotRepository;
 
+    @Mock
+    private AttendanceRepository attendanceRepository;
+
+    @Mock
+    private AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
+
+    @Mock
+    private LeaveOccurrenceCancellationRepository cancellationRepository;
+
+    @BeforeEach
+    void configureEffectiveProjection() {
+        ReflectionTestUtils.setField(leaveService, "effectiveLeaveService", new EffectiveLeaveService(
+                leaveRequestRepository, specialLeaveRepository, fixedLeaveRepository, cancellationRepository));
+    }
+
     @Test
     @DisplayName("토큰의 사원과 휴무 정보로 휴무를 신청한다")
     void createLeave() {
@@ -111,6 +131,8 @@ class LeaveServiceTest {
     void findMine() {
         LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
         given(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L)).willReturn(List.of(leaveRequest));
+        given(leaveRequestRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L,
+                leaveRequest.getLeaveDate(), leaveRequest.getLeaveDate())).willReturn(List.of(leaveRequest));
 
         List<LeaveResponse> responses = leaveService.findMine(1L);
 
@@ -128,7 +150,7 @@ class LeaveServiceTest {
         FixedLeave afternoon = new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5", "학교", true);
         ReflectionTestUtils.setField(morning, "id", 10L);
         ReflectionTestUtils.setField(afternoon, "id", 11L);
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L))
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(1L))
                 .willReturn(List.of(morning, afternoon));
 
         List<MemberLeavePlanResponse> responses = leaveService.findMyLeavePlan(1L, 2026, 10);
@@ -146,18 +168,16 @@ class LeaveServiceTest {
         });
         assertThat(morning.getSlots()).isEqualTo("1");
         assertThat(afternoon.getSlots()).isEqualTo("5");
-        then(fixedLeaveRepository).should().findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L);
+        then(fixedLeaveRepository).should().findByMemberIdOrderByCreatedAtAsc(1L);
         then(fixedLeaveRepository).shouldHaveNoMoreInteractions();
         then(leaveRequestRepository).should().findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L);
-        then(leaveRequestRepository).shouldHaveNoMoreInteractions();
         then(specialLeaveRepository).should().findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L);
-        then(specialLeaveRepository).shouldHaveNoMoreInteractions();
     }
 
     @Test
     @DisplayName("같은 사유의 고정 휴무 교시는 여러 규칙에 걸쳐 중복 없이 정렬한다")
     void findMyLeavePlanSortsAndDeduplicatesFixedLeaveSlots() {
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(1L)).willReturn(List.of(
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "7,5", "학교", true),
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5, 1", "학교", true),
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "3,1", "학교", true)
@@ -172,7 +192,7 @@ class LeaveServiceTest {
     @Test
     @DisplayName("고정 휴무의 다른 사유와 다른 요일은 합치지 않는다")
     void findMyLeavePlanKeepsFixedLeaveReasonsAndDatesSeparate() {
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(1L)).willReturn(List.of(
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "1", "학교", true),
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5", "학교", true),
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "6", "알바", true),
@@ -203,11 +223,12 @@ class LeaveServiceTest {
         ReflectionTestUtils.setField(ownLeave, "id", 20L);
         given(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L))
                 .willReturn(List.of(ownLeave));
-        given(specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L)).willReturn(List.of(
+        List<SpecialLeave> specials = List.of(
                 new SpecialLeave(1L, 2L, date, "3", "학교", null, false, 99L),
                 new SpecialLeave(1L, 2L, date, "2", "학교", null, false, 99L)
-        ));
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(1L)).willReturn(List.of(
+        );
+        given(specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L)).willReturn(specials);
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(1L)).willReturn(List.of(
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "1", "학교", true),
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5", "학교", true)
         ));
@@ -231,6 +252,7 @@ class LeaveServiceTest {
         Member member = createMemberWithId(1L, MemberRole.MEMBER);
         given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
         given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
 
         leaveService.delete(1L, 10L);
 
@@ -244,6 +266,7 @@ class LeaveServiceTest {
         Member admin = createMemberWithId(1L, MemberRole.ADMIN);
         given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(createMemberWithId(2L, MemberRole.MEMBER)));
 
         leaveService.delete(1L, 10L);
 
@@ -304,6 +327,11 @@ class LeaveServiceTest {
         given(leaveRequestRepository.findDailyStatuses(date, "ki", 1L, LeaveType.FULL))
                 .willReturn(List.of(response));
         given(memberRepository.findById(99L)).willReturn(Optional.of(admin));
+        LeaveRequest source = new LeaveRequest(1L, 1L, date, LeaveType.FULL);
+        ReflectionTestUtils.setField(source, "createdAt", response.createdAt());
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L, date, date))
+                .willReturn(List.of(source));
+        given(memberRepository.findAllById(List.of(1L))).willReturn(List.of(createMemberWithId(1L, MemberRole.MEMBER, 1L)));
 
         List<DailyLeaveStatusResponse> responses = leaveService.findDailyStatuses(99L, date, " ki ", 1L, LeaveType.FULL);
 
@@ -386,6 +414,11 @@ class LeaveServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(leaveRequestRepository.findDailyStatuses(leaveDate, null, 2L, null))
                 .willReturn(List.of(response));
+        LeaveRequest source = new LeaveRequest(2L, 2L, leaveDate, LeaveType.FULL);
+        ReflectionTestUtils.setField(source, "createdAt", storedCreatedAt);
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(2L, leaveDate, leaveDate))
+                .willReturn(List.of(source));
+        given(memberRepository.findAllById(List.of(2L))).willReturn(List.of(createMemberWithId(2L, MemberRole.MEMBER)));
 
         List<DailyLeaveStatusResponse> responses = leaveService.findDailyStatuses(
                 1L,
@@ -413,7 +446,8 @@ class LeaveServiceTest {
                 true
         );
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
-        given(fixedLeaveRepository.findById(10L)).willReturn(Optional.of(fixedLeave));
+        given(fixedLeaveRepository.findOwnerIdById(10L)).willReturn(Optional.of(2L));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(createMemberWithId(2L, MemberRole.MEMBER, 3L)));
 
         assertThatThrownBy(() -> leaveService.deleteFixed(1L, 10L))
                 .isInstanceOf(MemberException.class)
@@ -492,8 +526,8 @@ class LeaveServiceTest {
         Member target = createMemberWithId(2L, MemberRole.MEMBER);
         FixedLeaveCreateRequest request = new FixedLeaveCreateRequest(
                 2L,
-                LocalDate.of(2026, 6, 24),
-                List.of(4, 2, 4),
+                LocalDate.now(clock),
+                List.of(4, 2),
                 "알바"
         );
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
@@ -505,7 +539,8 @@ class LeaveServiceTest {
 
         assertThat(response.memberId()).isEqualTo(2L);
         assertThat(response.branchId()).isEqualTo(2L);
-        assertThat(response.dayOfWeek()).isEqualTo(DayOfWeek.WEDNESDAY);
+        assertThat(response.dayOfWeek()).isEqualTo(LocalDate.now(clock).getDayOfWeek());
+        assertThat(response.startDate()).isEqualTo(LocalDate.now(clock));
         assertThat(response.slots()).isEqualTo("2,4");
         assertThat(response.reason()).isEqualTo("알바");
         assertThat(response.active()).isTrue();
@@ -516,10 +551,10 @@ class LeaveServiceTest {
     void throwExceptionWhenFixedLeaveSlotAlreadyExists() {
         Member admin = createMemberWithId(1L, MemberRole.ADMIN);
         Member target = createMemberWithId(2L, MemberRole.MEMBER);
-        FixedLeave existing = new FixedLeave(2L, 2L, DayOfWeek.MONDAY, "6,7", "시험", true);
+        FixedLeave existing = new FixedLeave(2L, 2L, LocalDate.now(clock).getDayOfWeek(), "6,7", "시험", true);
         FixedLeaveCreateRequest request = new FixedLeaveCreateRequest(
                 2L,
-                LocalDate.of(2026, 6, 22),
+                LocalDate.now(clock),
                 List.of(7),
                 "알바"
         );
@@ -537,37 +572,39 @@ class LeaveServiceTest {
     @DisplayName("관리자는 고정 휴무를 이번 주와 다음 주의 기타 휴무로 생성한다")
     void generateFixedLeaves() {
         Member admin = createMemberWithId(1L, MemberRole.ADMIN);
-        LocalDate startDate = LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate endDate = startDate.plusDays(13);
-        SpecialLeave oldSpecialLeave = new SpecialLeave(2L, 2L, startDate, "1", "모의", null, true, 1L);
-        FixedLeave fixedLeave = new FixedLeave(2L, 2L, DayOfWeek.WEDNESDAY, "1,2", "스터디", true);
+        LocalDate startDate = LocalDate.now(clock);
+        LocalDate endDate = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusDays(13);
+        FixedLeave fixedLeave = new FixedLeave(2L, 2L, startDate.getDayOfWeek(), "1,2", "스터디", true);
+        ReflectionTestUtils.setField(fixedLeave, "id", 50L);
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
-        given(specialLeaveRepository.findByRecurringTrueAndLeaveDateBetween(startDate, endDate)).willReturn(List.of(oldSpecialLeave));
-        given(fixedLeaveRepository.findByActiveTrueOrderByCreatedAtAsc()).willReturn(List.of(fixedLeave));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(createMemberWithId(2L, MemberRole.MEMBER)));
+        given(fixedLeaveRepository.findRuleMemberIds()).willReturn(List.of(2L));
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(2L)).willReturn(List.of(fixedLeave));
         given(specialLeaveRepository.save(any(SpecialLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         FixedLeaveGenerationResponse response = leaveService.generateFixedLeaves(1L);
 
         ArgumentCaptor<SpecialLeave> captor = ArgumentCaptor.forClass(SpecialLeave.class);
-        then(specialLeaveRepository).should().deleteAll(List.of(oldSpecialLeave));
+        then(specialLeaveRepository).should().deleteByFixedLeaveIdAndLeaveDateGreaterThanEqual(50L, startDate);
+        then(specialLeaveRepository).should(never()).deleteAll(any());
         then(specialLeaveRepository).should(times(2)).save(captor.capture());
         assertThat(response.startDate()).isEqualTo(startDate);
         assertThat(response.endDate()).isEqualTo(endDate);
         assertThat(response.createdCount()).isEqualTo(2);
         assertThat(captor.getAllValues()).extracting(SpecialLeave::getLeaveDate)
-                .containsExactly(startDate.plusDays(2), startDate.plusDays(9));
+                .containsExactly(startDate, startDate.plusDays(7));
     }
 
     @Test
     @DisplayName("스케줄러는 첫 번째 관리자 계정으로 고정 휴무를 생성한다")
     void generateFixedLeavesBySystem() {
         Member admin = createMemberWithId(1L, MemberRole.ADMIN);
-        LocalDate startDate = LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate endDate = startDate.plusDays(13);
+        LocalDate startDate = LocalDate.now(clock);
         FixedLeave fixedLeave = new FixedLeave(2L, 2L, startDate.getDayOfWeek(), "1", "모의", true);
         given(memberRepository.findFirstByRoleOrderByIdAsc(MemberRole.ADMIN)).willReturn(Optional.of(admin));
-        given(specialLeaveRepository.findByRecurringTrueAndLeaveDateBetween(startDate, endDate)).willReturn(List.of());
-        given(fixedLeaveRepository.findByActiveTrueOrderByCreatedAtAsc()).willReturn(List.of(fixedLeave));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(createMemberWithId(2L, MemberRole.MEMBER)));
+        given(fixedLeaveRepository.findRuleMemberIds()).willReturn(List.of(2L));
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(2L)).willReturn(List.of(fixedLeave));
         given(specialLeaveRepository.save(any(SpecialLeave.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         Optional<FixedLeaveGenerationResponse> response = leaveService.generateFixedLeavesBySystem();
@@ -667,15 +704,23 @@ class LeaveServiceTest {
         );
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
         given(specialLeaveRepository.findById(10L)).willReturn(Optional.of(specialLeave));
+        ReflectionTestUtils.setField(specialLeave, "id", 10L);
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(createMemberWithId(2L, MemberRole.MEMBER)));
+        given(specialLeaveRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(2L,
+                specialLeave.getLeaveDate(), specialLeave.getLeaveDate())).willReturn(List.of(specialLeave));
 
         leaveService.deleteSpecialSlot(1L, 10L, 2);
 
-        assertThat(specialLeave.getSlots()).isEqualTo("1,3");
+        assertThat(specialLeave.getSlots()).isEqualTo("1,2,3");
+        ArgumentCaptor<LeaveOccurrenceCancellation> cancellation = ArgumentCaptor.forClass(LeaveOccurrenceCancellation.class);
+        then(cancellationRepository).should().save(cancellation.capture());
+        assertThat(cancellation.getValue().getSlot()).isEqualTo(2);
+        assertThat(cancellation.getValue().getSourceId()).isEqualTo(10L);
         then(specialLeaveRepository).should(never()).delete(any(SpecialLeave.class));
     }
 
     @Test
-    @DisplayName("기타 휴무의 마지막 교시를 삭제하면 신청 내역을 삭제한다")
+    @DisplayName("기타 휴무의 마지막 교시도 원본은 보존하고 취소 예외를 저장한다")
     void deleteSpecialLeaveWhenLastSlotDeleted() {
         Member admin = createMemberWithId(1L, MemberRole.ADMIN);
         SpecialLeave specialLeave = new SpecialLeave(
@@ -690,10 +735,15 @@ class LeaveServiceTest {
         );
         given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
         given(specialLeaveRepository.findById(10L)).willReturn(Optional.of(specialLeave));
+        ReflectionTestUtils.setField(specialLeave, "id", 10L);
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(createMemberWithId(2L, MemberRole.MEMBER)));
+        given(specialLeaveRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(2L,
+                specialLeave.getLeaveDate(), specialLeave.getLeaveDate())).willReturn(List.of(specialLeave));
 
         leaveService.deleteSpecialSlot(1L, 10L, 7);
 
-        then(specialLeaveRepository).should().delete(specialLeave);
+        then(specialLeaveRepository).should(never()).delete(specialLeave);
+        then(cancellationRepository).should().save(any(LeaveOccurrenceCancellation.class));
     }
 
     private Member createMember() {

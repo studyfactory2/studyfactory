@@ -312,23 +312,26 @@ class AttendanceUnconfirmedSlotTest {
     }
 
     @Test
-    @DisplayName("새 고정휴무는 기존 모델의 같은 요일 교시에만 미확인 표시를 해제한다")
+    @DisplayName("새 고정휴무는 시작일 이후 같은 요일 교시에만 미확인 표시를 해제한다")
     void newFixedLeaveReplacesMatchingWeekdaysAndPeriods() {
+        LocalDate start = LocalDate.now(ZoneId.of("Asia/Seoul"));
         Member other = createMember(branch, "다른회원", MemberRole.MEMBER, 13);
-        for (LocalDate date : List.of(DATE.minusWeeks(1), DATE, DATE.plusWeeks(1), DATE.plusDays(1))) {
+        for (LocalDate date : List.of(start.minusWeeks(1), start, start.plusWeeks(1), start.plusDays(1))) {
             clearFixture(member, date, 3, 4);
         }
-        clearFixture(other, DATE, 3);
+        clearFixture(other, start, 3);
 
-        leaveService.createFixed(staff.getId(), new FixedLeaveCreateRequest(member.getId(), DATE, List.of(3), "학교"));
+        leaveService.createFixed(staff.getId(), new FixedLeaveCreateRequest(member.getId(), start, List.of(3), "학교"));
 
-        for (LocalDate date : List.of(DATE.minusWeeks(1), DATE, DATE.plusWeeks(1))) {
+        for (LocalDate date : List.of(start, start.plusWeeks(1))) {
             assertThat(row(member, date).slots().get(2)).isEqualTo("학교");
             assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), date, 3)).isFalse();
             assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), date, 4)).isTrue();
         }
-        assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), DATE.plusDays(1), 3)).isTrue();
-        assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(other.getId(), DATE, 3)).isTrue();
+        assertThat(row(member, start.minusWeeks(1)).slots().get(2)).isEqualTo("X");
+        assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), start.minusWeeks(1), 3)).isTrue();
+        assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), start.plusDays(1), 3)).isTrue();
+        assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(other.getId(), start, 3)).isTrue();
     }
 
     @Test

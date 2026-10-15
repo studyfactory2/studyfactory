@@ -9,6 +9,7 @@ import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.room.repository.SeatRepository;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
@@ -33,6 +34,7 @@ public class MemberDeletionCleanupService {
     private final LeaveRequestRepository leaveRequestRepository;
     private final SpecialLeaveRepository specialLeaveRepository;
     private final FixedLeaveRepository fixedLeaveRepository;
+    private final LeaveOccurrenceCancellationRepository leaveOccurrenceCancellationRepository;
     private final SuggestionRepository suggestionRepository;
     private final SideDishRequestRepository sideDishRequestRepository;
     private final StudyPresenceService studyPresenceService;
@@ -53,6 +55,7 @@ public class MemberDeletionCleanupService {
         leaveRequestRepository.deleteByMemberId(memberId);
         specialLeaveRepository.deleteByMemberId(memberId);
         fixedLeaveRepository.deleteByMemberId(memberId);
+        leaveOccurrenceCancellationRepository.deleteByMemberId(memberId);
         todoReplyRepository.deleteByMemberId(memberId);
         todoItemRepository.deleteByTargetMemberId(memberId);
         todoItemRepository.deleteByCreatedByMemberId(memberId);

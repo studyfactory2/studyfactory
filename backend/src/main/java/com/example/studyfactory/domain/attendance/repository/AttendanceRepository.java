@@ -9,6 +9,20 @@ import org.springframework.data.repository.query.Param;
 
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
+    @Query("""
+            select a from Attendance a
+            where a.referenceInformation.memberId = :memberId
+              and a.referenceInformation.branchId = :branchId
+              and a.slotInformation.attendanceDate >= :startDate
+              and a.slotInformation.slot in :slots
+            """)
+    List<Attendance> findFutureSelectedSlots(
+            @Param("memberId") Long memberId,
+            @Param("branchId") Long branchId,
+            @Param("startDate") LocalDate startDate,
+            @Param("slots") List<Integer> slots
+    );
+
     List<Attendance> findByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(
             Long memberId, LocalDate attendanceDate, int slot
     );

@@ -7,6 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SpecialLeaveRepository extends JpaRepository<SpecialLeave, Long> {
 
+    List<SpecialLeave> findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(Long branchId, LocalDate start, LocalDate end);
+    List<SpecialLeave> findByLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(LocalDate start, LocalDate end);
+    List<SpecialLeave> findByFixedLeaveIdAndLeaveDate(Long fixedLeaveId, LocalDate date);
+
     List<SpecialLeave> findByMemberIdOrderByLeaveDateDescCreatedAtDesc(Long memberId);
 
     List<SpecialLeave> findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(

@@ -16,8 +16,10 @@ import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.entity.SpecialLeave;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
+import com.example.studyfactory.domain.leave.service.EffectiveLeaveService;
 import com.example.studyfactory.domain.studyTime.model.StudyPeriod;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -53,14 +55,16 @@ class StudyTimeLeaveExclusionServiceTest {
     @Mock
     private AttendanceRepository attendanceRepository;
 
+    @Mock
+    private LeaveOccurrenceCancellationRepository cancellationRepository;
+
     private StudyTimeLeaveExclusionService service;
 
     @BeforeEach
     void setUp() {
         service = new StudyTimeLeaveExclusionService(
-                leaveRequestRepository,
-                fixedLeaveRepository,
-                specialLeaveRepository,
+                new EffectiveLeaveService(leaveRequestRepository, specialLeaveRepository,
+                        fixedLeaveRepository, cancellationRepository),
                 attendanceRepository
         );
     }
@@ -111,7 +115,7 @@ class StudyTimeLeaveExclusionServiceTest {
     @DisplayName("활성 고정 휴무를 조회 범위의 같은 요일 모두에 반영한다")
     void applyFixedLeaveToMatchingWeekdays() {
         LocalDate nextMonday = MONDAY.plusWeeks(1);
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(MEMBER_ID))
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(MEMBER_ID))
                 .willReturn(List.of(fixedLeave(DayOfWeek.MONDAY, "1,6")));
 
         Map<LocalDate, Set<StudyPeriod>> result = service.findExcludedPeriods(
@@ -163,7 +167,7 @@ class StudyTimeLeaveExclusionServiceTest {
                         MEMBER_ID, MONDAY, MONDAY
                 ))
                 .willReturn(List.of(leave(MONDAY, LeaveType.MORNING)));
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(MEMBER_ID))
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(MEMBER_ID))
                 .willReturn(List.of(fixedLeave(DayOfWeek.MONDAY, "3,5")));
         given(specialLeaveRepository
                 .findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
@@ -215,7 +219,7 @@ class StudyTimeLeaveExclusionServiceTest {
     @Test
     @DisplayName("잘못된 과거 교시 값은 무시하고 같은 행의 유효한 값은 유지한다")
     void ignoreInvalidLegacySlots() {
-        given(fixedLeaveRepository.findByMemberIdAndActiveTrueOrderByCreatedAtAsc(MEMBER_ID))
+        given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(MEMBER_ID))
                 .willReturn(List.of(
                         fixedLeave(DayOfWeek.MONDAY, "0, 2, junk, 8, , 4, 2"),
                         fixedLeave(DayOfWeek.MONDAY, null)
@@ -257,13 +261,14 @@ class StudyTimeLeaveExclusionServiceTest {
                 .findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
                         MEMBER_ID, MONDAY, sunday
                 );
-        verify(fixedLeaveRepository).findByMemberIdAndActiveTrueOrderByCreatedAtAsc(MEMBER_ID);
+        verify(fixedLeaveRepository).findByMemberIdOrderByCreatedAtAsc(MEMBER_ID);
         verify(specialLeaveRepository)
                 .findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
                         MEMBER_ID, MONDAY, sunday
                 );
         verify(attendanceRepository)
                 .findByMemberIdAndAttendanceDateBetween(MEMBER_ID, MONDAY, sunday);
+        verify(cancellationRepository).findByMemberIdAndLeaveDateBetween(MEMBER_ID, MONDAY, sunday);
     }
 
     @Test
@@ -274,8 +279,7 @@ class StudyTimeLeaveExclusionServiceTest {
                         MEMBER_ID, BRANCH_ID, MONDAY, MONDAY
                 ))
                 .willReturn(List.of(leave(MONDAY, LeaveType.MORNING)));
-        given(fixedLeaveRepository
-                .findByMemberIdAndBranchIdAndActiveTrueOrderByCreatedAtAsc(MEMBER_ID, BRANCH_ID))
+        given(fixedLeaveRepository.findByMemberIdAndBranchIdOrderByCreatedAtAsc(MEMBER_ID, BRANCH_ID))
                 .willReturn(List.of(fixedLeave(DayOfWeek.MONDAY, "5")));
         given(specialLeaveRepository
                 .findByMemberIdAndBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
@@ -301,8 +305,7 @@ class StudyTimeLeaveExclusionServiceTest {
                 .findByMemberIdAndBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
                         MEMBER_ID, BRANCH_ID, MONDAY, MONDAY
                 );
-        verify(fixedLeaveRepository)
-                .findByMemberIdAndBranchIdAndActiveTrueOrderByCreatedAtAsc(MEMBER_ID, BRANCH_ID);
+        verify(fixedLeaveRepository).findByMemberIdAndBranchIdOrderByCreatedAtAsc(MEMBER_ID, BRANCH_ID);
         verify(specialLeaveRepository)
                 .findByMemberIdAndBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
                         MEMBER_ID, BRANCH_ID, MONDAY, MONDAY
@@ -310,11 +313,13 @@ class StudyTimeLeaveExclusionServiceTest {
         verify(attendanceRepository).findByMemberIdAndBranchIdAndAttendanceDateBetween(
                 MEMBER_ID, BRANCH_ID, MONDAY, MONDAY
         );
+        verify(cancellationRepository).findByMemberIdAndBranchIdAndLeaveDateBetween(MEMBER_ID, BRANCH_ID, MONDAY, MONDAY);
         verifyNoMoreInteractions(
                 leaveRequestRepository,
                 fixedLeaveRepository,
                 specialLeaveRepository,
-                attendanceRepository
+                attendanceRepository,
+                cancellationRepository
         );
     }
 
@@ -331,7 +336,8 @@ class StudyTimeLeaveExclusionServiceTest {
                 leaveRequestRepository,
                 fixedLeaveRepository,
                 specialLeaveRepository,
-                attendanceRepository
+                attendanceRepository,
+                cancellationRepository
         );
     }
 
