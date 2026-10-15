@@ -36,7 +36,7 @@ public class SideDishService {
     public SideDishResponse create(Long memberId, SideDishCreateRequest request) {
         validateTotalPrice(request);
         validateDeadline(request);
-        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        Member member = memberRepository.findByIdForUpdate(memberId).orElseThrow(MemberException::memberNotFound);
         SideDishRequest sideDishRequest = new SideDishRequest(
                 new SideDishReferenceInformation(member.getId(), member.getBranchId()),
                 new SideDishMealInformation(resolveMealDate(request), request.mealType()),

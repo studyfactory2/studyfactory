@@ -46,7 +46,7 @@ class SuggestionServiceTest {
         SuggestionCreateRequest request = new SuggestionCreateRequest(SuggestionCategory.GENERAL, "책상 조명이 어두워요.");
         Member member = createMember();
         ReflectionTestUtils.setField(member, "id", 1L);
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(suggestionRepository.save(any(Suggestion.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         SuggestionResponse response = suggestionService.create(1L, request);
@@ -57,7 +57,20 @@ class SuggestionServiceTest {
         assertThat(response.category()).isEqualTo(SuggestionCategory.GENERAL);
         assertThat(response.content()).isEqualTo("책상 조명이 어두워요.");
         assertThat(response.isResolved()).isFalse();
+        then(memberRepository).should().findByIdForUpdate(1L);
         then(suggestionRepository).should().save(any(Suggestion.class));
+    }
+
+    @Test
+    @DisplayName("삭제된 회원의 건의사항을 저장하지 않는다")
+    void rejectSuggestionForDeletedMember() {
+        SuggestionCreateRequest request = new SuggestionCreateRequest(SuggestionCategory.GENERAL, "책상 조명이 어두워요.");
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> suggestionService.create(1L, request))
+                .isInstanceOf(MemberException.class);
+
+        then(suggestionRepository).shouldHaveNoInteractions();
     }
 
     @Test

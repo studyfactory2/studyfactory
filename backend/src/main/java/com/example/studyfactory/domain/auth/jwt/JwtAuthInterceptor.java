@@ -1,6 +1,7 @@
 package com.example.studyfactory.domain.auth.jwt;
 
 import com.example.studyfactory.domain.auth.exception.AuthException;
+import com.example.studyfactory.domain.member.repository.MemberRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Set;
@@ -22,6 +23,7 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
     );
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final MemberRepository memberRepository;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -40,7 +42,11 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
         }
 
         String token = authorization.substring(BEARER_PREFIX.length());
-        request.setAttribute(MEMBER_ID_ATTRIBUTE, jwtTokenProvider.getMemberId(token));
+        Long memberId = jwtTokenProvider.getMemberId(token);
+        if (!memberRepository.existsById(memberId)) {
+            throw AuthException.invalidToken();
+        }
+        request.setAttribute(MEMBER_ID_ATTRIBUTE, memberId);
 
         return true;
     }

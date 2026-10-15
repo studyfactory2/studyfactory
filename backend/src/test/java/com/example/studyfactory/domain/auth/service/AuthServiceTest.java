@@ -51,6 +51,7 @@ class AuthServiceTest {
         ReflectionTestUtils.setField(member, "id", 1L);
         given(memberRepository.findAllByNameAndBranchId("hong", 1L))
                 .willReturn(List.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(jwtTokenProvider.createAccessToken(member)).willReturn("access-token");
         given(jwtTokenProvider.createRefreshToken(member)).willReturn("refresh-token");
 
@@ -60,6 +61,7 @@ class AuthServiceTest {
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
 
         ArgumentCaptor<RefreshToken> refreshTokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
+        then(memberRepository).should().findByIdForUpdate(1L);
         then(refreshTokenRepository).should().deleteByMemberId(1L);
         then(refreshTokenRepository).should().save(refreshTokenCaptor.capture());
         assertThat(refreshTokenCaptor.getValue().getMemberId()).isEqualTo(1L);
@@ -75,6 +77,7 @@ class AuthServiceTest {
         given(memberRepository.existsByName("hong")).willReturn(true);
         given(memberRepository.findAllByNameAndPassword("hong", "password123"))
                 .willReturn(List.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(jwtTokenProvider.createAccessToken(member)).willReturn("access-token");
         given(jwtTokenProvider.createRefreshToken(member)).willReturn("refresh-token");
 
@@ -82,6 +85,23 @@ class AuthServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("access-token");
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
+    }
+
+    @Test
+    @DisplayName("회원이 로그인 조회 후 삭제되면 토큰을 발급하거나 저장하지 않는다")
+    void rejectLoginWhenMemberDeletedBeforeLock() {
+        LoginRequest request = new LoginRequest("hong", "password123", 1L);
+        Member member = createMember();
+        ReflectionTestUtils.setField(member, "id", 1L);
+        given(memberRepository.findAllByNameAndBranchId("hong", 1L)).willReturn(List.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("존재하지 않는 ID입니다.");
+
+        then(jwtTokenProvider).shouldHaveNoInteractions();
+        then(refreshTokenRepository).shouldHaveNoInteractions();
     }
 
     @Test

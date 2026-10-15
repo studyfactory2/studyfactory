@@ -15,6 +15,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface StudyBreakSessionRepository extends JpaRepository<StudyBreakSession, Long> {
 
+    void deleteByMemberId(Long memberId);
+
     Optional<StudyBreakSession> findByActiveMemberId(Long memberId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

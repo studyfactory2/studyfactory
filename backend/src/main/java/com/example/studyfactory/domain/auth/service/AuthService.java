@@ -26,9 +26,11 @@ public class AuthService {
     @Transactional
     public LoginResponse login(LoginRequest request) {
         String name = request.name().trim();
-        Member member = request.branchId() == null
+        Member candidate = request.branchId() == null
                 ? findLegacyLoginMember(name, request.password())
                 : findBranchLoginMember(request.branchId(), name, request.password());
+        Member member = memberRepository.findByIdForUpdate(candidate.getId())
+                .orElseThrow(AuthException::memberNotFound);
 
         String accessToken = jwtTokenProvider.createAccessToken(member);
         String refreshToken = jwtTokenProvider.createRefreshToken(member);

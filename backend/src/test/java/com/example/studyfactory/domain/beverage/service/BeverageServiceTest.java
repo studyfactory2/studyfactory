@@ -42,11 +42,23 @@ class BeverageServiceTest {
     @Mock private MemberRepository memberRepository;
     @Mock private BeverageItemRepository beverageItemRepository;
     @Mock private BeveragePreferenceAuditRepository beveragePreferenceAuditRepository;
+    @Mock private LegacyBeverageCleanupService legacyBeverageCleanupService;
     @Mock private Clock clock;
 
     @BeforeEach
     void setUp() {
         lenient().when(clock.instant()).thenReturn(NOW);
+    }
+
+    @Test
+    void memberDeletionRemovesCurrentAndLegacyBeverageData() {
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member(1L, MemberRole.MEMBER)));
+
+        beverageService.deleteAllByMemberId(1L);
+
+        then(beverageItemRepository).should().deleteByMemberId(1L);
+        then(beveragePreferenceAuditRepository).should().deleteByMemberId(1L);
+        then(legacyBeverageCleanupService).should().deleteByMemberId(1L);
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.example.studyfactory.domain.weeklyPlan.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -10,7 +11,11 @@ import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.weeklyPlan.dto.MonthlyPlanGoalResponse;
+import com.example.studyfactory.domain.weeklyPlan.dto.MonthlyPlanGoalRequest;
 import com.example.studyfactory.domain.weeklyPlan.dto.WeeklyPlanResponse;
+import com.example.studyfactory.domain.weeklyPlan.dto.WeeklyPlanSaveRequest;
+import com.example.studyfactory.domain.weeklyPlan.entity.MonthlyPlanGoal;
+import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.repository.MonthlyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanItemRepository;
@@ -58,6 +63,67 @@ class WeeklyPlanServiceTest {
 
     @Spy
     private Clock clock = Clock.fixed(JUST_AFTER_SEOUL_MONTH_ROLLOVER, ZoneId.of("Asia/Seoul"));
+
+    @Test
+    @DisplayName("주간 계획 저장은 회원 행을 잠근 뒤 기록한다")
+    void saveWeeklyPlanLocksMember() {
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(createMember()));
+        given(weeklyPlanGoalRepository.findByMemberIdAndWeekStartDate(1L, SEOUL_TODAY))
+                .willReturn(Optional.empty());
+        given(weeklyPlanGoalRepository.save(any(WeeklyPlanGoal.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        WeeklyPlanResponse response = weeklyPlanService.saveMine(
+                1L, new WeeklyPlanSaveRequest(null, "이번 주 목표", List.of())
+        );
+
+        assertThat(response.memberId()).isEqualTo(1L);
+        assertThat(response.goal()).isEqualTo("이번 주 목표");
+        then(memberRepository).should().findByIdForUpdate(1L);
+    }
+
+    @Test
+    @DisplayName("삭제된 회원의 주간 계획을 저장하지 않는다")
+    void rejectWeeklyPlanForDeletedMember() {
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> weeklyPlanService.saveMine(
+                1L, new WeeklyPlanSaveRequest(null, "이번 주 목표", List.of())
+        )).isInstanceOf(MemberException.class);
+
+        then(weeklyPlanGoalRepository).shouldHaveNoInteractions();
+        then(weeklyPlanItemRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("월간 계획 저장은 회원 행을 잠근 뒤 기록한다")
+    void saveMonthlyPlanLocksMember() {
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(createMember()));
+        given(monthlyPlanGoalRepository.findByMemberIdAndMonth(1L, SEOUL_MONTH))
+                .willReturn(Optional.empty());
+        given(monthlyPlanGoalRepository.save(any(MonthlyPlanGoal.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        MonthlyPlanGoalResponse response = weeklyPlanService.saveMonthlyGoal(
+                1L, new MonthlyPlanGoalRequest(null, "이번 달 목표")
+        );
+
+        assertThat(response.memberId()).isEqualTo(1L);
+        assertThat(response.goal()).isEqualTo("이번 달 목표");
+        then(memberRepository).should().findByIdForUpdate(1L);
+    }
+
+    @Test
+    @DisplayName("삭제된 회원의 월간 계획을 저장하지 않는다")
+    void rejectMonthlyPlanForDeletedMember() {
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> weeklyPlanService.saveMonthlyGoal(
+                1L, new MonthlyPlanGoalRequest(null, "이번 달 목표")
+        )).isInstanceOf(MemberException.class);
+
+        then(monthlyPlanGoalRepository).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("주차를 지정하지 않으면 서울 기준 오늘로 조회한다")

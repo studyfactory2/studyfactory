@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import com.example.studyfactory.domain.auth.exception.AuthException;
+import com.example.studyfactory.domain.member.repository.MemberRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +28,9 @@ class JwtAuthInterceptorTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @Mock
+    private MemberRepository memberRepository;
+
+    @Mock
     private HttpServletRequest request;
 
     @Mock
@@ -41,6 +46,7 @@ class JwtAuthInterceptorTest {
 
         assertThat(result).isTrue();
         then(jwtTokenProvider).shouldHaveNoInteractions();
+        then(memberRepository).shouldHaveNoInteractions();
     }
 
     @Test
@@ -53,6 +59,7 @@ class JwtAuthInterceptorTest {
 
         assertThat(result).isTrue();
         then(jwtTokenProvider).shouldHaveNoInteractions();
+        then(memberRepository).shouldHaveNoInteractions();
     }
 
     @Test
@@ -64,6 +71,7 @@ class JwtAuthInterceptorTest {
 
         assertThat(result).isTrue();
         then(jwtTokenProvider).shouldHaveNoInteractions();
+        then(memberRepository).shouldHaveNoInteractions();
     }
 
     @Test
@@ -93,10 +101,26 @@ class JwtAuthInterceptorTest {
         given(request.getMethod()).willReturn("POST");
         given(request.getHeader("Authorization")).willReturn("Bearer access-token");
         given(jwtTokenProvider.getMemberId("access-token")).willReturn(7L);
+        given(memberRepository.existsById(7L)).willReturn(true);
 
         boolean result = jwtAuthInterceptor.preHandle(request, response, new Object());
 
         assertThat(result).isTrue();
         then(request).should().setAttribute(JwtAuthInterceptor.MEMBER_ID_ATTRIBUTE, 7L);
+    }
+
+    @Test
+    @DisplayName("삭제된 회원의 JWT는 유효기간이 남아 있어도 거절한다")
+    void rejectTokenForDeletedMember() {
+        given(request.getMethod()).willReturn("POST");
+        given(request.getHeader("Authorization")).willReturn("Bearer deleted-member-token");
+        given(jwtTokenProvider.getMemberId("deleted-member-token")).willReturn(7L);
+        given(memberRepository.existsById(7L)).willReturn(false);
+
+        assertThatThrownBy(() -> jwtAuthInterceptor.preHandle(request, response, new Object()))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("유효하지 않은 인증 토큰입니다.");
+
+        then(request).should(never()).setAttribute(JwtAuthInterceptor.MEMBER_ID_ATTRIBUTE, 7L);
     }
 }

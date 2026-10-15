@@ -25,7 +25,7 @@ public class SuggestionService {
 
     @Transactional
     public SuggestionResponse create(Long memberId, SuggestionCreateRequest request) {
-        Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+        Member member = memberRepository.findByIdForUpdate(memberId).orElseThrow(MemberException::memberNotFound);
         Suggestion suggestion = new Suggestion(
                 new SuggestionReferenceInformation(member.getId(), member.getBranchId(), null),
                 request.category(),

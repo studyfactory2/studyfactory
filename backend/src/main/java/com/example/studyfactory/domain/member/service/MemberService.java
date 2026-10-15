@@ -91,10 +91,19 @@ public class MemberService {
 
     @Transactional
     public void delete(Long currentMemberId, Long memberId) {
+        // Serialize deletions before loading the operator so two admins cannot delete each other.
+        List<Member> administrators = memberRepository.findAllByRoleForUpdate(MemberRole.ADMIN);
         Member currentMember = findMember(currentMemberId);
         ManagerAccessPolicy.validateManager(currentMember);
+        if (Objects.equals(currentMemberId, memberId)) {
+            throw MemberException.cannotDeleteSelf();
+        }
         Member member = findManagedMemberForUpdate(currentMember, memberId);
         validateDeleteAccess(currentMember, member);
+        if (member.getRole() == MemberRole.ADMIN && administrators.stream().noneMatch(admin ->
+                !Objects.equals(admin.getId(), memberId) && admin.getPassword() != null)) {
+            throw MemberException.cannotDeleteLastAdministrator();
+        }
         memberDeletionCleanupService.cleanup(member.getId());
         memberRepository.delete(member);
     }

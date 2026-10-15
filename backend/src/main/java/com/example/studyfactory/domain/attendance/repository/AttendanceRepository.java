@@ -4,6 +4,7 @@ import com.example.studyfactory.domain.attendance.entity.Attendance;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -80,4 +81,12 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     void deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDate(Long memberId, LocalDate attendanceDate);
 
     void deleteByReferenceInformationMemberId(Long memberId);
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update Attendance a
+            set a.referenceInformation.markedByMemberId = null
+            where a.referenceInformation.markedByMemberId = :memberId
+            """)
+    void clearMarkedByMemberId(@Param("memberId") Long memberId);
 }

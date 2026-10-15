@@ -305,6 +305,51 @@ class MemberControllerTest {
     }
 
     @Test
+    @DisplayName("관리자는 현재 사원을 영구 삭제하고 삭제된 계정의 토큰은 거절된다")
+    void permanentlyDeleteCurrentMember() throws Exception {
+        Member admin = memberRepository.save(createMember("delete admin", 10, 1L, MemberRole.ADMIN));
+        Member target = memberRepository.save(createMember("delete target", 11, 1L, MemberRole.MEMBER));
+        beverageItemRepository.save(new BeverageItem(target.getId(), "아메리카노", ""));
+        String targetToken = jwtTokenProvider.createAccessToken(target);
+
+        mockMvc.perform(delete("/api/members/{memberId}", target.getId())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isNoContent());
+
+        assertThat(memberRepository.existsById(target.getId())).isFalse();
+        assertThat(memberRepository.existsById(admin.getId())).isTrue();
+        assertThat(beverageItemRepository.findAll()).isEmpty();
+        mockMvc.perform(get("/api/members/me").header("Authorization", "Bearer " + targetToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("관리자는 현재 로그인한 자기 계정을 삭제할 수 없다")
+    void rejectDeletingOwnAccount() throws Exception {
+        Member admin = memberRepository.save(createMember("self delete admin", 10, 1L, MemberRole.ADMIN));
+
+        mockMvc.perform(delete("/api/members/{memberId}", admin.getId())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(admin)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("현재 로그인한 계정은 삭제할 수 없습니다."));
+
+        assertThat(memberRepository.existsById(admin.getId())).isTrue();
+    }
+
+    @Test
+    @DisplayName("일반 회원은 다른 회원을 삭제할 수 없다")
+    void rejectMemberDeletingAnotherMember() throws Exception {
+        Member member = memberRepository.save(createMember("delete member", 10, 1L, MemberRole.MEMBER));
+        Member target = memberRepository.save(createMember("other member", 11, 1L, MemberRole.MEMBER));
+
+        mockMvc.perform(delete("/api/members/{memberId}", target.getId())
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(member)))
+                .andExpect(status().isForbidden());
+
+        assertThat(memberRepository.existsById(target.getId())).isTrue();
+    }
+
+    @Test
     @DisplayName("관리자는 다른 지점 회원을 스태프로 변경할 수 있다")
     void adminUpdatesCrossBranchMember() throws Exception {
         Branch targetBranch = branchRepository.save(new Branch("회원 이동 지점 " + System.nanoTime()));

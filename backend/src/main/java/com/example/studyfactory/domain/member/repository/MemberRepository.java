@@ -14,6 +14,10 @@ import org.springframework.data.repository.query.Param;
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select member from Member member where member.role = :role order by member.id")
+    List<Member> findAllByRoleForUpdate(@Param("role") MemberRole role);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select member from Member member where member.id = :memberId")
     Optional<Member> findByIdForUpdate(@Param("memberId") Long memberId);
 

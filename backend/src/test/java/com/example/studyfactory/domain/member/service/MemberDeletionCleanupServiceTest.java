@@ -1,9 +1,9 @@
 package com.example.studyfactory.domain.member.service;
 
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 
 import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
-import com.example.studyfactory.domain.attendance.repository.AttendanceNoteRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedAbsenceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
@@ -15,7 +15,8 @@ import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellat
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.room.repository.SeatRepository;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
-import com.example.studyfactory.domain.studyPresence.service.StudyPresenceService;
+import com.example.studyfactory.domain.studyBreak.repository.StudyBreakSessionRepository;
+import com.example.studyfactory.domain.studyPresence.repository.StudyPresenceSessionRepository;
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
 import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
 import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
@@ -50,9 +51,6 @@ class MemberDeletionCleanupServiceTest {
     private AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
 
     @Mock
-    private AttendanceNoteRepository attendanceNoteRepository;
-
-    @Mock
     private LeaveRequestRepository leaveRequestRepository;
 
     @Mock
@@ -71,7 +69,10 @@ class MemberDeletionCleanupServiceTest {
     private SideDishRequestRepository sideDishRequestRepository;
 
     @Mock
-    private StudyPresenceService studyPresenceService;
+    private StudyBreakSessionRepository studyBreakSessionRepository;
+
+    @Mock
+    private StudyPresenceSessionRepository studyPresenceSessionRepository;
 
     @Mock
     private SeatRepository seatRepository;
@@ -98,20 +99,44 @@ class MemberDeletionCleanupServiceTest {
         then(attendanceReviewedAbsenceRepository).should().deleteByMemberId(1L);
         then(attendanceUnconfirmedSlotRepository).should().deleteByMemberId(1L);
         then(attendanceDailyInitializationRepository).should().deleteByMemberId(1L);
-        then(attendanceDailyInitializationRepository).should().deleteByInitializedByMemberId(1L);
-        then(attendanceNoteRepository).should().deleteByCreatedByMemberId(1L);
         then(leaveRequestRepository).should().deleteByMemberId(1L);
         then(specialLeaveRepository).should().deleteByMemberId(1L);
         then(fixedLeaveRepository).should().deleteByMemberId(1L);
         then(leaveOccurrenceCancellationRepository).should().deleteByMemberId(1L);
+        then(todoReplyRepository).should().deleteByTodoTargetMemberId(1L);
         then(todoReplyRepository).should().deleteByMemberId(1L);
         then(todoItemRepository).should().deleteByTargetMemberId(1L);
-        then(todoItemRepository).should().deleteByCreatedByMemberId(1L);
         then(weeklyPlanService).should().deleteAllByMemberId(1L);
         then(suggestionRepository).should().deleteByReferenceInformationMemberId(1L);
         then(sideDishRequestRepository).should().deleteByReferenceInformationMemberId(1L);
-        then(studyPresenceService).should().closeActiveSessionForMemberDeletion(1L);
+        then(studyBreakSessionRepository).should().deleteByMemberId(1L);
+        then(studyPresenceSessionRepository).should().deleteByMemberId(1L);
         then(seatRepository).should().clearMemberAssignment(1L);
         then(refreshTokenRepository).should().deleteByMemberId(1L);
+        then(attendanceRepository).should().clearMarkedByMemberId(1L);
+        then(attendanceReviewedAbsenceRepository).should().clearReviewedByMemberId(1L);
+        then(attendanceUnconfirmedSlotRepository).should().clearClearedByMemberId(1L);
+        then(suggestionRepository).should().clearResolvedByMemberId(1L);
+        then(todoItemRepository).should().clearCreatedByMember(1L);
+        then(todoItemRepository).should().clearCompletedByMemberId(1L);
+        then(studyPresenceSessionRepository).should().clearClosedByMemberId(1L);
+    }
+
+    @Test
+    @DisplayName("하위 휴무, 답글, 휴식시간 기록을 부모 기록보다 먼저 삭제한다")
+    void deletesDependentRecordsBeforeTheirSources() {
+        memberDeletionCleanupService.cleanup(1L);
+
+        var order = inOrder(leaveOccurrenceCancellationRepository, specialLeaveRepository,
+                fixedLeaveRepository, todoReplyRepository, todoItemRepository,
+                studyBreakSessionRepository, studyPresenceSessionRepository);
+        order.verify(leaveOccurrenceCancellationRepository).deleteByMemberId(1L);
+        order.verify(specialLeaveRepository).deleteByMemberId(1L);
+        order.verify(fixedLeaveRepository).deleteByMemberId(1L);
+        order.verify(todoReplyRepository).deleteByTodoTargetMemberId(1L);
+        order.verify(todoReplyRepository).deleteByMemberId(1L);
+        order.verify(todoItemRepository).deleteByTargetMemberId(1L);
+        order.verify(studyBreakSessionRepository).deleteByMemberId(1L);
+        order.verify(studyPresenceSessionRepository).deleteByMemberId(1L);
     }
 }

@@ -13,5 +13,4 @@ public interface AttendanceDailyInitializationRepository extends JpaRepository<A
 
     void deleteByMemberId(Long memberId);
 
-    void deleteByInitializedByMemberId(Long initializedByMemberId);
 }

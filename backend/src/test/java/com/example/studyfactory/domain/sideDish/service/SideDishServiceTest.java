@@ -58,7 +58,7 @@ class SideDishServiceTest {
         SideDishCreateRequest request = new SideDishCreateRequest(MealType.LUNCH, "제육볶음", 9000, 9000);
         Member member = createMember();
         ReflectionTestUtils.setField(member, "id", 1L);
-        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
         given(sideDishRequestRepository.save(any(SideDishRequest.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         SideDishResponse response = sideDishService.create(1L, request);
@@ -69,6 +69,20 @@ class SideDishServiceTest {
         assertThat(response.mealType()).isEqualTo(MealType.LUNCH);
         assertThat(response.items()).isEqualTo("제육볶음: 9000");
         assertThat(response.totalPrice()).isEqualTo(9000);
+        then(memberRepository).should().findByIdForUpdate(1L);
+    }
+
+    @Test
+    @DisplayName("삭제된 회원의 반찬 신청을 저장하지 않는다")
+    void rejectOrderForDeletedMember() {
+        setNow(LocalDateTime.of(2026, 6, 19, 10, 0));
+        SideDishCreateRequest request = new SideDishCreateRequest(MealType.LUNCH, "제육볶음", 9000, 9000);
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> sideDishService.create(1L, request))
+                .isInstanceOf(MemberException.class);
+
+        then(sideDishRequestRepository).shouldHaveNoInteractions();
     }
 
     @Test

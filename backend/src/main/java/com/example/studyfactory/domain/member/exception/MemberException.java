@@ -36,6 +36,14 @@ public class MemberException extends BaseException {
         return new MemberException(HttpStatus.FORBIDDEN, "권한이 없습니다.");
     }
 
+    public static MemberException cannotDeleteSelf() {
+        return new MemberException(HttpStatus.CONFLICT, "현재 로그인한 계정은 삭제할 수 없습니다.");
+    }
+
+    public static MemberException cannotDeleteLastAdministrator() {
+        return new MemberException(HttpStatus.CONFLICT, "마지막 활성 관리자 계정은 삭제할 수 없습니다.");
+    }
+
     public static MemberException invalidBranch() {
         return new MemberException(HttpStatus.BAD_REQUEST, "존재하지 않는 지점입니다.");
     }

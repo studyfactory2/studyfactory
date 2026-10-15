@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface SuggestionRepository extends JpaRepository<Suggestion, Long> {
 
@@ -28,6 +29,14 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long> {
     List<Suggestion> findByBranchId(Long branchId);
 
     void deleteByReferenceInformationMemberId(Long memberId);
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            update Suggestion s
+            set s.referenceInformation.resolvedByMemberId = null
+            where s.referenceInformation.resolvedByMemberId = :memberId
+            """)
+    void clearResolvedByMemberId(@Param("memberId") Long memberId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

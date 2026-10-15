@@ -34,6 +34,7 @@ public class BeverageService {
     private final MemberRepository memberRepository;
     private final BeverageItemRepository beverageItemRepository;
     private final BeveragePreferenceAuditRepository beveragePreferenceAuditRepository;
+    private final LegacyBeverageCleanupService legacyBeverageCleanupService;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -127,6 +128,7 @@ public class BeverageService {
         findMemberForUpdate(memberId);
         beverageItemRepository.deleteByMemberId(memberId);
         beveragePreferenceAuditRepository.deleteByMemberId(memberId);
+        legacyBeverageCleanupService.deleteByMemberId(memberId);
     }
 
     @Transactional

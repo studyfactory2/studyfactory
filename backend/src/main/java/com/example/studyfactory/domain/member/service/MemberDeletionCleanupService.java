@@ -1,7 +1,6 @@
 package com.example.studyfactory.domain.member.service;
 
 import com.example.studyfactory.domain.attendance.repository.AttendanceDailyInitializationRepository;
-import com.example.studyfactory.domain.attendance.repository.AttendanceNoteRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedAbsenceRepository;
 import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
@@ -13,7 +12,8 @@ import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellat
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.room.repository.SeatRepository;
 import com.example.studyfactory.domain.sideDish.repository.SideDishRequestRepository;
-import com.example.studyfactory.domain.studyPresence.service.StudyPresenceService;
+import com.example.studyfactory.domain.studyBreak.repository.StudyBreakSessionRepository;
+import com.example.studyfactory.domain.studyPresence.repository.StudyPresenceSessionRepository;
 import com.example.studyfactory.domain.suggestion.repository.SuggestionRepository;
 import com.example.studyfactory.domain.todo.repository.TodoItemRepository;
 import com.example.studyfactory.domain.todo.repository.TodoReplyRepository;
@@ -30,14 +30,14 @@ public class MemberDeletionCleanupService {
     private final AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
     private final AttendanceUnconfirmedSlotRepository attendanceUnconfirmedSlotRepository;
     private final AttendanceDailyInitializationRepository attendanceDailyInitializationRepository;
-    private final AttendanceNoteRepository attendanceNoteRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final SpecialLeaveRepository specialLeaveRepository;
     private final FixedLeaveRepository fixedLeaveRepository;
     private final LeaveOccurrenceCancellationRepository leaveOccurrenceCancellationRepository;
     private final SuggestionRepository suggestionRepository;
     private final SideDishRequestRepository sideDishRequestRepository;
-    private final StudyPresenceService studyPresenceService;
+    private final StudyBreakSessionRepository studyBreakSessionRepository;
+    private final StudyPresenceSessionRepository studyPresenceSessionRepository;
     private final SeatRepository seatRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TodoItemRepository todoItemRepository;
@@ -50,20 +50,30 @@ public class MemberDeletionCleanupService {
         attendanceReviewedAbsenceRepository.deleteByMemberId(memberId);
         attendanceUnconfirmedSlotRepository.deleteByMemberId(memberId);
         attendanceDailyInitializationRepository.deleteByMemberId(memberId);
-        attendanceDailyInitializationRepository.deleteByInitializedByMemberId(memberId);
-        attendanceNoteRepository.deleteByCreatedByMemberId(memberId);
+        leaveOccurrenceCancellationRepository.deleteByMemberId(memberId);
         leaveRequestRepository.deleteByMemberId(memberId);
         specialLeaveRepository.deleteByMemberId(memberId);
         fixedLeaveRepository.deleteByMemberId(memberId);
-        leaveOccurrenceCancellationRepository.deleteByMemberId(memberId);
+        todoReplyRepository.deleteByTodoTargetMemberId(memberId);
         todoReplyRepository.deleteByMemberId(memberId);
         todoItemRepository.deleteByTargetMemberId(memberId);
-        todoItemRepository.deleteByCreatedByMemberId(memberId);
         weeklyPlanService.deleteAllByMemberId(memberId);
         suggestionRepository.deleteByReferenceInformationMemberId(memberId);
         sideDishRequestRepository.deleteByReferenceInformationMemberId(memberId);
-        studyPresenceService.closeActiveSessionForMemberDeletion(memberId);
+        studyBreakSessionRepository.deleteByMemberId(memberId);
+        studyPresenceSessionRepository.deleteByMemberId(memberId);
         seatRepository.clearMemberAssignment(memberId);
         refreshTokenRepository.deleteByMemberId(memberId);
+
+        // A manager's deletion must not erase another member's attendance, leave,
+        // or shared branch work. Remove optional attribution, not the records.
+        // Non-null audit IDs and name-only staff schedules are not ownership links.
+        attendanceRepository.clearMarkedByMemberId(memberId);
+        attendanceReviewedAbsenceRepository.clearReviewedByMemberId(memberId);
+        attendanceUnconfirmedSlotRepository.clearClearedByMemberId(memberId);
+        suggestionRepository.clearResolvedByMemberId(memberId);
+        todoItemRepository.clearCreatedByMember(memberId);
+        todoItemRepository.clearCompletedByMemberId(memberId);
+        studyPresenceSessionRepository.clearClosedByMemberId(memberId);
     }
 }

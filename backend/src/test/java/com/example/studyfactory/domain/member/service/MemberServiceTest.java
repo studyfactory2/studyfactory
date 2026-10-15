@@ -454,6 +454,67 @@ class MemberServiceTest {
         then(memberRepository).should().delete(targetStaff);
     }
 
+    @Test
+    @DisplayName("관리자도 현재 로그인한 자신의 계정을 삭제할 수 없다")
+    void rejectDeletingSelf() {
+        Member admin = createRegisteredMember(1L, MemberRole.ADMIN, 1L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> memberService.delete(1L, 1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("현재 로그인한 계정은 삭제할 수 없습니다.");
+
+        then(memberDeletionCleanupService).shouldHaveNoInteractions();
+        then(memberRepository).should(never()).delete(admin);
+    }
+
+    @Test
+    @DisplayName("다른 활성 관리자가 남으면 관리자 계정을 삭제할 수 있다")
+    void deleteAdministratorWhenAnotherActiveAdministratorRemains() {
+        Member admin = createRegisteredMember(2L, MemberRole.ADMIN, 1L);
+        Member target = createRegisteredMember(1L, MemberRole.ADMIN, 2L);
+        given(memberRepository.findAllByRoleForUpdate(MemberRole.ADMIN)).willReturn(List.of(target, admin));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(admin));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(target));
+
+        memberService.delete(2L, 1L);
+
+        then(memberDeletionCleanupService).should().cleanup(1L);
+        then(memberRepository).should().delete(target);
+    }
+
+    @Test
+    @DisplayName("아직 가입하지 않은 관리자를 남겨 마지막 활성 관리자를 삭제할 수 없다")
+    void rejectDeletingLastActiveAdministrator() {
+        Member pendingAdmin = createPreRegisteredMember(MemberRole.ADMIN);
+        Member target = createRegisteredMember(2L, MemberRole.ADMIN, 1L);
+        given(memberRepository.findAllByRoleForUpdate(MemberRole.ADMIN)).willReturn(List.of(pendingAdmin, target));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(pendingAdmin));
+        given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> memberService.delete(1L, 2L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("마지막 활성 관리자 계정은 삭제할 수 없습니다.");
+
+        then(memberDeletionCleanupService).shouldHaveNoInteractions();
+        then(memberRepository).should(never()).delete(target);
+    }
+
+    @Test
+    @DisplayName("이미 삭제된 관리자는 대기 중이던 다른 회원 삭제를 실행할 수 없다")
+    void rejectDeletionByMissingOperator() {
+        given(memberRepository.findById(2L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> memberService.delete(2L, 1L))
+                .isInstanceOf(MemberException.class)
+                .hasMessageContaining("존재하지 않는 사원입니다.");
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(memberRepository);
+        order.verify(memberRepository).findAllByRoleForUpdate(MemberRole.ADMIN);
+        order.verify(memberRepository).findById(2L);
+        then(memberDeletionCleanupService).shouldHaveNoInteractions();
+    }
+
     private Member createPreRegisteredMember() {
         return createPreRegisteredMember(MemberRole.MEMBER);
     }

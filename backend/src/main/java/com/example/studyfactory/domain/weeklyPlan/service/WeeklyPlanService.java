@@ -73,7 +73,7 @@ public class WeeklyPlanService {
 
     @Transactional
     public WeeklyPlanResponse saveMine(Long memberId, WeeklyPlanSaveRequest request) {
-        Member member = findMember(memberId);
+        Member member = findMemberForUpdate(memberId);
         LocalDate weekStartDate = resolveWeekStartDate(request.weekStartDate());
         WeeklyPlanGoal goal = weeklyPlanGoalRepository
                 .findByMemberIdAndWeekStartDate(member.getId(), weekStartDate)
@@ -120,7 +120,7 @@ public class WeeklyPlanService {
 
     @Transactional
     public MonthlyPlanGoalResponse saveMonthlyGoal(Long memberId, MonthlyPlanGoalRequest request) {
-        Member member = findMember(memberId);
+        Member member = findMemberForUpdate(memberId);
         YearMonth yearMonth = resolveMonth(request.month());
         MonthlyPlanGoal monthlyPlanGoal = monthlyPlanGoalRepository
                 .findByMemberIdAndMonth(member.getId(), yearMonth.toString())
@@ -153,6 +153,10 @@ public class WeeklyPlanService {
 
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
+    }
+
+    private Member findMemberForUpdate(Long memberId) {
+        return memberRepository.findByIdForUpdate(memberId).orElseThrow(MemberException::memberNotFound);
     }
 
     private LocalDate resolveWeekStartDate(LocalDate weekStartDate) {
