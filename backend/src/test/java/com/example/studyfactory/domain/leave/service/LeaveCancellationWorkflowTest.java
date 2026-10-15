@@ -43,6 +43,7 @@ import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -51,6 +52,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -61,6 +63,7 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -101,6 +104,7 @@ class LeaveCancellationWorkflowTest {
     @Autowired private LeaveService leaveService;
     @Autowired private StudyTimeLeaveExclusionService studyTimeLeaveExclusionService;
     @Autowired private StudyPresenceSessionRepository presenceRepository;
+    @Autowired private WorkflowClock clock;
 
     private Branch branch;
     private Member staff;
@@ -109,10 +113,138 @@ class LeaveCancellationWorkflowTest {
 
     @BeforeEach
     void setUp() {
+        clock.setInstant(NOW);
         branch = branchRepository.save(new Branch("취소 검증 " + FIXTURE_SEQUENCE.incrementAndGet()));
         staff = member(branch, "담당", MemberRole.STAFF, null);
         admin = member(branch, "관리자", MemberRole.ADMIN, null);
         member = member(branch, "회원", MemberRole.MEMBER, 12);
+    }
+
+    @ParameterizedTest(name = "{0} / 서울 {1}")
+    @MethodSource("lateSelfServiceMorningTimes")
+    @DisplayName("회원과 스태프는 1교시 이후에도 오전반차를 신청하며 출석과 관리자 사유 및 오후 교시를 보존한다")
+    void lateMorningSelfServicePreservesAttendanceAndManagerRecords(MemberRole role, LocalTime time) throws Exception {
+        clock.setInstant(TODAY.atTime(time).atZone(clock.getZone()).toInstant());
+        member = member(branch, "오전반차 신청", role, 13);
+        SpecialLeave late = special(TODAY, "1", "지각");
+        Attendance morningPresent = present(TODAY, 2);
+        Attendance afternoonPresent = present(TODAY, 5);
+        SpecialLeave afternoonReason = special(TODAY, "6", "시험");
+        AttendanceReviewedAbsence afternoonAbsence = reviewed(TODAY, 7);
+        unconfirmed(TODAY, 4);
+        StudyPresenceSession presence = presenceRepository.save(StudyPresenceSession.qrCheckIn(
+                member.getId(), branch.getId(), TODAY.atTime(9, 0).atZone(clock.getZone()).toInstant()));
+        AttendanceBoardRowResponse before = row(TODAY);
+
+        requestMorningLeave(member, TODAY)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.memberId").value(member.getId()))
+                .andExpect(jsonPath("$.leaveDate").value(TODAY.toString()))
+                .andExpect(jsonPath("$.leaveType").value("MORNING"));
+
+        AttendanceBoardRowResponse after = row(TODAY);
+        assertThat(after.slots()).containsExactly("지각", "O", "오전", "오전", "O", "시험", "X");
+        assertThat(after.slotSources().subList(0, 4))
+                .containsExactly("MANAGER_LEAVE", "NONE", "MEMBER_LEAVE", "MEMBER_LEAVE");
+        assertThat(after.slots().subList(4, 7)).containsExactlyElementsOf(before.slots().subList(4, 7));
+        assertThat(after.slotSources().subList(4, 7)).containsExactlyElementsOf(before.slotSources().subList(4, 7));
+        assertThat(attendanceRepository.findById(morningPresent.getId())).isPresent();
+        assertThat(attendanceRepository.findById(afternoonPresent.getId())).isPresent();
+        assertThat(specialLeaveRepository.findById(late.getId())).get()
+                .extracting(SpecialLeave::getSlots).isEqualTo("1");
+        assertThat(specialLeaveRepository.findById(afternoonReason.getId())).get()
+                .extracting(SpecialLeave::getSlots).isEqualTo("6");
+        assertThat(reviewedAbsenceRepository.findById(afternoonAbsence.getId())).isPresent();
+        assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), TODAY, 4)).isFalse();
+        assertThat(presenceRepository.findById(presence.getId())).get().satisfies(saved -> {
+            assertThat(saved.getCheckedInAt()).isEqualTo(presence.getCheckedInAt());
+            assertThat(saved.getCheckedOutAt()).isNull();
+            assertThat(saved.isActive()).isTrue();
+        });
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "STAFF"})
+    @DisplayName("늦은 본인 오전반차 신청은 관리자가 확인한 결석을 덮어쓰지 않는다")
+    void lateMorningSelfServiceKeepsReviewedAbsence(MemberRole role) throws Exception {
+        clock.setInstant(TODAY.atTime(16, 31).atZone(clock.getZone()).toInstant());
+        member = member(branch, "결석 확인 회원", role, 13);
+        AttendanceReviewedAbsence absence = reviewed(TODAY, 3);
+        AttendanceBoardRowResponse before = row(TODAY);
+
+        requestMorningLeave(member, TODAY).andExpect(status().isCreated());
+
+        assertThat(row(TODAY).slots()).containsExactly("오전", "오전", "X", "오전", "X", "X", "X");
+        assertThat(row(TODAY).slotSources().get(2)).isEqualTo(before.slotSources().get(2));
+        assertThat(reviewedAbsenceRepository.findById(absence.getId())).isPresent();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MemberRole.class, names = {"MEMBER", "STAFF"})
+    @DisplayName("당일 늦은 반차 허용은 회원과 스태프의 과거 본인 신청을 허용하지 않는다")
+    void lateMorningSelfServiceStillRejectsPastDate(MemberRole role) throws Exception {
+        clock.setInstant(TODAY.atTime(16, 31).atZone(clock.getZone()).toInstant());
+        Member applicant = member(branch, "지난 날짜 신청", role, 13);
+
+        requestMorningLeave(applicant, TODAY.minusDays(1)).andExpect(status().isBadRequest());
+
+        assertThat(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(applicant.getId())).isEmpty();
+    }
+
+    @ParameterizedTest(name = "{0} / 서울 {1}")
+    @MethodSource("lateManagerMorningTimes")
+    @DisplayName("관리자와 스태프 기타에서도 1교시 이후 오전반차를 기록하며 출석과 오후 교시 및 원천 기록을 보존한다")
+    void lateManagerMorningReasonPreservesActualAttendanceAndOtherPeriods(MemberRole role, LocalTime time) throws Exception {
+        clock.setInstant(TODAY.atTime(time).atZone(clock.getZone()).toInstant());
+        Member operator = role == MemberRole.ADMIN ? admin : staff;
+        SpecialLeave originalReason = special(TODAY, "1", "지각");
+        LeaveRequest afternoonLeave = leaveRequestRepository.save(
+                new LeaveRequest(member.getId(), branch.getId(), TODAY, LeaveType.AFTERNOON));
+        Attendance morningPresent = present(TODAY, 2);
+        Attendance afternoonPresent = present(TODAY, 5);
+        SpecialLeave afternoonReason = special(TODAY, "6", "시험");
+        AttendanceReviewedAbsence afternoonAbsence = reviewed(TODAY, 7);
+        AttendanceBoardRowResponse before = row(TODAY);
+
+        mockMvc.perform(post("/api/attendances/daily-board/reasons")
+                        .header("Authorization", token(operator))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(member, dates(TODAY), "[1,2,3,4]", "오전반차")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requestedPeriodCount").value(4))
+                .andExpect(jsonPath("$.appliedPeriodCount").value(3))
+                .andExpect(jsonPath("$.preservedPresentCount").value(1));
+
+        AttendanceBoardRowResponse after = row(TODAY);
+        assertThat(after.slots()).containsExactly("오전", "O", "오전", "오전", "O", "시험", "X");
+        assertThat(after.slots().subList(4, 7)).containsExactlyElementsOf(before.slots().subList(4, 7));
+        assertThat(after.slotSources().subList(4, 7)).containsExactlyElementsOf(before.slotSources().subList(4, 7));
+        assertThat(attendanceRepository.findById(morningPresent.getId())).isPresent();
+        assertThat(attendanceRepository.findById(afternoonPresent.getId())).isPresent();
+        assertThat(specialLeaveRepository.findById(originalReason.getId())).get()
+                .extracting(SpecialLeave::getSlots).isEqualTo("1");
+        assertThat(specialLeaveRepository.findById(afternoonReason.getId())).get()
+                .extracting(SpecialLeave::getSlots).isEqualTo("6");
+        assertThat(leaveRequestRepository.findById(afternoonLeave.getId())).isPresent();
+        assertThat(reviewedAbsenceRepository.findById(afternoonAbsence.getId())).isPresent();
+        assertThat(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), TODAY))
+                .filteredOn(item -> "오전반차".equals(item.getReason())).singleElement().satisfies(saved -> {
+                    assertThat(saved.getSlots()).isEqualTo("1,3,4");
+                    assertThat(saved.getCreatedByMemberId()).isEqualTo(operator.getId());
+                });
+    }
+
+    private static Stream<Arguments> lateSelfServiceMorningTimes() {
+        return lateMorningTimes(MemberRole.MEMBER, MemberRole.STAFF);
+    }
+
+    private static Stream<Arguments> lateManagerMorningTimes() {
+        return lateMorningTimes(MemberRole.ADMIN, MemberRole.STAFF);
+    }
+
+    private static Stream<Arguments> lateMorningTimes(MemberRole... roles) {
+        return Stream.of(roles).flatMap(role -> Stream.of(LocalTime.of(9, 30), LocalTime.of(10, 31), LocalTime.of(16, 31))
+                .map(time -> Arguments.of(role, time)));
     }
 
     @Test
@@ -658,6 +790,12 @@ class LeaveCancellationWorkflowTest {
         return mockMvc.perform(delete("/api/leaves/fixed/{id}", rule.getId()).header("Authorization", token(staff)));
     }
 
+    private ResultActions requestMorningLeave(Member applicant, LocalDate date) throws Exception {
+        return mockMvc.perform(post("/api/leaves").header("Authorization", token(applicant))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"leaveDate\":\"" + date + "\",\"leaveType\":\"MORNING\"}"));
+    }
+
     private ResultActions cancel(Member operator, Member target, String dateJson, String slotsJson) throws Exception {
         return mockMvc.perform(post("/api/leaves/cancellations").header("Authorization", token(operator))
                 .contentType(MediaType.APPLICATION_JSON).content(body(target, dateJson, slotsJson, null)));
@@ -724,8 +862,37 @@ class LeaveCancellationWorkflowTest {
     static class FixedClockConfig {
         @Bean
         @Primary
-        Clock leaveCancellationClock() {
-            return Clock.fixed(NOW, ZoneId.of("Asia/Seoul"));
+        WorkflowClock leaveCancellationClock() {
+            return new WorkflowClock(new AtomicReference<>(NOW), ZoneId.of("Asia/Seoul"));
+        }
+    }
+
+    static final class WorkflowClock extends Clock {
+        private final AtomicReference<Instant> now;
+        private final ZoneId zone;
+
+        private WorkflowClock(AtomicReference<Instant> now, ZoneId zone) {
+            this.now = now;
+            this.zone = zone;
+        }
+
+        void setInstant(Instant instant) {
+            now.set(instant);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return new WorkflowClock(now, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return now.get();
         }
     }
 }
