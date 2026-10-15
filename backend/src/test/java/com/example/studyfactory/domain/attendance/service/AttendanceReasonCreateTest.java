@@ -3,6 +3,7 @@ package com.example.studyfactory.domain.attendance.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -286,12 +287,12 @@ class AttendanceReasonCreateTest {
     }
 
     @Test
-    @DisplayName("하루라도 과거이거나 입사 전이면 전체 선택을 변경하지 않는다")
+    @DisplayName("하루라도 입사 전이면 과거 오늘 미래 전체 선택을 변경하지 않는다")
     void validatesAllDatesBeforeChangingAnyCell() {
         saveUnconfirmed(member, DATE, 1);
         saveReviewedAbsence(member, DATE, 1);
-        assertThatThrownBy(() -> create(member, List.of(DATE, DATE.minusDays(1)), List.of(1), "지각"))
-                .isInstanceOf(AttendanceException.class).hasMessageContaining("이전 날짜");
+        assertThatThrownBy(() -> create(member, List.of(DATE, DATE.minusDays(2)), List.of(1), "지각"))
+                .isInstanceOf(AttendanceException.class).hasMessageContaining("입사일");
         Member futureMember = createMember(branch, "입사예정", MemberRole.MEMBER, 13, DATE.plusDays(1));
         saveUnconfirmed(futureMember, DATE.plusDays(1), 1);
         assertThatThrownBy(() -> create(futureMember, List.of(DATE.plusDays(1), DATE), List.of(1), "지각"))
@@ -335,6 +336,92 @@ class AttendanceReasonCreateTest {
                 .andExpect(jsonPath("$.preservedPresentCount").value(1));
     }
 
+    @ParameterizedTest(name = "{0} / 날짜 차이 {1}")
+    @MethodSource("managerSelectedDates")
+    @DisplayName("관리자와 스태프는 과거 오늘 미래의 모든 교시를 기록하고 한 교시만 미확인 또는 결석으로 수정한다")
+    void managersMayEditSelectedLedgerDate(MemberRole role, int offset) throws Exception {
+        Member operator = role == MemberRole.STAFF ? staff
+                : createMember(branch, "관리자", MemberRole.ADMIN, null, DATE.minusDays(1));
+        LocalDate date = DATE.plusDays(offset);
+        StudyPresenceSession presence = presenceRepository.save(
+                StudyPresenceSession.qrCheckIn(member.getId(), branch.getId(), NOW));
+        for (int slot = 1; slot <= 7; slot++) {
+            updateSlot(operator, date, slot, "PRESENT");
+        }
+        assertThat(row(member, date).slots()).containsExactly("O", "O", "O", "O", "O", "O", "O");
+
+        updateSlot(operator, date, 3, "UNCONFIRMED");
+        updateSlot(operator, date, 5, "ABSENT");
+
+        assertThat(row(member, date).slots()).containsExactly("O", "O", "X", "O", "X", "O", "O");
+        assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), date, 3)).isTrue();
+        assertThat(reviewedAbsenceRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), date, 5)).isTrue();
+        assertThat(attendanceRepository.findByMemberIdAndAttendanceDateBetween(member.getId(), date, date))
+                .extracting(Attendance::getSlot).containsExactly(1, 2, 4, 6, 7);
+        assertThat(presenceRepository.findById(presence.getId())).get().satisfies(saved -> {
+            assertThat(saved.getCheckedInAt()).isEqualTo(NOW);
+            assertThat(saved.getCheckedOutAt()).isNull();
+        });
+    }
+
+    @ParameterizedTest(name = "{0} / 날짜 차이 {1}")
+    @MethodSource("managerSelectedDates")
+    @DisplayName("관리자와 스태프의 과거 오늘 미래 기타 등록은 실제 출석과 원본 휴무를 보존한다")
+    void managersMayAddReasonsOnSelectedLedgerDate(MemberRole role, int offset) throws Exception {
+        Member operator = role == MemberRole.STAFF ? staff
+                : createMember(branch, "관리자", MemberRole.ADMIN, null, DATE.minusDays(1));
+        LocalDate date = DATE.plusDays(offset);
+        LeaveRequest leave = leaveRequestRepository.save(
+                new LeaveRequest(member.getId(), branch.getId(), date, LeaveType.AFTERNOON));
+        SpecialLeave original = specialLeaveRepository.save(
+                new SpecialLeave(member.getId(), branch.getId(), date, "4,6", "알바", null, false, staff.getId()));
+        Attendance actual = saveAttendance(member, date, 4, null);
+        saveUnconfirmed(member, date, 5);
+        saveReviewedAbsence(member, date, 6);
+
+        mockMvc.perform(post("/api/attendances/daily-board/reasons")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(operator))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json("[\"" + date + "\"]", "[4,5,6]", "\"병원\"")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requestedPeriodCount").value(3))
+                .andExpect(jsonPath("$.appliedPeriodCount").value(2))
+                .andExpect(jsonPath("$.preservedPresentCount").value(1));
+
+        assertThat(row(member, date).slots()).containsExactly("X", "X", "X", "O", "병원", "병원", "오후");
+        assertThat(attendanceRepository.findById(actual.getId())).isPresent();
+        assertThat(leaveRequestRepository.findById(leave.getId())).isPresent();
+        assertThat(specialLeaveRepository.findById(original.getId())).get()
+                .extracting(SpecialLeave::getSlots).isEqualTo("4,6");
+        assertThat(unconfirmedSlotRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), date, 5)).isFalse();
+        assertThat(reviewedAbsenceRepository.existsByMemberIdAndAttendanceDateAndSlot(member.getId(), date, 6)).isFalse();
+    }
+
+    @Test
+    @DisplayName("과거 오늘 미래를 함께 선택한 기타 신청은 선택한 날짜에만 적용된다")
+    void supportsMixedPastTodayFutureReasonBatch() {
+        create(member, List.of(DATE.plusDays(1), DATE.minusDays(1), DATE), List.of(2), "쉼");
+
+        for (LocalDate date : List.of(DATE.minusDays(1), DATE, DATE.plusDays(1))) {
+            assertThat(row(member, date).slots()).containsExactly("X", "쉼", "X", "X", "X", "X", "X");
+        }
+        assertThat(row(member, DATE.plusDays(2)).slots()).containsOnly("X");
+    }
+
+    private static Stream<Arguments> managerSelectedDates() {
+        return Stream.of(MemberRole.STAFF, MemberRole.ADMIN)
+                .flatMap(role -> Stream.of(-1, 0, 1).map(offset -> Arguments.of(role, offset)));
+    }
+
+    private void updateSlot(Member operator, LocalDate date, int slot, String state) throws Exception {
+        mockMvc.perform(patch("/api/attendances/daily-board/slot")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.createAccessToken(operator))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"memberId\":" + member.getId() + ",\"date\":\"" + date + "\",\"slot\":"
+                                + slot + ",\"status\":\"" + state + "\"}"))
+                .andExpect(status().isNoContent());
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidHttpRequests")
     @DisplayName("잘못된 입력은 HTTP 400으로 거절하고 기존 기록을 보존한다")
@@ -361,7 +448,7 @@ class AttendanceReasonCreateTest {
                 Arguments.of("날짜 null 요소", "[\"2026-10-13\",null]", "[1]", "\"지각\""),
                 Arguments.of("날짜 중복", "[\"2026-10-13\",\"2026-10-13\"]", "[1]", "\"지각\""),
                 Arguments.of("최대 날짜 초과", maxPlusOneDates, "[1]", "\"지각\""),
-                Arguments.of("과거 날짜", "[\"2026-10-12\"]", "[1]", "\"지각\""),
+                Arguments.of("입사 전 날짜", "[\"2026-10-11\"]", "[1]", "\"지각\""),
                 Arguments.of("교시 없음", validDates, "null", "\"지각\""),
                 Arguments.of("빈 교시", validDates, "[]", "\"지각\""),
                 Arguments.of("교시 null 요소", validDates, "[1,null]", "\"지각\""),

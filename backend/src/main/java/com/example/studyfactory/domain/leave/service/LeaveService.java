@@ -222,7 +222,7 @@ public class LeaveService {
         Member targetMember = findMemberForUpdate(request.memberId());
         ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
         validateFixedLeaveRequest(request);
-        validateSelectedDates(targetMember, List.of(request.leaveDate()), request.slots());
+        validateRecurringDates(targetMember, List.of(request.leaveDate()), request.slots());
         return createFixedRule(targetMember, request.leaveDate(), request.slots(), request.reason());
     }
 
@@ -232,7 +232,7 @@ public class LeaveService {
         ManagerAccessPolicy.validateManager(currentMember);
         Member targetMember = findMemberForUpdate(request.memberId());
         ManagerAccessPolicy.validateManagerTarget(currentMember, targetMember);
-        validateSelectedDates(targetMember, request.dates(), request.slots());
+        validateRecurringDates(targetMember, request.dates(), request.slots());
         if (request.reason() == null || request.reason().isBlank() || request.reason().trim().length() > 40) {
             throw LeaveException.invalidSpecialLeaveRequest();
         }
@@ -512,13 +512,18 @@ public class LeaveService {
                 .anyMatch(requestedSlots::contains);
     }
 
+    private void validateRecurringDates(Member member, List<LocalDate> dates, List<Integer> slots) {
+        validateSelectedDates(member, dates, slots);
+        // A selected-day correction must not make new recurring rules retroactive.
+        dates.forEach(this::validateLeaveDate);
+    }
+
     private void validateSelectedDates(Member member, List<LocalDate> dates, List<Integer> slots) {
         if (dates == null || dates.isEmpty() || dates.size() > 31 || dates.stream().anyMatch(Objects::isNull)
                 || dates.stream().distinct().count() != dates.size()
                 || slots == null || slots.isEmpty() || slots.size() > 7 || slots.stream().anyMatch(slot -> slot == null || slot < 1 || slot > 7)
                 || slots.stream().distinct().count() != slots.size()) throw LeaveException.invalidSpecialLeaveRequest();
         for (LocalDate date : dates) {
-            validateLeaveDate(date);
             if (member.getJoinDate() != null && date.isBefore(member.getJoinDate())) throw LeaveException.invalidSpecialLeaveRequest();
         }
     }

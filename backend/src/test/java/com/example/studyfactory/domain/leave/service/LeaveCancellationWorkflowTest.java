@@ -397,6 +397,83 @@ class LeaveCancellationWorkflowTest {
         assertThat(row(TODAY.plusDays(2)).slots().get(1)).isEqualTo("O");
     }
 
+    @ParameterizedTest(name = "{0} / 날짜 차이 {1}")
+    @MethodSource("managerSelectedDates")
+    @DisplayName("관리자와 스태프는 과거 오늘 미래의 선택 휴무만 취소하며 출석과 원천 및 반복 규칙을 보존한다")
+    void managerCancellationSupportsSelectedLedgerDate(MemberRole role, int offset) throws Exception {
+        Member operator = role == MemberRole.ADMIN ? admin : staff;
+        LocalDate date = TODAY.plusDays(offset);
+        FixedLeave rule = fixed(date.getDayOfWeek(), "1,2,3", "알바");
+        generated(rule, date, "1,2,3");
+        SpecialLeave original = special(date, "1,2,3", "시험");
+        LeaveRequest halfDay = leaveRequestRepository.save(
+                new LeaveRequest(member.getId(), branch.getId(), date, LeaveType.MORNING));
+        Attendance actual = present(date, 2);
+
+        cancel(operator, member, dates(date), "[1,2]")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cancelledPeriodCount").value(2))
+                .andExpect(jsonPath("$.preservedPresentPeriodCount").value(1));
+        leaveService.generateFixedLeaves(admin.getId());
+
+        assertThat(row(date).slots().subList(0, 4)).containsExactly("X", "O", "시험", "오전");
+        assertThat(calendar(date)).allSatisfy(item -> {
+            assertThat(List.of(item.slots().split(","))).doesNotContain("1", "2");
+        });
+        assertThat(calendar(date.plusWeeks(1))).anySatisfy(item -> {
+            assertThat(item.label()).isEqualTo("알바");
+            assertThat(item.slots()).isEqualTo("1,2,3");
+        });
+        assertThat(attendanceRepository.findById(actual.getId())).isPresent();
+        assertThat(leaveRequestRepository.findById(halfDay.getId())).isPresent();
+        assertThat(specialLeaveRepository.findById(original.getId())).get()
+                .extracting(SpecialLeave::getSlots).isEqualTo("1,2,3");
+        assertThat(fixedLeaveRepository.findById(rule.getId())).get().satisfies(saved -> {
+            assertThat(saved.isActive()).isTrue();
+            assertThat(saved.getStopDate()).isNull();
+        });
+        cancel(operator, member, dates(date), "[1,2]")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cancelledPeriodCount").value(0));
+    }
+
+    @Test
+    @DisplayName("과거 오늘 미래 휴무를 함께 취소해도 선택하지 않은 날짜와 교시를 보존한다")
+    void cancelsMixedPastTodayFutureDates() throws Exception {
+        for (LocalDate date : List.of(TODAY.minusDays(1), TODAY, TODAY.plusDays(1), TODAY.plusDays(2))) {
+            special(date, "1,2", "쉼");
+        }
+
+        cancel(staff, member, dates(TODAY.plusDays(1), TODAY.minusDays(1), TODAY), "[1]")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cancelledPeriodCount").value(3));
+
+        for (LocalDate date : List.of(TODAY.minusDays(1), TODAY, TODAY.plusDays(1))) {
+            assertThat(calendar(date)).singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("2"));
+        }
+        assertThat(calendar(TODAY.plusDays(2))).singleElement()
+                .satisfies(item -> assertThat(item.slots()).isEqualTo("1,2"));
+    }
+
+    @Test
+    @DisplayName("관리자 날짜 교정 허용은 반복 규칙 생성의 과거 금지를 바꾸지 않는다")
+    void selectedDateCorrectionDoesNotPermitRetroactiveRecurringCreation() throws Exception {
+        batch(staff, member, dates(TODAY.plusDays(1), TODAY.minusDays(1)), "[1]", "알바")
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/leaves/fixed").header("Authorization", token(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"memberId\":" + member.getId() + ",\"leaveDate\":\"" + TODAY.minusDays(1)
+                                + "\",\"slots\":[1],\"reason\":\"알바\"}"))
+                .andExpect(status().isBadRequest());
+
+        assertThat(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(member.getId())).isEmpty();
+    }
+
+    private static Stream<Arguments> managerSelectedDates() {
+        return Stream.of(MemberRole.STAFF, MemberRole.ADMIN)
+                .flatMap(role -> Stream.of(-1, 0, 1).map(offset -> Arguments.of(role, offset)));
+    }
+
     @Test
     @DisplayName("기존 특별휴무 단건 삭제는 해당 원천만 취소하며 과거 교정과 실제 출석 보존을 지원한다")
     void specialSlotCancellationIsSourceScopedIncludingPastCorrection() throws Exception {
@@ -513,7 +590,9 @@ class LeaveCancellationWorkflowTest {
         FixedLeave work = fixed(TODAY.getDayOfWeek(), "1,2", "알바");
 
         for (Member unauthorized : List.of(member, foreignStaff)) {
-            cancel(unauthorized, member, dates(TODAY), "[1]").andExpect(status().isForbidden());
+            for (LocalDate date : List.of(TODAY.minusDays(1), TODAY, TODAY.plusDays(1))) {
+                cancel(unauthorized, member, dates(date), "[1]").andExpect(status().isForbidden());
+            }
             batch(unauthorized, member, dates(TODAY.plusDays(2)), "[1]", "학교").andExpect(status().isForbidden());
             mockMvc.perform(delete("/api/leaves/fixed/{id}", work.getId())
                             .header("Authorization", token(unauthorized)))
@@ -528,7 +607,7 @@ class LeaveCancellationWorkflowTest {
 
     private static Stream<Arguments> invalidCancellationBodies() {
         return Stream.of(
-                Arguments.of("과거 포함", dates(TODAY, TODAY.minusDays(1)), "[1]"),
+                Arguments.of("입사 전 포함", dates(TODAY, TODAY.minusMonths(1).minusDays(1)), "[1]"),
                 Arguments.of("중복 날짜", dates(TODAY, TODAY), "[1]"),
                 Arguments.of("빈 날짜", "[]", "[1]"),
                 Arguments.of("날짜 null", "null", "[1]"),

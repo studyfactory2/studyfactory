@@ -197,10 +197,8 @@ public class AttendanceService {
                 || request.reason() == null || request.reason().isBlank() || request.reason().trim().length() > 40) {
             throw AttendanceException.invalidReasonRequest();
         }
-        LocalDate today = LocalDate.now(clock);
-        if (request.dates().stream().anyMatch(date -> date.isBefore(today))) {
-            throw AttendanceException.pastReasonDate();
-        }
+        // Managers may correct the selected ledger date, including past dates.
+        // Membership start and authorization are checked before changing any cell.
     }
 
     private boolean alreadyHasReason(Long memberId, LocalDate date, List<Integer> slots, String reason) {
