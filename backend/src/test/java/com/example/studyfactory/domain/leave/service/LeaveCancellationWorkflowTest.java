@@ -2,6 +2,7 @@ package com.example.studyfactory.domain.leave.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -27,10 +28,12 @@ import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
+import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.entity.SpecialLeave;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
@@ -96,6 +99,7 @@ class LeaveCancellationWorkflowTest {
     @Autowired private FixedLeaveRepository fixedLeaveRepository;
     @Autowired private SpecialLeaveRepository specialLeaveRepository;
     @Autowired private LeaveRequestRepository leaveRequestRepository;
+    @Autowired private LeaveOccurrenceCancellationRepository cancellationRepository;
     @Autowired private AttendanceRepository attendanceRepository;
     @Autowired private AttendanceReviewedAbsenceRepository reviewedAbsenceRepository;
     @Autowired private AttendanceUnconfirmedSlotRepository unconfirmedSlotRepository;
@@ -395,6 +399,203 @@ class LeaveCancellationWorkflowTest {
             assertThat(saved.getCheckedOutAt()).isNull();
             assertThat(saved.isActive()).isTrue();
         });
+    }
+
+    @Test
+    @DisplayName("휴무 내역 삭제는 같은 사유와 같은 교시의 다른 원천을 건드리지 않는다")
+    void singleOccurrenceCancellationOnlyMasksTheExactSource() throws Exception {
+        SpecialLeave selected = special(TODAY, "1,6,7", "줌수업");
+        SpecialLeave sameLabel = special(TODAY, "6", "줌수업");
+        SpecialLeave otherReason = special(TODAY, "6", "수업");
+        FixedLeave repeat = fixed(TODAY.getDayOfWeek(), "6", "줌수업");
+
+        cancelOccurrence(staff, member, branch.getId(), TODAY, 6, LeaveSourceType.SPECIAL_LEAVE, selected.getId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requestedPeriodCount").value(1))
+                .andExpect(jsonPath("$.cancelledPeriodCount").value(1));
+
+        assertThat(calendar(TODAY)).hasSize(4);
+        assertThat(calendar(TODAY)).filteredOn(item -> item.sourceType() == LeaveSourceType.SPECIAL_LEAVE
+                        && item.sourceId().equals(selected.getId()))
+                .singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("1,7"));
+        for (Long sourceId : List.of(sameLabel.getId(), otherReason.getId())) {
+            assertThat(calendar(TODAY)).filteredOn(item -> item.sourceType() == LeaveSourceType.SPECIAL_LEAVE
+                            && item.sourceId().equals(sourceId))
+                    .singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("6"));
+        }
+        assertThat(calendar(TODAY)).filteredOn(item -> item.sourceType() == LeaveSourceType.FIXED_LEAVE
+                        && item.sourceId().equals(repeat.getId()))
+                .singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("6"));
+        assertThat(specialLeaveRepository.findById(selected.getId())).get()
+                .extracting(SpecialLeave::getSlots).isEqualTo("1,6,7");
+        assertThat(cancellationRepository.findByMemberIdAndLeaveDateBetween(member.getId(), TODAY, TODAY))
+                .singleElement().satisfies(saved -> {
+                    assertThat(saved.getSourceType()).isEqualTo(LeaveSourceType.SPECIAL_LEAVE);
+                    assertThat(saved.getSourceId()).isEqualTo(selected.getId());
+                    assertThat(saved.getSlot()).isEqualTo(6);
+                });
+    }
+
+    @ParameterizedTest
+    @EnumSource(LeaveType.class)
+    @DisplayName("월차 및 오전 오후반차 내역 삭제도 한 교시만 취소한다")
+    void singleOccurrenceCancellationSplitsMemberLeaveWithoutDeletingTheRequest(LeaveType type) throws Exception {
+        LeaveRequest request = leaveRequestRepository.save(new LeaveRequest(member.getId(), branch.getId(), TODAY, type));
+
+        cancelOccurrence(admin, member, branch.getId(), TODAY, 4, LeaveSourceType.MEMBER_LEAVE, request.getId())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cancelledPeriodCount").value(1));
+
+        assertThat(calendar(TODAY)).singleElement().satisfies(item -> {
+            assertThat(item.sourceType()).isEqualTo(LeaveSourceType.MEMBER_LEAVE);
+            assertThat(item.sourceId()).isEqualTo(request.getId());
+            assertThat(item.source()).isEqualTo("LEAVE");
+            assertThat(EffectiveLeaveService.parseSlots(item.slots())).containsExactlyInAnyOrderElementsOf(
+                    EffectiveLeaveService.slotsForType(type).stream().filter(slot -> slot != 4).toList());
+        });
+        assertThat(leaveRequestRepository.findById(request.getId())).get()
+                .extracting(LeaveRequest::getLeaveType).isEqualTo(type);
+    }
+
+    @Test
+    @DisplayName("한 반복휴무 교시 삭제는 다시 생성해도 유지되며 다음 주와 실제 출석 및 입실은 보존한다")
+    void singleRecurringOccurrenceCancellationSurvivesRegenerationAndKeepsAttendance() throws Exception {
+        FixedLeave repeat = fixed(TODAY.getDayOfWeek(), "1,6,7", "줌수업");
+        generated(repeat, TODAY, "1,6,7");
+        Attendance actual = present(TODAY, 6);
+        StudyPresenceSession presence = presenceRepository.save(StudyPresenceSession.qrCheckIn(
+                member.getId(), branch.getId(), NOW.minusSeconds(3600)));
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            cancelOccurrence(staff, member, branch.getId(), TODAY, 6, LeaveSourceType.FIXED_LEAVE, repeat.getId())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.cancelledPeriodCount").value(attempt == 0 ? 1 : 0))
+                    .andExpect(jsonPath("$.preservedPresentPeriodCount").value(1));
+            leaveService.generateFixedLeaves(admin.getId());
+        }
+
+        assertThat(calendar(TODAY)).singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("1,7"));
+        assertThat(calendar(TODAY.plusWeeks(1))).singleElement()
+                .satisfies(item -> assertThat(item.slots()).isEqualTo("1,6,7"));
+        assertThat(fixedLeaveRepository.findById(repeat.getId())).get().satisfies(saved -> {
+            assertThat(saved.isActive()).isTrue();
+            assertThat(saved.getStopDate()).isNull();
+            assertThat(saved.getSlots()).isEqualTo("1,6,7");
+        });
+        assertThat(row(TODAY).slots().get(5)).isEqualTo("O");
+        assertThat(attendanceRepository.findById(actual.getId())).get().satisfies(saved -> {
+            assertThat(saved.getSlot()).isEqualTo(6);
+            assertThat(saved.getCustomStatusText()).isNull();
+            assertThat(saved.getMarkedByMemberId()).isEqualTo(actual.getMarkedByMemberId());
+        });
+        assertThat(presenceRepository.findById(presence.getId())).get().satisfies(saved -> {
+            assertThat(saved.getCheckedInAt()).isEqualTo(presence.getCheckedInAt());
+            assertThat(saved.getCheckedOutAt()).isNull();
+            assertThat(saved.isActive()).isTrue();
+        });
+        assertThat(cancellationRepository.findByMemberIdAndLeaveDateBetween(member.getId(), TODAY, TODAY))
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("아직 생성되지 않은 미래 반복휴무도 선택한 날짜의 한 교시만 삭제된다")
+    void singleProjectedRepeatCanBeCancelledBeforeMaterialization() throws Exception {
+        LocalDate future = TODAY.plusDays(2);
+        FixedLeave repeat = fixed(future.getDayOfWeek(), "1,2", "알바");
+        assertThat(specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(member.getId())).isEmpty();
+
+        cancelOccurrence(staff, member, branch.getId(), future, 1, LeaveSourceType.FIXED_LEAVE, repeat.getId())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cancelledPeriodCount").value(1));
+        leaveService.generateFixedLeaves(admin.getId());
+
+        assertThat(calendar(future)).singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("2"));
+        assertThat(calendar(future.plusWeeks(1))).singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("1,2"));
+    }
+
+    @Test
+    @DisplayName("휴무 달력 응답은 각 원천의 삭제 식별자를 제공한다")
+    void monthlyCalendarExposesTypedSourceIdentity() throws Exception {
+        SpecialLeave selected = special(TODAY, "6", "줌수업");
+
+        mockMvc.perform(get("/api/leaves/monthly-calendar").header("Authorization", token(staff))
+                        .param("memberId", member.getId().toString()).param("year", "2026").param("month", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].leaveDate").value(TODAY.toString()))
+                .andExpect(jsonPath("$[0].slots").value("6"))
+                .andExpect(jsonPath("$[0].source").value("SPECIAL_LEAVE"))
+                .andExpect(jsonPath("$[0].sourceType").value("SPECIAL_LEAVE"))
+                .andExpect(jsonPath("$[0].sourceId").value(selected.getId()));
+    }
+
+    @Test
+    @DisplayName("다른 회원 원천과 없는 원천 또는 다른 교시는 전체 교시 취소로 확대하지 않는다")
+    void missingOrForeignOccurrenceIdentityIsAnIdempotentNoOp() throws Exception {
+        SpecialLeave selected = special(TODAY, "6", "수업");
+        Member other = member(branch, "다른회원", MemberRole.MEMBER, 13);
+        SpecialLeave foreign = specialLeaveRepository.save(new SpecialLeave(
+                other.getId(), branch.getId(), TODAY, "6", "수업", null, false, staff.getId()));
+        for (Long sourceId : List.of(foreign.getId(), Long.MAX_VALUE)) {
+            cancelOccurrence(staff, member, branch.getId(), TODAY, 6, LeaveSourceType.SPECIAL_LEAVE, sourceId)
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.cancelledPeriodCount").value(0));
+        }
+        cancelOccurrence(staff, member, branch.getId(), TODAY, 7, LeaveSourceType.SPECIAL_LEAVE, selected.getId())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cancelledPeriodCount").value(0));
+        cancelOccurrence(staff, member, branch.getId(), TODAY.plusDays(1), 6, LeaveSourceType.SPECIAL_LEAVE, selected.getId())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cancelledPeriodCount").value(0));
+        cancelOccurrence(staff, member, branch.getId(), TODAY, 6, LeaveSourceType.FIXED_LEAVE, selected.getId())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cancelledPeriodCount").value(0));
+
+        assertThat(calendar(TODAY)).singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("6"));
+        assertThat(specialLeaveRepository.findById(foreign.getId())).isPresent();
+        assertThat(cancellationRepository.findByMemberIdAndLeaveDateBetween(member.getId(), TODAY, TODAY.plusDays(1))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("한 내역 삭제도 관리자 권한과 현재 회원 지점 및 요청 지점을 모두 확인한다")
+    void singleOccurrenceCancellationEnforcesManagerAndExactBranchScope() throws Exception {
+        SpecialLeave selected = special(TODAY, "6", "수업");
+        Branch otherBranch = branchRepository.save(new Branch("삭제 외부 지점 " + FIXTURE_SEQUENCE.incrementAndGet()));
+        Member foreignStaff = member(otherBranch, "외부 담당", MemberRole.STAFF, null);
+        for (Member unauthorized : List.of(member, foreignStaff)) {
+            cancelOccurrence(unauthorized, member, branch.getId(), TODAY, 6, LeaveSourceType.SPECIAL_LEAVE, selected.getId())
+                    .andExpect(status().isForbidden());
+        }
+        for (Member operator : List.of(staff, admin)) {
+            cancelOccurrence(operator, member, otherBranch.getId(), TODAY, 6, LeaveSourceType.SPECIAL_LEAVE, selected.getId())
+                    .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(post("/api/leaves/cancellations/occurrence").contentType(MediaType.APPLICATION_JSON)
+                        .content(occurrenceBody(member, branch.getId(), TODAY, 6, LeaveSourceType.SPECIAL_LEAVE, selected.getId())))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(calendar(TODAY)).singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("6"));
+        assertThat(cancellationRepository.findByMemberIdAndLeaveDateBetween(member.getId(), TODAY, TODAY)).isEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidOccurrenceFields")
+    @DisplayName("잘못된 내역 삭제 요청은 아무 휴무도 취소하지 않는다")
+    void singleOccurrenceCancellationRejectsInvalidFields(String field, String replacement) throws Exception {
+        SpecialLeave selected = special(TODAY, "6", "수업");
+        String valid = occurrenceBody(member, branch.getId(), TODAY, 6, LeaveSourceType.SPECIAL_LEAVE, selected.getId());
+        String invalid = valid.replaceAll("\"" + field + "\":(\"[^\"]*\"|[0-9]+)", "\"" + field + "\":" + replacement);
+
+        mockMvc.perform(post("/api/leaves/cancellations/occurrence").header("Authorization", token(staff))
+                        .contentType(MediaType.APPLICATION_JSON).content(invalid))
+                .andExpect(status().isBadRequest());
+
+        assertThat(calendar(TODAY)).singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("6"));
+        assertThat(cancellationRepository.findByMemberIdAndLeaveDateBetween(member.getId(), TODAY, TODAY)).isEmpty();
+    }
+
+    private static Stream<Arguments> invalidOccurrenceFields() {
+        return Stream.of(
+                Arguments.of("memberId", "null"), Arguments.of("memberId", "0"),
+                Arguments.of("branchId", "null"), Arguments.of("branchId", "0"),
+                Arguments.of("leaveDate", "null"), Arguments.of("leaveDate", "\"2026-09-14\""),
+                Arguments.of("slot", "null"), Arguments.of("slot", "0"), Arguments.of("slot", "8"),
+                Arguments.of("sourceType", "null"), Arguments.of("sourceType", "\"LEAVE\""),
+                Arguments.of("sourceId", "null"), Arguments.of("sourceId", "0")
+        );
     }
 
     @Test
@@ -799,6 +1000,19 @@ class LeaveCancellationWorkflowTest {
     private ResultActions cancel(Member operator, Member target, String dateJson, String slotsJson) throws Exception {
         return mockMvc.perform(post("/api/leaves/cancellations").header("Authorization", token(operator))
                 .contentType(MediaType.APPLICATION_JSON).content(body(target, dateJson, slotsJson, null)));
+    }
+
+    private ResultActions cancelOccurrence(Member operator, Member target, Long branchId, LocalDate date, int slot,
+                                           LeaveSourceType sourceType, Long sourceId) throws Exception {
+        return mockMvc.perform(post("/api/leaves/cancellations/occurrence").header("Authorization", token(operator))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(occurrenceBody(target, branchId, date, slot, sourceType, sourceId)));
+    }
+
+    private String occurrenceBody(Member target, Long branchId, LocalDate date, int slot,
+                                  LeaveSourceType sourceType, Long sourceId) {
+        return "{\"memberId\":" + target.getId() + ",\"branchId\":" + branchId + ",\"leaveDate\":\"" + date
+                + "\",\"slot\":" + slot + ",\"sourceType\":\"" + sourceType + "\",\"sourceId\":" + sourceId + "}";
     }
 
     private ResultActions batch(Member operator, Member target, String dateJson, String slotsJson, String reason) throws Exception {

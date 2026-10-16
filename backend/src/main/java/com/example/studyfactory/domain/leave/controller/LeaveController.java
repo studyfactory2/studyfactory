@@ -15,6 +15,7 @@ import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveBatchCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveCancellationRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveCancellationResponse;
+import com.example.studyfactory.domain.leave.dto.LeaveOccurrenceCancellationRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.service.LeaveService;
 import jakarta.validation.Valid;
@@ -121,6 +122,12 @@ public class LeaveController {
     public LeaveCancellationResponse cancelOccurrences(@CurrentMember Long currentMemberId,
                                                        @Valid @RequestBody LeaveCancellationRequest request) {
         return leaveService.cancelOccurrences(currentMemberId, request);
+    }
+
+    @PostMapping("/cancellations/occurrence")
+    public LeaveCancellationResponse cancelOccurrence(@CurrentMember Long currentMemberId,
+                                                      @Valid @RequestBody LeaveOccurrenceCancellationRequest request) {
+        return leaveService.cancelOccurrence(currentMemberId, request);
     }
 
     @DeleteMapping("/fixed/{fixedLeaveId}")

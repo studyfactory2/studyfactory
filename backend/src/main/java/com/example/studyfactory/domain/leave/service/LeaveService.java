@@ -8,6 +8,7 @@ import com.example.studyfactory.domain.leave.dto.EffectiveLeaveOccurrence;
 import com.example.studyfactory.domain.leave.dto.FixedLeaveBatchCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveCancellationRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveCancellationResponse;
+import com.example.studyfactory.domain.leave.dto.LeaveOccurrenceCancellationRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveOccurrenceCancellation;
 import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
 import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
@@ -178,7 +179,7 @@ public class LeaveService {
         return effectiveLeaveService.findForMember(memberId, startDate, endDate).stream()
                 .map(leave -> new MonthlyLeaveCalendarResponse(leave.date(),
                         leave.leaveType() == null ? leave.reason() : toLeaveTypeLabel(leave.leaveType()),
-                        responseSource(leave), toSlots(leave.slots().stream().toList())))
+                        responseSource(leave), toSlots(leave.slots().stream().toList()), leave.sourceType(), leave.sourceId()))
                 .toList();
     }
 
@@ -322,6 +323,36 @@ public class LeaveService {
             }
         }
         return new LeaveCancellationResponse(member.getId(), member.getBranchId(), request.dates().size() * request.slots().size(), cancelled, present);
+    }
+
+    @Transactional
+    public LeaveCancellationResponse cancelOccurrence(Long currentMemberId, LeaveOccurrenceCancellationRequest request) {
+        Member currentMember = findMember(currentMemberId);
+        ManagerAccessPolicy.validateManager(currentMember);
+        Member member = findMemberForUpdate(request.memberId());
+        ManagerAccessPolicy.validateManagerTarget(currentMember, member);
+        ManagerAccessPolicy.validateBranch(currentMember, request.branchId());
+        if (!Objects.equals(member.getBranchId(), request.branchId())) {
+            throw MemberException.forbidden();
+        }
+        validateSelectedDates(member, List.of(request.leaveDate()), List.of(request.slot()));
+
+        Optional<EffectiveLeaveOccurrence> occurrence = effectiveLeaveService.findForMember(
+                        member.getId(), request.branchId(), request.leaveDate(), request.leaveDate()).stream()
+                .filter(leave -> leave.sourceType() == request.sourceType()
+                        && Objects.equals(leave.sourceId(), request.sourceId())
+                        && leave.slots().contains(request.slot()))
+                .findFirst();
+        // Stale rows and retries are harmless: never widen a missing source to the whole cell.
+        occurrence.ifPresent(leave -> cancellationRepository.save(new LeaveOccurrenceCancellation(
+                member.getId(), request.branchId(), leave.sourceType(), leave.sourceId(),
+                request.leaveDate(), request.slot(), currentMember.getId())));
+        boolean present = attendanceRepository.findByMemberIdAndBranchIdAndAttendanceDateBetween(
+                        member.getId(), request.branchId(), request.leaveDate(), request.leaveDate()).stream()
+                .anyMatch(attendance -> attendance.getSlot() == request.slot()
+                        && !Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()));
+        return new LeaveCancellationResponse(member.getId(), request.branchId(), 1,
+                occurrence.isPresent() ? 1 : 0, present ? 1 : 0);
     }
 
     @Transactional(readOnly = true)
