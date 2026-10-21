@@ -14,9 +14,11 @@ public record AttendanceBoardRowResponse(
         String certificationContent,
         List<String> slots,
         List<String> slotSources,
-        List<ExcessLeaveRequestResponse> excessLeaveRequests
+        List<ExcessLeaveRequestResponse> excessLeaveRequests,
+        List<Integer> clearedPresentSlots
 ) {
     public AttendanceBoardRowResponse {
         excessLeaveRequests = List.copyOf(excessLeaveRequests);
+        clearedPresentSlots = List.copyOf(clearedPresentSlots);
     }
 }

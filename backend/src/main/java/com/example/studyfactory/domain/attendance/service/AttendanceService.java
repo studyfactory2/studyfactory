@@ -92,19 +92,24 @@ public class AttendanceService {
         List<Attendance> dailyAttendances = attendanceRepository.findDailyBoardAttendances(targetBranchId, targetDate);
         List<AttendanceReviewedAbsence> reviewedAbsences = attendanceReviewedAbsenceRepository
                 .findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(targetBranchId, targetDate);
+        List<AttendanceUnconfirmedSlot> unconfirmedSlots = attendanceUnconfirmedSlotRepository
+                .findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(targetBranchId, targetDate);
         applyEffectiveLeaves(statusesByMemberId, statusSourcesByMemberId, targetBranchId, targetDate);
         applyFixedLeaveCancellations(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
         // 관리자가 특정 교시를 출석으로 바꾸면 해당 교시만 휴무보다 우선한다.
         // 예: 오후반차(4~7교시) 중 4교시만 출석 처리해도 5~7교시는 오후반차로 유지한다.
         applyAttendances(statusesByMemberId, statusSourcesByMemberId, dailyAttendances);
         applyReviewedAbsences(statusesByMemberId, statusSourcesByMemberId, reviewedAbsences);
-        applyUnconfirmedSlots(statusesByMemberId, statusSourcesByMemberId, attendanceUnconfirmedSlotRepository
-                .findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(targetBranchId, targetDate));
+        applyUnconfirmedSlots(statusesByMemberId, statusSourcesByMemberId, unconfirmedSlots);
+        // Keep NONE compatible while allowing clients to distinguish a cleared O from an untouched blank.
+        Map<Long, List<Integer>> clearedPresentSlots = unconfirmedSlots.stream().collect(Collectors.groupingBy(
+                AttendanceUnconfirmedSlot::getMemberId,
+                Collectors.mapping(AttendanceUnconfirmedSlot::getSlot, Collectors.toList())));
         Set<Long> initializedMemberIds = findInitializedMemberIds(targetBranchId, targetDate);
         Map<Long, List<ExcessLeaveRequestResponse>> excessLeaveRequests = findExcessLeaveRequests(members, targetDate);
 
         return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId,
-                statusSourcesByMemberId, initializedMemberIds, excessLeaveRequests));
+                statusSourcesByMemberId, initializedMemberIds, excessLeaveRequests, clearedPresentSlots));
     }
 
     @Transactional
@@ -120,6 +125,10 @@ public class AttendanceService {
         }
         if (request.status() == AttendanceSlotStatusUpdateType.RESTORE) {
             restoreEffectiveSlot(member.getId(), request.date(), request.slot());
+            return;
+        }
+        if (request.status() == AttendanceSlotStatusUpdateType.MARK_ABSENT) {
+            markAbsentWithoutCancellingLeave(currentMember, member, request);
             return;
         }
         attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDateAndSlot(
@@ -275,6 +284,28 @@ public class AttendanceService {
         clearReviewedAbsence(memberId, date, slot);
         attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDateAndSlot(memberId, date, slot);
         attendanceUnconfirmedSlotRepository.flush();
+    }
+
+    private void markAbsentWithoutCancellingLeave(
+            Member currentMember, Member member, AttendanceSlotStatusUpdateRequest request
+    ) {
+        Long memberId = member.getId();
+        LocalDate date = request.date();
+        int slot = request.slot();
+        List<Attendance> existing = attendanceRepository
+                .findByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
+        boolean alreadyCancelled = existing.stream().anyMatch(attendance ->
+                Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()));
+        existing.stream()
+                .filter(attendance -> !Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()))
+                .forEach(attendanceRepository::delete);
+        attendanceRepository.flush();
+        attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDateAndSlot(memberId, date, slot);
+        attendanceUnconfirmedSlotRepository.flush();
+        // Preserve existing reviewed/cancelled X and its audit metadata on repeated requests.
+        if (!alreadyCancelled && !attendanceReviewedAbsenceRepository.existsByMemberIdAndAttendanceDateAndSlot(memberId, date, slot)) {
+            createReviewedAbsence(currentMember, member, request);
+        }
     }
 
     private void clearPresentToUnconfirmed(
@@ -633,7 +664,8 @@ public class AttendanceService {
             Map<Long, List<String>> statusesByMemberId,
             Map<Long, List<String>> statusSourcesByMemberId,
             Set<Long> initializedMemberIds,
-            Map<Long, List<ExcessLeaveRequestResponse>> excessLeaveRequests
+            Map<Long, List<ExcessLeaveRequestResponse>> excessLeaveRequests,
+            Map<Long, List<Integer>> clearedPresentSlots
     ) {
         List<AttendanceBoardRowResponse> rows = new ArrayList<>();
         int lastSeatNumber = Math.max(MAX_SEAT_NUMBER, membersBySeat.keySet().stream().max(Comparator.naturalOrder()).orElse(0));
@@ -641,7 +673,7 @@ public class AttendanceService {
             Member member = membersBySeat.get(seatNumber);
             if (member == null) {
                 rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", null, null, null,
-                        emptySlots(), emptySlotSources(), List.of()));
+                        emptySlots(), emptySlotSources(), List.of(), List.of()));
                 continue;
             }
             rows.add(new AttendanceBoardRowResponse(
@@ -653,7 +685,8 @@ public class AttendanceService {
                     getCertificationContent(member),
                     statusesByMemberId.get(member.getId()),
                     statusSourcesByMemberId.get(member.getId()),
-                    excessLeaveRequests.getOrDefault(member.getId(), List.of())
+                    excessLeaveRequests.getOrDefault(member.getId(), List.of()),
+                    clearedPresentSlots.getOrDefault(member.getId(), List.of())
             ));
         }
         members.stream()
@@ -667,7 +700,8 @@ public class AttendanceService {
                         getCertificationContent(member),
                         statusesByMemberId.get(member.getId()),
                         statusSourcesByMemberId.get(member.getId()),
-                        excessLeaveRequests.getOrDefault(member.getId(), List.of())
+                        excessLeaveRequests.getOrDefault(member.getId(), List.of()),
+                        clearedPresentSlots.getOrDefault(member.getId(), List.of())
                 )));
 
         return rows;

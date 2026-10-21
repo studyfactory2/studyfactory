@@ -6,5 +6,7 @@ public enum AttendanceSlotStatusUpdateType {
     OTHER,
     UNCONFIRMED,
     /** Remove manual overrides and reveal current effective leave, not a historical snapshot. */
-    RESTORE
+    RESTORE,
+    /** Record reviewed absence without deleting underlying leave or cancellation records. */
+    MARK_ABSENT
 }
