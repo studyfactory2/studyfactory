@@ -167,6 +167,74 @@ class LeaveCancellationWorkflowTest {
         });
     }
 
+    @ParameterizedTest(name = "{0} / {1} / {2}")
+    @MethodSource("halfDayRequestsWithExistingLeave")
+    @DisplayName("오늘과 미래의 오전 및 오후반차는 기존 특별·반복 휴무와 출석을 변경하지 않고 신청한다")
+    void halfDaySelfServicePreservesOverlappingOfficeLeaveAndAttendance(
+            MemberRole role, LeaveType leaveType, LocalDate date) throws Exception {
+        clock.setInstant(TODAY.atTime(16, 31).atZone(clock.getZone()).toInstant());
+        member = member(branch, "반차 추가 신청", role, 13);
+        int firstSlot = leaveType == LeaveType.MORNING ? 1 : 4;
+        int remainingSlot = firstSlot + 3;
+        int outsidePresentSlot = leaveType == LeaveType.MORNING ? 5 : 2;
+        SpecialLeave officeLeave = special(date, String.valueOf(firstSlot), "학교");
+        FixedLeave recurringLeave = fixed(date.getDayOfWeek(), String.valueOf(firstSlot + 2), "알바");
+        present(date, firstSlot + 1);
+        present(date, outsidePresentSlot);
+        AttendanceBoardRowResponse before = row(date);
+        List<Attendance> attendanceBefore = attendanceRepository
+                .findByMemberIdAndAttendanceDateBetween(member.getId(), date, date);
+        SpecialLeave officeBefore = specialLeaveRepository.findById(officeLeave.getId()).orElseThrow();
+        FixedLeave recurringBefore = fixedLeaveRepository.findById(recurringLeave.getId()).orElseThrow();
+
+        mockMvc.perform(post("/api/leaves").header("Authorization", token(member))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"leaveDate\":\"" + date + "\",\"leaveType\":\"" + leaveType + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.memberId").value(member.getId()))
+                .andExpect(jsonPath("$.leaveDate").value(date.toString()))
+                .andExpect(jsonPath("$.leaveType").value(leaveType.name()));
+
+        AttendanceBoardRowResponse after = row(date);
+        for (int slot = 1; slot <= 7; slot++) {
+            if (slot == remainingSlot) {
+                assertThat(after.slots().get(slot - 1))
+                        .isEqualTo(leaveType == LeaveType.MORNING ? "오전" : "오후");
+                assertThat(after.slotSources().get(slot - 1)).isEqualTo("MEMBER_LEAVE");
+            } else {
+                assertThat(after.slots().get(slot - 1)).isEqualTo(before.slots().get(slot - 1));
+                assertThat(after.slotSources().get(slot - 1)).isEqualTo(before.slotSources().get(slot - 1));
+            }
+        }
+        assertThat(after.slots().get(firstSlot)).isEqualTo("O");
+        assertThat(after.slots().get(outsidePresentSlot - 1)).isEqualTo("O");
+        for (Attendance actual : attendanceBefore) {
+            assertThat(attendanceRepository.findById(actual.getId()).orElseThrow())
+                    .usingRecursiveComparison().isEqualTo(actual);
+        }
+        assertThat(specialLeaveRepository.findById(officeLeave.getId()).orElseThrow())
+                .usingRecursiveComparison().isEqualTo(officeBefore);
+        assertThat(fixedLeaveRepository.findById(recurringLeave.getId()).orElseThrow())
+                .usingRecursiveComparison().isEqualTo(recurringBefore);
+        assertThat(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(member.getId(), date))
+                .extracting(SpecialLeave::getId).containsExactly(officeLeave.getId());
+        assertThat(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(member.getId()))
+                .singleElement().satisfies(saved -> {
+                    assertThat(saved.getLeaveDate()).isEqualTo(date);
+                    assertThat(saved.getLeaveType()).isEqualTo(leaveType);
+                });
+        assertThat(calendar(date.plusWeeks(1))).anySatisfy(item -> {
+            assertThat(item.label()).isEqualTo("알바");
+            assertThat(item.slots()).isEqualTo(String.valueOf(firstSlot + 2));
+        });
+    }
+
+    private static Stream<Arguments> halfDayRequestsWithExistingLeave() {
+        return Stream.of(MemberRole.MEMBER, MemberRole.STAFF).flatMap(role ->
+                Stream.of(LeaveType.MORNING, LeaveType.AFTERNOON).flatMap(type ->
+                        Stream.of(TODAY, TODAY.plusDays(1)).map(date -> Arguments.of(role, type, date))));
+    }
+
     @ParameterizedTest
     @EnumSource(value = MemberRole.class, names = {"MEMBER", "STAFF"})
     @DisplayName("늦은 본인 오전반차 신청은 관리자가 확인한 결석을 덮어쓰지 않는다")
