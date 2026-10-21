@@ -229,6 +229,71 @@ class LeaveCancellationWorkflowTest {
         });
     }
 
+    @ParameterizedTest(name = "{0} / {1} 취소 / {2}")
+    @MethodSource("halfDayRequestsWithExistingLeave")
+    @DisplayName("같은 날짜의 오전·오후반차를 각각 신청하고 한 건만 취소해도 다른 휴무와 출석은 보존한다")
+    void sameDayHalfDaysCanBeRequestedAndCancelledIndependently(
+            MemberRole role, LeaveType cancelledType, LocalDate date) throws Exception {
+        member = member(branch, "반차 개별 취소", role, 13);
+        SpecialLeave officeLeave = special(date, "1,5", "학교");
+        FixedLeave recurringLeave = fixed(date.getDayOfWeek(), "2,6", "알바");
+        present(date, 3);
+        present(date, 7);
+        List<Attendance> attendanceBefore = attendanceRepository
+                .findByMemberIdAndAttendanceDateBetween(member.getId(), date, date);
+        SpecialLeave officeBefore = specialLeaveRepository.findById(officeLeave.getId()).orElseThrow();
+        FixedLeave recurringBefore = fixedLeaveRepository.findById(recurringLeave.getId()).orElseThrow();
+
+        requestMorningLeave(member, date).andExpect(status().isCreated());
+        mockMvc.perform(post("/api/leaves").header("Authorization", token(member))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"leaveDate\":\"" + date + "\",\"leaveType\":\"AFTERNOON\"}"))
+                .andExpect(status().isCreated());
+
+        List<LeaveRequest> requested = leaveRequestRepository
+                .findByMemberIdOrderByLeaveDateDescCreatedAtDesc(member.getId());
+        assertThat(requested).hasSize(2).extracting(LeaveRequest::getLeaveType)
+                .containsExactlyInAnyOrder(LeaveType.MORNING, LeaveType.AFTERNOON);
+        assertThat(requested).extracting(LeaveRequest::getLeaveDate).containsOnly(date);
+        assertThat(leaveService.findMyLeavePlan(member.getId(), date.getYear(), date.getMonthValue()))
+                .filteredOn(value -> "LEAVE".equals(value.source()) && date.equals(value.leaveDate()))
+                .extracting(value -> value.id()).containsExactlyInAnyOrderElementsOf(
+                        requested.stream().map(LeaveRequest::getId).toList());
+        AttendanceBoardRowResponse afterRequests = row(date);
+        assertThat(afterRequests.slots().get(2)).isEqualTo("O");
+        assertThat(afterRequests.slots().get(6)).isEqualTo("O");
+        assertThat(afterRequests.slots().subList(0, 2)).containsExactly("학교", "알바");
+        assertThat(afterRequests.slots().subList(4, 6)).containsExactly("학교", "알바");
+
+        LeaveRequest cancelled = requested.stream().filter(value -> value.getLeaveType() == cancelledType)
+                .findFirst().orElseThrow();
+        LeaveRequest remaining = requested.stream().filter(value -> value.getLeaveType() != cancelledType)
+                .findFirst().orElseThrow();
+        mockMvc.perform(delete("/api/leaves/{id}", cancelled.getId()).header("Authorization", token(member)))
+                .andExpect(status().isNoContent());
+
+        assertThat(leaveRequestRepository.findById(cancelled.getId())).isEmpty();
+        assertThat(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(member.getId()))
+                .singleElement().usingRecursiveComparison().isEqualTo(remaining);
+        assertThat(leaveService.findMyLeavePlan(member.getId(), date.getYear(), date.getMonthValue()))
+                .filteredOn(value -> "LEAVE".equals(value.source()) && date.equals(value.leaveDate()))
+                .extracting(value -> value.id()).containsExactly(remaining.getId());
+        assertThat(row(date).slots()).containsExactly("학교", "알바", "O",
+                remaining.getLeaveType() == LeaveType.MORNING ? "오전" : "오후", "학교", "알바", "O");
+        for (Attendance actual : attendanceBefore) {
+            assertThat(attendanceRepository.findById(actual.getId()).orElseThrow())
+                    .usingRecursiveComparison().isEqualTo(actual);
+        }
+        assertThat(specialLeaveRepository.findById(officeLeave.getId()).orElseThrow())
+                .usingRecursiveComparison().isEqualTo(officeBefore);
+        assertThat(fixedLeaveRepository.findById(recurringLeave.getId()).orElseThrow())
+                .usingRecursiveComparison().isEqualTo(recurringBefore);
+        assertThat(calendar(date.plusWeeks(1))).anySatisfy(item -> {
+            assertThat(item.label()).isEqualTo("알바");
+            assertThat(item.slots()).isEqualTo("2,6");
+        });
+    }
+
     private static Stream<Arguments> halfDayRequestsWithExistingLeave() {
         return Stream.of(MemberRole.MEMBER, MemberRole.STAFF).flatMap(role ->
                 Stream.of(LeaveType.MORNING, LeaveType.AFTERNOON).flatMap(type ->
