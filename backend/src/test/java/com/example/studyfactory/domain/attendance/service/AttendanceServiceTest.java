@@ -271,7 +271,6 @@ class AttendanceServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
         given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(member));
         given(attendanceStatusTypeRepository.findByName("출석")).willReturn(Optional.of(statusType));
-        given(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
 
         attendanceService.updateSlotStatus(1L, new AttendanceSlotStatusUpdateRequest(
                 2L, date, 3, AttendanceSlotStatusUpdateType.PRESENT, null
@@ -330,7 +329,6 @@ class AttendanceServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(operator));
         given(memberRepository.findByIdForUpdate(2L)).willReturn(Optional.of(targetStaff));
         given(attendanceStatusTypeRepository.findByName("출석")).willReturn(Optional.of(statusType));
-        given(specialLeaveRepository.findByMemberIdAndLeaveDateOrderByCreatedAtAsc(2L, date)).willReturn(List.of());
 
         attendanceService.updateSlotStatus(1L, new AttendanceSlotStatusUpdateRequest(
                 2L, date, 3, AttendanceSlotStatusUpdateType.PRESENT, null

@@ -4,5 +4,7 @@ public enum AttendanceSlotStatusUpdateType {
     PRESENT,
     ABSENT,
     OTHER,
-    UNCONFIRMED
+    UNCONFIRMED,
+    /** Remove manual overrides and reveal current effective leave, not a historical snapshot. */
+    RESTORE
 }

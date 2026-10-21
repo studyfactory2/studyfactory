@@ -26,10 +26,12 @@ import com.example.studyfactory.domain.leave.dto.EffectiveLeaveOccurrence;
 import com.example.studyfactory.domain.leave.dto.ExcessLeaveRequestResponse;
 import com.example.studyfactory.domain.leave.dto.WeeklyLeaveAllowanceResponse;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
+import com.example.studyfactory.domain.leave.entity.LeaveOccurrenceCancellation;
 import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.entity.SpecialLeave;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
+import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.leave.service.EffectiveLeaveService;
 import com.example.studyfactory.domain.leave.service.WeeklyLeaveAllowanceCalculator;
@@ -70,6 +72,7 @@ public class AttendanceService {
     private final AttendanceStatusTypeRepository attendanceStatusTypeRepository;
     private final MemberRepository memberRepository;
     private final LeaveRequestRepository leaveRequestRepository;
+    private final LeaveOccurrenceCancellationRepository cancellationRepository;
     private final EffectiveLeaveService effectiveLeaveService;
     private final WeeklyLeaveAllowanceCalculator weeklyLeaveAllowanceCalculator;
     private final SpecialLeaveRepository specialLeaveRepository;
@@ -115,6 +118,10 @@ public class AttendanceService {
             clearPresentToUnconfirmed(currentMember, member, request);
             return;
         }
+        if (request.status() == AttendanceSlotStatusUpdateType.RESTORE) {
+            restoreEffectiveSlot(member.getId(), request.date(), request.slot());
+            return;
+        }
         attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDateAndSlot(
                 member.getId(), request.date(), request.slot()
         );
@@ -122,6 +129,7 @@ public class AttendanceService {
         boolean cancelsFixedLeave = request.status() == AttendanceSlotStatusUpdateType.ABSENT
                 && hasFixedLeaveAt(member.getId(), request.date(), request.slot());
         if (request.status() == AttendanceSlotStatusUpdateType.PRESENT) {
+            preserveLegacyFixedLeaveCancellation(currentMember, member, request.date(), request.slot());
             clearPresentSlotStatus(member.getId(), request.date(), request.slot());
         } else {
             clearSlotStatus(member.getId(), request.date(), request.slot());
@@ -255,6 +263,20 @@ public class AttendanceService {
         deleteSpecialLeavesBySlot(memberId, date, slot);
     }
 
+    private void restoreEffectiveSlot(Long memberId, LocalDate date, Integer slot) {
+        // Leave records and cancellation exceptions remain the source of truth.
+        // A legacy fixed-leave cancellation is not O, so restoring must not erase it.
+        attendanceRepository.findByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(
+                memberId, date, slot
+        ).stream()
+                .filter(attendance -> !Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()))
+                .forEach(attendanceRepository::delete);
+        attendanceRepository.flush();
+        clearReviewedAbsence(memberId, date, slot);
+        attendanceUnconfirmedSlotRepository.deleteByMemberIdAndAttendanceDateAndSlot(memberId, date, slot);
+        attendanceUnconfirmedSlotRepository.flush();
+    }
+
     private void clearPresentToUnconfirmed(
             Member currentMember,
             Member member,
@@ -284,9 +306,31 @@ public class AttendanceService {
         attendanceRepository.deleteByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(memberId, date, slot);
         attendanceRepository.flush();
         clearReviewedAbsence(memberId, date, slot);
-        // 출석 처리는 해당 교시를 덮어쓰는 개별 기록이다. 반차/월차 요청 자체를 지우면
-        // 나머지 휴무 교시까지 X로 바뀌므로, 회원 휴무 요청은 그대로 둔다.
-        deleteSpecialLeavesBySlot(memberId, date, slot);
+        // O is only a per-period override. Preserve both member and manager leave
+        // so RESTORE can reveal the current effective leave without rebuilding it.
+    }
+
+    private void preserveLegacyFixedLeaveCancellation(Member currentMember, Member member, LocalDate date, Integer slot) {
+        Attendance marker = attendanceRepository
+                .findByReferenceInformationMemberIdAndSlotInformationAttendanceDateAndSlotInformationSlot(member.getId(), date, slot)
+                .stream()
+                .filter(attendance -> Attendance.FIXED_LEAVE_CANCELLATION_MARKER.equals(attendance.getCustomStatusText()))
+                .findFirst().orElse(null);
+        if (marker == null) return;
+
+        Long originalActor = marker.getMarkedByMemberId();
+        Long actor = originalActor != null && memberRepository.existsById(originalActor)
+                ? originalActor : currentMember.getId();
+        // O and the legacy cancellation share one unique attendance row. Move only
+        // that cancellation into the existing source-scoped exceptions before O replaces it.
+        // Newer/other-branch rules were not part of the old cancellation and remain independent.
+        effectiveLeaveService.findForMember(member.getId(), date, date).stream()
+                .filter(leave -> leave.sourceType() == LeaveSourceType.FIXED_LEAVE)
+                .filter(leave -> Objects.equals(leave.branchId(), marker.getBranchId()) && leave.slots().contains(slot))
+                .filter(leave -> !leave.createdAt().isAfter(marker.getCreatedAt()))
+                .forEach(leave -> cancellationRepository.save(new LeaveOccurrenceCancellation(
+                        member.getId(), leave.branchId(), LeaveSourceType.FIXED_LEAVE,
+                        leave.sourceId(), date, slot, actor)));
     }
 
     private void deleteLeaveRequestsBySlot(Long memberId, LocalDate date, Integer slot) {
