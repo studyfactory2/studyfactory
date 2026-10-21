@@ -12,10 +12,11 @@ public record LeaveResponse(
         LocalDate leaveDate,
         LeaveType leaveType,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        WeeklyLeaveAllowanceResponse weeklyAllowance
 ) {
 
-    public static LeaveResponse from(LeaveRequest leaveRequest) {
+    public static LeaveResponse from(LeaveRequest leaveRequest, WeeklyLeaveAllowanceResponse weeklyAllowance) {
         return new LeaveResponse(
                 leaveRequest.getId(),
                 leaveRequest.getMemberId(),
@@ -23,7 +24,8 @@ public record LeaveResponse(
                 leaveRequest.getLeaveDate(),
                 leaveRequest.getLeaveType(),
                 leaveRequest.getCreatedAt(),
-                leaveRequest.getUpdatedAt()
+                leaveRequest.getUpdatedAt(),
+                weeklyAllowance
         );
     }
 }

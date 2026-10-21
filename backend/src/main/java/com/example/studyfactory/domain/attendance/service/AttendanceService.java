@@ -23,6 +23,8 @@ import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirm
 import com.example.studyfactory.domain.certification.entity.Certification;
 import com.example.studyfactory.domain.certification.repository.CertificationRepository;
 import com.example.studyfactory.domain.leave.dto.EffectiveLeaveOccurrence;
+import com.example.studyfactory.domain.leave.dto.ExcessLeaveRequestResponse;
+import com.example.studyfactory.domain.leave.dto.WeeklyLeaveAllowanceResponse;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
@@ -30,6 +32,7 @@ import com.example.studyfactory.domain.leave.entity.SpecialLeave;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.leave.service.EffectiveLeaveService;
+import com.example.studyfactory.domain.leave.service.WeeklyLeaveAllowanceCalculator;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
@@ -68,6 +71,7 @@ public class AttendanceService {
     private final MemberRepository memberRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final EffectiveLeaveService effectiveLeaveService;
+    private final WeeklyLeaveAllowanceCalculator weeklyLeaveAllowanceCalculator;
     private final SpecialLeaveRepository specialLeaveRepository;
     private final CertificationRepository certificationRepository;
     private final Clock clock;
@@ -94,8 +98,10 @@ public class AttendanceService {
         applyUnconfirmedSlots(statusesByMemberId, statusSourcesByMemberId, attendanceUnconfirmedSlotRepository
                 .findByBranchIdAndAttendanceDateOrderByMemberIdAscSlotAsc(targetBranchId, targetDate));
         Set<Long> initializedMemberIds = findInitializedMemberIds(targetBranchId, targetDate);
+        Map<Long, List<ExcessLeaveRequestResponse>> excessLeaveRequests = findExcessLeaveRequests(members, targetDate);
 
-        return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId, statusSourcesByMemberId, initializedMemberIds));
+        return new DailyAttendanceBoardResponse(targetDate, toRows(members, membersBySeat, statusesByMemberId,
+                statusSourcesByMemberId, initializedMemberIds, excessLeaveRequests));
     }
 
     @Transactional
@@ -521,6 +527,24 @@ public class AttendanceService {
                 .collect(Collectors.toSet());
     }
 
+    private Map<Long, List<ExcessLeaveRequestResponse>> findExcessLeaveRequests(List<Member> members, LocalDate date) {
+        LocalDate weekStart = WeeklyLeaveAllowanceCalculator.weekStart(date);
+        // Query once for the authorized roster, including the full week across month/year boundaries.
+        // Branch changes must not reset a member's personal weekly allowance.
+        List<EffectiveLeaveOccurrence> requests = effectiveLeaveService.findMemberRequestOccurrencesForMembers(
+                members.stream().map(Member::getId).toList(), weekStart, weekStart.plusDays(6));
+        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(requests);
+        Map<Long, List<ExcessLeaveRequestResponse>> result = new HashMap<>();
+        requests.stream()
+                .filter(leave -> leave.date().equals(date) && allowances.get(leave.sourceId()).excess())
+                .sorted(Comparator.comparing(EffectiveLeaveOccurrence::createdAt)
+                        .thenComparing(EffectiveLeaveOccurrence::sourceId))
+                .forEach(leave -> result.computeIfAbsent(leave.memberId(), ignored -> new ArrayList<>())
+                        .add(new ExcessLeaveRequestResponse(leave.sourceId(), leave.leaveType(), leave.reason(),
+                                leave.slots().stream().sorted().toList(), allowances.get(leave.sourceId()))));
+        return result;
+    }
+
     private void setStatus(List<String> statuses, List<String> sources, Integer slot, String status, String source) {
         if (slot < 1 || slot > SLOT_COUNT) {
             return;
@@ -564,14 +588,16 @@ public class AttendanceService {
             Map<Integer, Member> membersBySeat,
             Map<Long, List<String>> statusesByMemberId,
             Map<Long, List<String>> statusSourcesByMemberId,
-            Set<Long> initializedMemberIds
+            Set<Long> initializedMemberIds,
+            Map<Long, List<ExcessLeaveRequestResponse>> excessLeaveRequests
     ) {
         List<AttendanceBoardRowResponse> rows = new ArrayList<>();
         int lastSeatNumber = Math.max(MAX_SEAT_NUMBER, membersBySeat.keySet().stream().max(Comparator.naturalOrder()).orElse(0));
         for (int seatNumber = 1; seatNumber <= lastSeatNumber; seatNumber++) {
             Member member = membersBySeat.get(seatNumber);
             if (member == null) {
-                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", null, null, null, emptySlots(), emptySlotSources()));
+                rows.add(new AttendanceBoardRowResponse(null, seatNumber, "공석", null, null, null,
+                        emptySlots(), emptySlotSources(), List.of()));
                 continue;
             }
             rows.add(new AttendanceBoardRowResponse(
@@ -582,7 +608,8 @@ public class AttendanceService {
                     member.getCreatedAt(),
                     getCertificationContent(member),
                     statusesByMemberId.get(member.getId()),
-                    statusSourcesByMemberId.get(member.getId())
+                    statusSourcesByMemberId.get(member.getId()),
+                    excessLeaveRequests.getOrDefault(member.getId(), List.of())
             ));
         }
         members.stream()
@@ -595,7 +622,8 @@ public class AttendanceService {
                         member.getCreatedAt(),
                         getCertificationContent(member),
                         statusesByMemberId.get(member.getId()),
-                        statusSourcesByMemberId.get(member.getId())
+                        statusSourcesByMemberId.get(member.getId()),
+                        excessLeaveRequests.getOrDefault(member.getId(), List.of())
                 )));
 
         return rows;

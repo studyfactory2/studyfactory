@@ -1,5 +1,6 @@
 package com.example.studyfactory.domain.attendance.dto;
 
+import com.example.studyfactory.domain.leave.dto.ExcessLeaveRequestResponse;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +13,10 @@ public record AttendanceBoardRowResponse(
         LocalDateTime createdAt,
         String certificationContent,
         List<String> slots,
-        List<String> slotSources
+        List<String> slotSources,
+        List<ExcessLeaveRequestResponse> excessLeaveRequests
 ) {
+    public AttendanceBoardRowResponse {
+        excessLeaveRequests = List.copyOf(excessLeaveRequests);
+    }
 }

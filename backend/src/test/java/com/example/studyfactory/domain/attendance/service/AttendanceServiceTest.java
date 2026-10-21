@@ -29,6 +29,7 @@ import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.leave.service.EffectiveLeaveService;
+import com.example.studyfactory.domain.leave.service.WeeklyLeaveAllowanceCalculator;
 import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.entity.WorkInformation;
@@ -38,6 +39,7 @@ import java.time.DayOfWeek;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -98,6 +100,58 @@ class AttendanceServiceTest {
     void configureEffectiveLeaves() {
         ReflectionTestUtils.setField(attendanceService, "effectiveLeaveService", new EffectiveLeaveService(
                 leaveRequestRepository, specialLeaveRepository, fixedLeaveRepository, cancellationRepository));
+        ReflectionTestUtils.setField(attendanceService, "weeklyLeaveAllowanceCalculator", new WeeklyLeaveAllowanceCalculator());
+    }
+
+    @Test
+    @DisplayName("주간 초과휴무는 전체 사원을 한 번에 조회하고 출석 및 관리자 휴무와 분리해 반환한다")
+    void weeklyWarningsUseOneRosterQueryWithoutOverwritingAttendance() {
+        LocalDate date = LocalDate.of(2026, 11, 1);
+        LocalDate weekStart = LocalDate.of(2026, 10, 26);
+        Member staff = createMember(1L, "담당", MemberRole.STAFF, null);
+        Member member = createMember(2L, "회원", MemberRole.MEMBER, 7);
+        Member other = createMember(3L, "다른회원", MemberRole.MEMBER, null);
+        LeaveRequest full = new LeaveRequest(2L, 1L, weekStart, LeaveType.FULL);
+        LeaveRequest half = new LeaveRequest(2L, 1L, weekStart.plusDays(1), LeaveType.AFTERNOON);
+        LeaveRequest excess = new LeaveRequest(2L, 1L, date, LeaveType.MORNING);
+        List<LeaveRequest> requests = List.of(full, half, excess);
+        for (int index = 0; index < requests.size(); index++) {
+            ReflectionTestUtils.setField(requests.get(index), "id", 10L + index);
+            ReflectionTestUtils.setField(requests.get(index), "createdAt", LocalDateTime.of(2026, 10, 20, 9, index));
+        }
+        Attendance present = new Attendance(new AttendanceReferenceInformation(2L, 1L, 1L, 1L),
+                new AttendanceSlotInformation(date, 1, null));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(memberRepository.findByReferenceInformationBranchIdOrderByIdAsc(1L)).willReturn(List.of(staff, member, other));
+        given(attendanceRepository.findDailyBoardAttendances(1L, date)).willReturn(List.of(present));
+        given(leaveRequestRepository.findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L, date, date))
+                .willReturn(List.of(excess));
+        given(leaveRequestRepository.findByMemberIdInAndLeaveDateBetweenOrderByCreatedAtAscIdAsc(
+                List.of(1L, 2L, 3L), weekStart, date)).willReturn(requests);
+        given(specialLeaveRepository.findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L, date, date))
+                .willReturn(List.of(new SpecialLeave(2L, 1L, date, "2", "학교", null, false, 1L)));
+        given(fixedLeaveRepository.findByBranchIdOrderByCreatedAtAsc(1L))
+                .willReturn(List.of(new FixedLeave(2L, 1L, DayOfWeek.SUNDAY, "3", "알바", true)));
+
+        DailyAttendanceBoardResponse board = attendanceService.findDailyBoard(1L, date, null);
+
+        var row = board.rows().get(6);
+        assertThat(row.slots()).containsExactly("O", "학교", "알바", "오전", "X", "X", "X");
+        assertThat(row.slotSources()).containsExactly("NONE", "MANAGER_LEAVE", "MANAGER_LEAVE", "MEMBER_LEAVE", "NONE", "NONE", "NONE");
+        assertThat(row.excessLeaveRequests()).singleElement().satisfies(warning -> {
+            assertThat(warning.leaveId()).isEqualTo(12L);
+            assertThat(warning.slots()).containsExactly(1, 2, 3, 4);
+            assertThat(warning.weeklyAllowance().weekStart()).isEqualTo(weekStart);
+            assertThat(warning.weeklyAllowance().usedUnitsBefore()).isEqualTo(3);
+            assertThat(warning.weeklyAllowance().totalUnits()).isEqualTo(4);
+            assertThat(warning.weeklyAllowance().excess()).isTrue();
+        });
+        assertThat(board.rows()).filteredOn(value -> !Long.valueOf(2L).equals(value.memberId()))
+                .allSatisfy(value -> assertThat(value.excessLeaveRequests()).isEmpty());
+        verify(leaveRequestRepository, times(1)).findByMemberIdInAndLeaveDateBetweenOrderByCreatedAtAscIdAsc(
+                List.of(1L, 2L, 3L), weekStart, date);
+        verify(cancellationRepository, times(1)).findByMemberIdInAndLeaveDateBetween(
+                List.of(1L, 2L, 3L), weekStart, date);
     }
 
     @Test

@@ -20,6 +20,7 @@ import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
 import com.example.studyfactory.domain.leave.dto.MemberLeavePlanResponse;
+import com.example.studyfactory.domain.leave.dto.WeeklyLeaveAllowanceResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
@@ -97,6 +98,7 @@ class LeaveServiceTest {
     void configureEffectiveProjection() {
         ReflectionTestUtils.setField(leaveService, "effectiveLeaveService", new EffectiveLeaveService(
                 leaveRequestRepository, specialLeaveRepository, fixedLeaveRepository, cancellationRepository));
+        ReflectionTestUtils.setField(leaveService, "weeklyLeaveAllowanceCalculator", new WeeklyLeaveAllowanceCalculator());
     }
 
     @Test
@@ -106,7 +108,13 @@ class LeaveServiceTest {
         Member member = createMember();
         ReflectionTestUtils.setField(member, "id", 1L);
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
-        given(leaveRequestRepository.save(any(LeaveRequest.class))).willAnswer(invocation -> invocation.getArgument(0));
+        LeaveRequest saved = new LeaveRequest(1L, 2L, request.leaveDate(), request.leaveType());
+        ReflectionTestUtils.setField(saved, "id", 10L);
+        ReflectionTestUtils.setField(saved, "createdAt", LocalDateTime.now(clock));
+        given(leaveRequestRepository.save(any(LeaveRequest.class))).willReturn(saved);
+        LocalDate weekStart = WeeklyLeaveAllowanceCalculator.weekStart(request.leaveDate());
+        given(leaveRequestRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(
+                1L, weekStart, weekStart.plusDays(6))).willReturn(List.of(saved));
 
         LeaveResponse response = leaveService.create(1L, request);
 
@@ -114,6 +122,8 @@ class LeaveServiceTest {
         assertThat(response.branchId()).isEqualTo(2L);
         assertThat(response.leaveDate()).isEqualTo(LocalDate.now(clock));
         assertThat(response.leaveType()).isEqualTo(LeaveType.FULL);
+        assertThat(response.weeklyAllowance()).isEqualTo(new WeeklyLeaveAllowanceResponse(
+                weekStart, weekStart.plusDays(6), 3, 2, 0, 2, 2, false));
     }
 
     @Test
@@ -130,6 +140,8 @@ class LeaveServiceTest {
     @DisplayName("토큰의 사원 ID로 본인 휴무 목록을 조회한다")
     void findMine() {
         LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        ReflectionTestUtils.setField(leaveRequest, "id", 10L);
+        ReflectionTestUtils.setField(leaveRequest, "createdAt", LocalDateTime.of(2026, 6, 30, 9, 0));
         given(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L)).willReturn(List.of(leaveRequest));
         given(leaveRequestRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(1L,
                 leaveRequest.getLeaveDate(), leaveRequest.getLeaveDate())).willReturn(List.of(leaveRequest));
@@ -221,6 +233,7 @@ class LeaveServiceTest {
         LocalDate date = LocalDate.of(2026, 10, 13);
         LeaveRequest ownLeave = new LeaveRequest(1L, 2L, date, LeaveType.AFTERNOON);
         ReflectionTestUtils.setField(ownLeave, "id", 20L);
+        ReflectionTestUtils.setField(ownLeave, "createdAt", date.atStartOfDay());
         given(leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(1L))
                 .willReturn(List.of(ownLeave));
         List<SpecialLeave> specials = List.of(
@@ -238,9 +251,10 @@ class LeaveServiceTest {
         assertThat(responses).hasSize(6);
         assertThat(responses).filteredOn(response -> response.source().equals("LEAVE"))
                 .containsExactly(new MemberLeavePlanResponse(20L, date, LeaveType.AFTERNOON,
-                        "오후반차", "LEAVE", "4,5,6,7"));
+                        "오후반차", "LEAVE", "4,5,6,7", new WeeklyLeaveAllowanceResponse(
+                                LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 18), 3, 1, 0, 1, 1, false)));
         assertThat(responses).filteredOn(response -> response.source().equals("SPECIAL_LEAVE"))
-                .containsExactly(new MemberLeavePlanResponse(null, date, null, "학교", "SPECIAL_LEAVE", "2,3"));
+                .containsExactly(new MemberLeavePlanResponse(null, date, null, "학교", "SPECIAL_LEAVE", "2,3", null));
         assertThat(responses).filteredOn(response -> response.source().equals("FIXED_LEAVE"))
                 .hasSize(4).allSatisfy(response -> assertThat(response.slots()).isEqualTo("1,5"));
     }

@@ -4,12 +4,16 @@ import com.example.studyfactory.domain.leave.dto.DailyLeaveStatusResponse;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
+
+    List<LeaveRequest> findByMemberIdInAndLeaveDateBetweenOrderByCreatedAtAscIdAsc(
+            Collection<Long> memberIds, LocalDate start, LocalDate end);
 
     List<LeaveRequest> findByBranchIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(Long branchId, LocalDate start, LocalDate end);
     List<LeaveRequest> findByLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(LocalDate start, LocalDate end);

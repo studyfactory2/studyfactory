@@ -13,6 +13,7 @@ import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +43,15 @@ public class EffectiveLeaveService {
         return resolve(start, end,
                 leaveRequestRepository.findByMemberIdAndLeaveDateBetweenOrderByLeaveDateAscCreatedAtAsc(memberId, start, end),
                 List.of(), List.of(), cancellationRepository.findByMemberIdAndLeaveDateBetween(memberId, start, end));
+    }
+
+    /** Batch requests for an already-authorized roster; never project office or recurring leave. */
+    public List<EffectiveLeaveOccurrence> findMemberRequestOccurrencesForMembers(
+            Collection<Long> memberIds, LocalDate start, LocalDate end) {
+        if (memberIds.isEmpty()) return List.of();
+        return resolve(start, end,
+                leaveRequestRepository.findByMemberIdInAndLeaveDateBetweenOrderByCreatedAtAscIdAsc(memberIds, start, end),
+                List.of(), List.of(), cancellationRepository.findByMemberIdInAndLeaveDateBetween(memberIds, start, end));
     }
 
     /** Keep all stored history, but project rules only for the visible interval and their stored occurrence dates. */

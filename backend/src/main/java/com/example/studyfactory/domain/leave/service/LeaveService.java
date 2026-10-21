@@ -20,6 +20,7 @@ import com.example.studyfactory.domain.leave.dto.FixedLeaveResponse;
 import com.example.studyfactory.domain.leave.dto.LeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.LeaveResponse;
 import com.example.studyfactory.domain.leave.dto.MemberLeavePlanResponse;
+import com.example.studyfactory.domain.leave.dto.WeeklyLeaveAllowanceResponse;
 import com.example.studyfactory.domain.leave.dto.MonthlyLeaveCalendarResponse;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveCreateRequest;
 import com.example.studyfactory.domain.leave.dto.SpecialLeaveResponse;
@@ -71,6 +72,7 @@ public class LeaveService {
     private final AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
     private final LeaveOccurrenceCancellationRepository cancellationRepository;
     private final EffectiveLeaveService effectiveLeaveService;
+    private final WeeklyLeaveAllowanceCalculator weeklyLeaveAllowanceCalculator;
     private final Clock clock;
 
     @Transactional
@@ -89,32 +91,42 @@ public class LeaveService {
                 request.leaveDate(),
                 List.of(toSlotsForLeaveType(request.leaveType()).split(",")).stream().map(Integer::parseInt).toList()
         );
-        return LeaveResponse.from(leaveRequestRepository.save(leaveRequest));
+        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+        LocalDate weekStart = WeeklyLeaveAllowanceCalculator.weekStart(saved.getLeaveDate());
+        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(
+                effectiveLeaveService.findMemberRequestOccurrences(memberId, weekStart, weekStart.plusDays(6)));
+        // The allowance is informational: excess requests are saved just like any other request.
+        return LeaveResponse.from(saved, allowances.get(saved.getId()));
     }
 
     @Transactional(readOnly = true)
     public List<LeaveResponse> findMine(Long memberId) {
         List<LeaveRequest> leaves = leaveRequestRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId);
         if (leaves.isEmpty()) return List.of();
-        Set<Long> effectiveIds = effectiveLeaveService.findMemberRequestOccurrences(memberId,
+        List<EffectiveLeaveOccurrence> effectiveRequests = effectiveLeaveService.findMemberRequestOccurrences(memberId,
                         leaves.stream().map(LeaveRequest::getLeaveDate).min(LocalDate::compareTo).orElseThrow(),
-                        leaves.stream().map(LeaveRequest::getLeaveDate).max(LocalDate::compareTo).orElseThrow()).stream()
-                .map(EffectiveLeaveOccurrence::sourceId).collect(Collectors.toSet());
-        return leaves.stream().filter(leave -> effectiveIds.contains(leave.getId()))
-                .map(LeaveResponse::from)
+                        leaves.stream().map(LeaveRequest::getLeaveDate).max(LocalDate::compareTo).orElseThrow());
+        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(effectiveRequests);
+        return leaves.stream().filter(leave -> allowances.containsKey(leave.getId()))
+                .map(leave -> LeaveResponse.from(leave, allowances.get(leave.getId())))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<MemberLeavePlanResponse> findMyLeavePlan(Long memberId, Integer year, Integer month) {
         YearMonth visibleMonth = resolveYearMonth(year, month);
+        // This history includes every stored member request, so weeks spanning months remain complete.
+        List<EffectiveLeaveOccurrence> history = effectiveLeaveService.findMemberHistory(
+                memberId, visibleMonth.atDay(1), visibleMonth.atEndOfMonth());
+        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(history);
         Map<String, MemberLeavePlanResponse> responses = new LinkedHashMap<>();
-        effectiveLeaveService.findMemberHistory(memberId, visibleMonth.atDay(1), visibleMonth.atEndOfMonth()).stream()
+        history.stream()
                 .forEach(leave -> {
                     String source = responseSource(leave);
                     Long id = leave.sourceType() == LeaveSourceType.SPECIAL_LEAVE ? null : leave.sourceId();
                     MemberLeavePlanResponse value = new MemberLeavePlanResponse(id, leave.date(), leave.leaveType(),
-                            leave.reason(), source, toSlots(leave.slots().stream().toList()));
+                            leave.reason(), source, toSlots(leave.slots().stream().toList()),
+                            leave.sourceType() == LeaveSourceType.MEMBER_LEAVE ? allowances.get(leave.sourceId()) : null);
                     String key = source + "|" + leave.date() + "|" + (leave.sourceType() == LeaveSourceType.MEMBER_LEAVE ? leave.sourceId() : leave.reason());
                     responses.merge(key, value, (first, next) -> first.withSlots(mergeSlots(first.slots(), next.slots())));
                 });
