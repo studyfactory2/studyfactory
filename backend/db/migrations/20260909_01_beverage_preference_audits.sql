@@ -28,8 +28,10 @@ BEGIN
     END IF;
 END $$;
 
--- Production item timestamps were stored as UTC LocalDateTime values. Recover
--- the best available lifecycle for preferences created before this migration.
+-- This script is rerun on every deployment. Only seed missing audits from
+-- current items; an existing lifecycle (including a deliberately empty list)
+-- is authoritative and must not be rewritten by deployment or archived data.
+-- Production item timestamps were stored as UTC LocalDateTime values.
 DO $$
 BEGIN
     IF to_regclass('beverage_items') IS NOT NULL THEN
@@ -41,46 +43,12 @@ BEGIN
         FROM beverage_items items
         JOIN members member ON member.id = items.member_id
         GROUP BY items.member_id
-        ON CONFLICT (member_id) DO UPDATE
-        SET created_at = LEAST(beverage_preference_audits.created_at, EXCLUDED.created_at),
-            updated_at = GREATEST(beverage_preference_audits.updated_at, EXCLUDED.updated_at);
+        ON CONFLICT (member_id) DO NOTHING;
     END IF;
 END $$;
 
--- Some installations still retain the original preference table. It can
--- recover the initial timestamp even if the current item rows were replaced.
-DO $$
-BEGIN
-    IF to_regclass('beverage_preferences') IS NOT NULL
-       AND EXISTS (
-           SELECT 1 FROM information_schema.columns
-           WHERE table_schema = current_schema()
-             AND table_name = 'beverage_preferences'
-             AND column_name = 'created_at'
-       )
-       AND EXISTS (
-           SELECT 1 FROM information_schema.columns
-           WHERE table_schema = current_schema()
-             AND table_name = 'beverage_preferences'
-             AND column_name = 'updated_at'
-       ) THEN
-        INSERT INTO beverage_preference_audits (member_id, created_at, updated_at)
-        SELECT
-            preference.member_id,
-            MIN(preference.created_at AT TIME ZONE 'UTC'),
-            MAX(preference.updated_at AT TIME ZONE 'UTC')
-        FROM beverage_preferences preference
-        JOIN members member ON member.id = preference.member_id
-        GROUP BY preference.member_id
-        ON CONFLICT (member_id) DO UPDATE
-        SET created_at = LEAST(beverage_preference_audits.created_at, EXCLUDED.created_at),
-            updated_at = GREATEST(beverage_preference_audits.updated_at, EXCLUDED.updated_at);
-    END IF;
-END $$;
-
--- Migrations run before the container swap and a failed deploy may restore the
--- previous backend. This trigger lets those older images keep the lifecycle
--- accurate without needing to know this table exists, including delete-to-empty.
+-- Actual current-item inserts/deletes still update the lifecycle, including
+-- delete-to-empty. Archived preferences are intentionally not consulted.
 CREATE OR REPLACE FUNCTION touch_beverage_preference_audit_from_item()
 RETURNS trigger
 LANGUAGE plpgsql

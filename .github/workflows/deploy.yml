@@ -34,6 +34,21 @@ jobs:
   backend:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: studyfactory_beverage_test
+          POSTGRES_USER: studyfactory_test
+          POSTGRES_PASSWORD: studyfactory_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U studyfactory_test -d studyfactory_beverage_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     defaults:
       run:
         working-directory: backend
@@ -49,7 +64,13 @@ jobs:
           java-version: 21
 
       - name: Test backend
-        run: ./gradlew test
+        run: |
+          bash ../.github/scripts/tests/rollback-backend.test.sh
+          ./gradlew test
+        env:
+          BEVERAGE_TEST_JDBC_URL: jdbc:postgresql://127.0.0.1:5432/studyfactory_beverage_test
+          BEVERAGE_TEST_DB_USER: studyfactory_test
+          BEVERAGE_TEST_DB_PASSWORD: studyfactory_test
 
       - name: Build backend jar
         run: ./gradlew bootJar -x test
@@ -61,6 +82,7 @@ jobs:
           cp Dockerfile compose.prod.yml deploy/
           cp build/libs/*.jar deploy/app.jar
           cp db/migrations/*.sql deploy/migrations/
+          cp ../.github/scripts/rollback-backend.sh deploy/
 
       - name: Prepare backend directory on EC2
         uses: appleboy/ssh-action@v1.2.0
@@ -122,38 +144,13 @@ jobs:
             if docker image inspect studyfactory-backend:latest > /dev/null 2>&1; then
               docker tag studyfactory-backend:latest studyfactory-backend:rollback
             fi
-            restore_previous_backend() {
-              if ! docker image inspect studyfactory-backend:rollback > /dev/null 2>&1; then
-                echo "No previous backend image is available for rollback."
-                return 1
-              fi
-              echo "Restoring previous backend image."
-              docker tag studyfactory-backend:rollback studyfactory-backend:latest
-              if ! docker compose --env-file .env -f compose.prod.yml up -d --no-build --force-recreate backend; then
-                echo "Previous backend image could not be recreated."
-                return 1
-              fi
-              for attempt in $(seq 1 30); do
-                if curl --fail --silent --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/api/branches > /dev/null; then
-                  sleep 5
-                  if curl --fail --silent --connect-timeout 2 --max-time 5 http://127.0.0.1:8080/api/branches > /dev/null; then
-                    echo "Previous backend image restored successfully."
-                    return 0
-                  fi
-                fi
-                sleep 2
-              done
-              echo "Previous backend image also failed its health check."
-              docker compose --env-file .env -f compose.prod.yml logs --tail=100 backend
-              return 1
-            }
             for migration in migrations/*.sql; do
               echo "Applying database migration: $migration"
               docker compose --env-file .env -f compose.prod.yml exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < "$migration"
             done
             if ! docker compose --env-file .env -f compose.prod.yml up -d --build --remove-orphans; then
               echo "Backend replacement failed before health verification."
-              restore_previous_backend || true
+              sh ./rollback-backend.sh || true
               exit 1
             fi
             for attempt in $(seq 1 30); do
@@ -167,5 +164,5 @@ jobs:
             done
             echo "Backend did not become healthy in time."
             docker compose --env-file .env -f compose.prod.yml logs --tail=100 backend
-            restore_previous_backend || true
+            sh ./rollback-backend.sh || true
             exit 1

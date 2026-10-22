@@ -16,6 +16,21 @@ jobs:
   backend:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: studyfactory_beverage_test
+          POSTGRES_USER: studyfactory_test
+          POSTGRES_PASSWORD: studyfactory_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U studyfactory_test -d studyfactory_beverage_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     defaults:
       run:
         working-directory: backend
@@ -31,7 +46,13 @@ jobs:
           java-version: 21
 
       - name: Test backend
-        run: ./gradlew test
+        env:
+          BEVERAGE_TEST_JDBC_URL: jdbc:postgresql://127.0.0.1:5432/studyfactory_beverage_test
+          BEVERAGE_TEST_DB_USER: studyfactory_test
+          BEVERAGE_TEST_DB_PASSWORD: studyfactory_test
+        run: |
+          ./gradlew test
+          bash ../.github/scripts/tests/rollback-backend.test.sh
 
   frontend:
     runs-on: ubuntu-latest

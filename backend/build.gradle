@@ -45,6 +45,17 @@ dependencies {
 }
 
 tasks.named('test') {
+    def beveragePostgresEnabled = providers.environmentVariable('BEVERAGE_TEST_JDBC_URL')
+            .map { !it.isBlank() }.getOrElse(false)
+    // The JDBC regression executes this deployment SQL directly, outside the test classpath.
+    inputs.file('db/migrations/20260909_01_beverage_preference_audits.sql')
+            .withPropertyName('beverageAuditMigration')
+    inputs.property('beveragePostgresEnabled', beveragePostgresEnabled)
+    // An external disposable database must be exercised, never satisfied by a cached test result.
+    outputs.upToDateWhen { !beveragePostgresEnabled }
+    outputs.doNotCacheIf('Beverage PostgreSQL migration tests require a live database') {
+        beveragePostgresEnabled
+    }
     outputs.dir snippetsDir
     useJUnitPlatform()
 }
