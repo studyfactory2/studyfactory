@@ -19,6 +19,8 @@ import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.repository.MonthlyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanItemRepository;
+import com.example.studyfactory.domain.weeklyPlan.repository.SharedPlanWeekRepository;
+import com.example.studyfactory.domain.weeklyPlan.repository.SharedPlanItemRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -60,6 +62,12 @@ class WeeklyPlanServiceTest {
 
     @Mock
     private MonthlyPlanGoalRepository monthlyPlanGoalRepository;
+
+    @Mock
+    private SharedPlanWeekRepository sharedPlanWeekRepository;
+
+    @Mock
+    private SharedPlanItemRepository sharedPlanItemRepository;
 
     @Spy
     private Clock clock = Clock.fixed(JUST_AFTER_SEOUL_MONTH_ROLLOVER, ZoneId.of("Asia/Seoul"));

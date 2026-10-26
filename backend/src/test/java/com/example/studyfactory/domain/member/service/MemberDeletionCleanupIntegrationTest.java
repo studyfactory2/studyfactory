@@ -45,8 +45,11 @@ import com.example.studyfactory.domain.todo.entity.TodoPriority;
 import com.example.studyfactory.domain.todo.entity.TodoReply;
 import com.example.studyfactory.domain.todo.entity.TodoSourceType;
 import com.example.studyfactory.domain.weeklyPlan.entity.MonthlyPlanGoal;
+import com.example.studyfactory.domain.weeklyPlan.entity.SharedPlanItem;
+import com.example.studyfactory.domain.weeklyPlan.entity.SharedPlanWeek;
 import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanItem;
+import com.example.studyfactory.domain.weeklyPlan.model.PlanGroup;
 import com.example.studyfactory.domain.weeklyPlan.service.WeeklyPlanService;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
@@ -54,10 +57,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -67,7 +72,10 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@DataJpaTest
+// Use the pooled test datasource: H2 IN-check constraints retain their creating
+// session, which the default unpooled embedded datasource closes between calls.
+@DataJpaTest(properties = "spring.datasource.url=jdbc:h2:mem:member-cleanup-shared-plans;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({MemberService.class, MemberDeletionCleanupService.class, BeverageService.class,
         LegacyBeverageCleanupService.class, WeeklyPlanService.class, SeatService.class,
         RegistrationCodeService.class, TimeConfig.class})
@@ -82,7 +90,8 @@ class MemberDeletionCleanupIntegrationTest {
             "attendances", "attendance_reviewed_absences", "attendance_unconfirmed_slots",
             "attendance_daily_initializations", "beverage_items", "beverage_preference_audits",
             "leave_requests", "special_leaves", "fixed_leaves", "leave_occurrence_cancellations",
-            "weekly_plan_items", "weekly_plan_goals", "monthly_plan_goals", "suggestions",
+            "weekly_plan_items", "weekly_plan_goals", "monthly_plan_goals",
+            "shared_plan_items", "shared_plan_weeks", "suggestions",
             "side_dish_requests", "study_break_sessions", "study_presence_sessions", "refresh_tokens"
     );
 
@@ -119,6 +128,7 @@ class MemberDeletionCleanupIntegrationTest {
             assertThat(count(table, "member_id", fixture.deletedId())).as(table).isZero();
             assertThat(count(table, "member_id", fixture.otherId())).as("other member: " + table).isPositive();
         }
+        assertSharedPlansRetained(fixture.otherId());
         assertThat(count("todo_items", "target_member_id", fixture.deletedId())).isZero();
         assertThat(count("todo_replies", "todo_item_id", fixture.ownedTodoId())).isZero();
         assertThat(count("todo_replies", "member_id", fixture.deletedId())).isZero();
@@ -163,6 +173,8 @@ class MemberDeletionCleanupIntegrationTest {
         for (String table : MEMBER_TABLES) {
             assertThat(count(table, "member_id", fixture.deletedId())).as(table).isPositive();
         }
+        assertSharedPlansRetained(fixture.deletedId());
+        assertSharedPlansRetained(fixture.otherId());
         assertThat(count("todo_replies", "todo_item_id", fixture.ownedTodoId())).isEqualTo(1);
         assertThat(count("todo_replies", "member_id", fixture.deletedId())).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("select member_id from seats where id = ?", Long.class,
@@ -210,6 +222,16 @@ class MemberDeletionCleanupIntegrationTest {
         persist(new WeeklyPlanGoal(memberId, branchId, DATE, "주간 목표"));
         persist(new WeeklyPlanItem(memberId, branchId, DATE, 1, 1, "계획", false, 0));
         persist(new MonthlyPlanGoal(memberId, branchId, YearMonth.from(DATE), "월간 목표"));
+        SharedPlanWeek sharedWeek = new SharedPlanWeek(memberId, DATE);
+        sharedWeek.advance(true);
+        persist(sharedWeek);
+        persist(new SharedPlanItem(memberId, branchId, DATE, 0, PlanGroup.PERIODS_1_2,
+                "보존할 공유 계획", 0, new UUID(memberId, 1L), "a".repeat(64)));
+        SharedPlanItem deletedSharedItem = new SharedPlanItem(memberId, branchId, DATE, 0,
+                PlanGroup.PERIODS_3_5, "삭제된 계획의 재시도 토큰", 0,
+                new UUID(memberId, 2L), "b".repeat(64));
+        deletedSharedItem.markDeleted();
+        persist(deletedSharedItem);
         Suggestion suggestion = new Suggestion(new SuggestionReferenceInformation(memberId, branchId, null),
                 SuggestionCategory.GENERAL, "건의", false);
         suggestion.resolve(actorId);
@@ -251,6 +273,26 @@ class MemberDeletionCleanupIntegrationTest {
     private long count(String table, String column, long value) {
         return jdbcTemplate.queryForObject("select count(*) from " + table + " where " + column + " = ?",
                 Long.class, value);
+    }
+
+    private void assertSharedPlansRetained(long memberId) {
+        assertThat(count("shared_plan_weeks", "member_id", memberId)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "select revision from shared_plan_weeks where member_id = ?", Long.class, memberId))
+                .isEqualTo(1L);
+        assertThat(jdbcTemplate.queryForObject(
+                "select legacy_save_protected from shared_plan_weeks where member_id = ?",
+                Boolean.class, memberId)).isTrue();
+        assertThat(count("shared_plan_items", "member_id", memberId)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                "select content from shared_plan_items where member_id = ? and deleted = false",
+                String.class, memberId)).isEqualTo("보존할 공유 계획");
+        assertThat(jdbcTemplate.queryForObject(
+                "select content from shared_plan_items where member_id = ? and deleted = true",
+                String.class, memberId)).isEqualTo("삭제된 계획의 재시도 토큰");
+        assertThat(jdbcTemplate.queryForList(
+                "select client_request_id from shared_plan_items where member_id = ?", UUID.class, memberId))
+                .containsExactlyInAnyOrder(new UUID(memberId, 1L), new UUID(memberId, 2L));
     }
 
     private record Fixture(long adminId, long deletedId, long otherId, long branchId,

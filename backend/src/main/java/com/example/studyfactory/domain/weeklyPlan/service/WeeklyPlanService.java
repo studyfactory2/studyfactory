@@ -14,6 +14,10 @@ import com.example.studyfactory.domain.weeklyPlan.dto.WeeklyPlanSaveRequest;
 import com.example.studyfactory.domain.weeklyPlan.entity.MonthlyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanItem;
+import com.example.studyfactory.domain.weeklyPlan.entity.SharedPlanWeek;
+import com.example.studyfactory.domain.weeklyPlan.exception.SharedPlanException;
+import com.example.studyfactory.domain.weeklyPlan.repository.SharedPlanWeekRepository;
+import com.example.studyfactory.domain.weeklyPlan.repository.SharedPlanItemRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.MonthlyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanItemRepository;
@@ -24,6 +28,7 @@ import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -34,6 +39,8 @@ public class WeeklyPlanService {
     private final WeeklyPlanGoalRepository weeklyPlanGoalRepository;
     private final WeeklyPlanItemRepository weeklyPlanItemRepository;
     private final MonthlyPlanGoalRepository monthlyPlanGoalRepository;
+    private final SharedPlanWeekRepository sharedPlanWeekRepository;
+    private final SharedPlanItemRepository sharedPlanItemRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -71,10 +78,16 @@ public class WeeklyPlanService {
         return findMine(memberId, weekStartDate);
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public WeeklyPlanResponse saveMine(Long memberId, WeeklyPlanSaveRequest request) {
         Member member = findMemberForUpdate(memberId);
         LocalDate weekStartDate = resolveWeekStartDate(request.weekStartDate());
+        SharedPlanWeek sharedWeek = sharedPlanWeekRepository.findByMemberIdAndWeekStartDate(memberId, weekStartDate)
+                .orElseGet(() -> new SharedPlanWeek(memberId, weekStartDate));
+        // Reject an old client's whole-week replacement before touching goals or existing items.
+        if (sharedWeek.isLegacySaveProtected()) {
+            throw SharedPlanException.legacySaveProtected();
+        }
         WeeklyPlanGoal goal = weeklyPlanGoalRepository
                 .findByMemberIdAndWeekStartDate(member.getId(), weekStartDate)
                 .orElseGet(() -> new WeeklyPlanGoal(member.getId(), member.getBranchId(), weekStartDate, ""));
@@ -84,6 +97,8 @@ public class WeeklyPlanService {
         weeklyPlanItemRepository.deleteByMemberIdAndWeekStartDate(member.getId(), weekStartDate);
         List<WeeklyPlanItem> items = toItems(member, weekStartDate, request.items());
         weeklyPlanItemRepository.saveAll(items);
+        sharedWeek.advance(false);
+        sharedPlanWeekRepository.save(sharedWeek);
 
         return new WeeklyPlanResponse(
                 savedGoal.getId(),
@@ -103,6 +118,8 @@ public class WeeklyPlanService {
 
     @Transactional
     public void deleteAllByMemberId(Long memberId) {
+        sharedPlanItemRepository.deleteByMemberId(memberId);
+        sharedPlanWeekRepository.deleteByMemberId(memberId);
         weeklyPlanItemRepository.deleteByMemberId(memberId);
         weeklyPlanGoalRepository.deleteByMemberId(memberId);
         monthlyPlanGoalRepository.deleteByMemberId(memberId);

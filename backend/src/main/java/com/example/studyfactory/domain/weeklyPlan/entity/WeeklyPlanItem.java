@@ -65,4 +65,13 @@ public class WeeklyPlanItem extends BaseEntity {
         this.done = done;
         this.sortOrder = sortOrder;
     }
+
+    public void update(String content, Boolean done) {
+        if (content != null) {
+            this.content = content;
+        }
+        if (done != null) {
+            this.done = done;
+        }
+    }
 }
