@@ -17,6 +17,7 @@ import com.example.studyfactory.domain.weeklyPlan.dto.WeeklyPlanSaveRequest;
 import com.example.studyfactory.domain.weeklyPlan.entity.MonthlyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.repository.MonthlyPlanGoalRepository;
+import com.example.studyfactory.domain.weeklyPlan.repository.BreakPlanCreateReceiptRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanGoalRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.WeeklyPlanItemRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.SharedPlanWeekRepository;
@@ -68,6 +69,9 @@ class WeeklyPlanServiceTest {
 
     @Mock
     private SharedPlanItemRepository sharedPlanItemRepository;
+
+    @Mock
+    private BreakPlanCreateReceiptRepository breakPlanCreateReceiptRepository;
 
     @Spy
     private Clock clock = Clock.fixed(JUST_AFTER_SEOUL_MONTH_ROLLOVER, ZoneId.of("Asia/Seoul"));

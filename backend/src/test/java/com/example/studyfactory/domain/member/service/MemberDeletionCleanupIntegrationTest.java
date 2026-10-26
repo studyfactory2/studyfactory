@@ -44,6 +44,7 @@ import com.example.studyfactory.domain.todo.entity.TodoItem;
 import com.example.studyfactory.domain.todo.entity.TodoPriority;
 import com.example.studyfactory.domain.todo.entity.TodoReply;
 import com.example.studyfactory.domain.todo.entity.TodoSourceType;
+import com.example.studyfactory.domain.weeklyPlan.entity.BreakPlanCreateReceipt;
 import com.example.studyfactory.domain.weeklyPlan.entity.MonthlyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.entity.SharedPlanItem;
 import com.example.studyfactory.domain.weeklyPlan.entity.SharedPlanWeek;
@@ -91,7 +92,7 @@ class MemberDeletionCleanupIntegrationTest {
             "attendance_daily_initializations", "beverage_items", "beverage_preference_audits",
             "leave_requests", "special_leaves", "fixed_leaves", "leave_occurrence_cancellations",
             "weekly_plan_items", "weekly_plan_goals", "monthly_plan_goals",
-            "shared_plan_items", "shared_plan_weeks", "suggestions",
+            "shared_plan_items", "shared_plan_weeks", "break_plan_create_receipts", "suggestions",
             "side_dish_requests", "study_break_sessions", "study_presence_sessions", "refresh_tokens"
     );
 
@@ -221,6 +222,15 @@ class MemberDeletionCleanupIntegrationTest {
                 fixed.getId(), DATE, 4, actorId));
         persist(new WeeklyPlanGoal(memberId, branchId, DATE, "주간 목표"));
         persist(new WeeklyPlanItem(memberId, branchId, DATE, 1, 1, "계획", false, 0));
+        WeeklyPlanItem lunchPlan = persist(new WeeklyPlanItem(memberId, branchId, DATE, 100, 0,
+                "점심 계획", false, 0));
+        persist(new BreakPlanCreateReceipt(memberId, DATE, new UUID(memberId, 3L), "c".repeat(64),
+                lunchPlan.getId()));
+        WeeklyPlanItem deletedDinnerPlan = persist(new WeeklyPlanItem(memberId, branchId, DATE, 101, 0,
+                "삭제한 저녁 계획", false, 0));
+        persist(new BreakPlanCreateReceipt(memberId, DATE, new UUID(memberId, 4L), "d".repeat(64),
+                deletedDinnerPlan.getId()));
+        entityManager.remove(deletedDinnerPlan);
         persist(new MonthlyPlanGoal(memberId, branchId, YearMonth.from(DATE), "월간 목표"));
         SharedPlanWeek sharedWeek = new SharedPlanWeek(memberId, DATE);
         sharedWeek.advance(true);
@@ -293,6 +303,21 @@ class MemberDeletionCleanupIntegrationTest {
         assertThat(jdbcTemplate.queryForList(
                 "select client_request_id from shared_plan_items where member_id = ?", UUID.class, memberId))
                 .containsExactlyInAnyOrder(new UUID(memberId, 1L), new UUID(memberId, 2L));
+        assertThat(count("break_plan_create_receipts", "member_id", memberId)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForList(
+                "select client_request_id from break_plan_create_receipts where member_id = ?",
+                UUID.class, memberId)).containsExactlyInAnyOrder(new UUID(memberId, 3L), new UUID(memberId, 4L));
+        assertThat(jdbcTemplate.queryForList(
+                "select create_fingerprint from break_plan_create_receipts where member_id = ?",
+                String.class, memberId)).containsExactlyInAnyOrder("c".repeat(64), "d".repeat(64));
+        Long lunchItemId = jdbcTemplate.queryForObject(
+                "select item_id from break_plan_create_receipts where member_id = ? and client_request_id = ?",
+                Long.class, memberId, new UUID(memberId, 3L));
+        Long deletedDinnerItemId = jdbcTemplate.queryForObject(
+                "select item_id from break_plan_create_receipts where member_id = ? and client_request_id = ?",
+                Long.class, memberId, new UUID(memberId, 4L));
+        assertThat(count("weekly_plan_items", "id", lunchItemId)).isEqualTo(1);
+        assertThat(count("weekly_plan_items", "id", deletedDinnerItemId)).isZero();
     }
 
     private record Fixture(long adminId, long deletedId, long otherId, long branchId,

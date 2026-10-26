@@ -1,7 +1,9 @@
 package com.example.studyfactory.domain.weeklyPlan.controller;
 
 import com.example.studyfactory.domain.auth.annotation.CurrentMember;
+import com.example.studyfactory.domain.weeklyPlan.dto.BreakPlanCreateRequest;
 import com.example.studyfactory.domain.weeklyPlan.dto.SharedPlanCreateRequest;
+import com.example.studyfactory.domain.weeklyPlan.dto.SharedPlanGoalRequest;
 import com.example.studyfactory.domain.weeklyPlan.dto.SharedPlanUpdateRequest;
 import com.example.studyfactory.domain.weeklyPlan.dto.SharedPlanWeekResponse;
 import com.example.studyfactory.domain.weeklyPlan.model.PlanItemSource;
@@ -41,6 +43,16 @@ public class SharedPlanController {
     @PostMapping("/me/items")
     public SharedPlanWeekResponse createMine(@CurrentMember Long memberId, @RequestBody SharedPlanCreateRequest request) {
         return sharedPlanService.createMine(memberId, request);
+    }
+
+    @PatchMapping("/me/goal")
+    public SharedPlanWeekResponse saveGoalMine(@CurrentMember Long memberId, @RequestBody SharedPlanGoalRequest request) {
+        return sharedPlanService.saveGoalMine(memberId, request);
+    }
+
+    @PostMapping("/me/break-items")
+    public SharedPlanWeekResponse createBreakMine(@CurrentMember Long memberId, @RequestBody BreakPlanCreateRequest request) {
+        return sharedPlanService.createBreakMine(memberId, request);
     }
 
     @PatchMapping("/me/items/{source}/{itemId}")

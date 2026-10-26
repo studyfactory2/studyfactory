@@ -16,6 +16,7 @@ import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanGoal;
 import com.example.studyfactory.domain.weeklyPlan.entity.WeeklyPlanItem;
 import com.example.studyfactory.domain.weeklyPlan.entity.SharedPlanWeek;
 import com.example.studyfactory.domain.weeklyPlan.exception.SharedPlanException;
+import com.example.studyfactory.domain.weeklyPlan.repository.BreakPlanCreateReceiptRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.SharedPlanWeekRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.SharedPlanItemRepository;
 import com.example.studyfactory.domain.weeklyPlan.repository.MonthlyPlanGoalRepository;
@@ -41,6 +42,7 @@ public class WeeklyPlanService {
     private final MonthlyPlanGoalRepository monthlyPlanGoalRepository;
     private final SharedPlanWeekRepository sharedPlanWeekRepository;
     private final SharedPlanItemRepository sharedPlanItemRepository;
+    private final BreakPlanCreateReceiptRepository breakPlanCreateReceiptRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -118,6 +120,7 @@ public class WeeklyPlanService {
 
     @Transactional
     public void deleteAllByMemberId(Long memberId) {
+        breakPlanCreateReceiptRepository.deleteByMemberId(memberId);
         sharedPlanItemRepository.deleteByMemberId(memberId);
         sharedPlanWeekRepository.deleteByMemberId(memberId);
         weeklyPlanItemRepository.deleteByMemberId(memberId);
