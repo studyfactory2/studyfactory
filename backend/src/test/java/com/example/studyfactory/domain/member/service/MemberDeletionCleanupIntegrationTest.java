@@ -17,6 +17,8 @@ import com.example.studyfactory.domain.beverage.entity.BeveragePreferenceAudit;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
 import com.example.studyfactory.domain.beverage.service.LegacyBeverageCleanupService;
 import com.example.studyfactory.domain.branch.entity.Branch;
+import com.example.studyfactory.domain.dailyTask.entity.DailyTaskDay;
+import com.example.studyfactory.domain.dailyTask.entity.DailyTaskItem;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveOccurrenceCancellation;
 import com.example.studyfactory.domain.leave.entity.LeaveRequest;
@@ -93,6 +95,7 @@ class MemberDeletionCleanupIntegrationTest {
             "leave_requests", "special_leaves", "fixed_leaves", "leave_occurrence_cancellations",
             "weekly_plan_items", "weekly_plan_goals", "monthly_plan_goals",
             "shared_plan_items", "shared_plan_weeks", "break_plan_create_receipts", "suggestions",
+            "member_task_days", "member_task_items",
             "side_dish_requests", "study_break_sessions", "study_presence_sessions", "refresh_tokens"
     );
 
@@ -130,6 +133,7 @@ class MemberDeletionCleanupIntegrationTest {
             assertThat(count(table, "member_id", fixture.otherId())).as("other member: " + table).isPositive();
         }
         assertSharedPlansRetained(fixture.otherId());
+        assertDailyTasksRetained(fixture.otherId());
         assertThat(count("todo_items", "target_member_id", fixture.deletedId())).isZero();
         assertThat(count("todo_replies", "todo_item_id", fixture.ownedTodoId())).isZero();
         assertThat(count("todo_replies", "member_id", fixture.deletedId())).isZero();
@@ -176,6 +180,8 @@ class MemberDeletionCleanupIntegrationTest {
         }
         assertSharedPlansRetained(fixture.deletedId());
         assertSharedPlansRetained(fixture.otherId());
+        assertDailyTasksRetained(fixture.deletedId());
+        assertDailyTasksRetained(fixture.otherId());
         assertThat(count("todo_replies", "todo_item_id", fixture.ownedTodoId())).isEqualTo(1);
         assertThat(count("todo_replies", "member_id", fixture.deletedId())).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("select member_id from seats where id = ?", Long.class,
@@ -242,6 +248,15 @@ class MemberDeletionCleanupIntegrationTest {
                 new UUID(memberId, 2L), "b".repeat(64));
         deletedSharedItem.markDeleted();
         persist(deletedSharedItem);
+        DailyTaskDay taskDay = new DailyTaskDay(memberId, DATE);
+        taskDay.advance();
+        persist(taskDay);
+        persist(new DailyTaskItem(memberId, DATE, "보존할 개인 할 일", 0,
+                new UUID(memberId, 5L), "e".repeat(64)));
+        DailyTaskItem deletedTask = new DailyTaskItem(memberId, DATE, "삭제된 개인 할 일의 재시도 토큰", 1,
+                new UUID(memberId, 6L), "f".repeat(64));
+        deletedTask.markDeleted();
+        persist(deletedTask);
         Suggestion suggestion = new Suggestion(new SuggestionReferenceInformation(memberId, branchId, null),
                 SuggestionCategory.GENERAL, "건의", false);
         suggestion.resolve(actorId);
@@ -318,6 +333,23 @@ class MemberDeletionCleanupIntegrationTest {
                 Long.class, memberId, new UUID(memberId, 4L));
         assertThat(count("weekly_plan_items", "id", lunchItemId)).isEqualTo(1);
         assertThat(count("weekly_plan_items", "id", deletedDinnerItemId)).isZero();
+    }
+
+    private void assertDailyTasksRetained(long memberId) {
+        assertThat(count("member_task_days", "member_id", memberId)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "select revision from member_task_days where member_id = ?", Long.class, memberId))
+                .isEqualTo(1L);
+        assertThat(count("member_task_items", "member_id", memberId)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                "select content from member_task_items where member_id = ? and deleted = false",
+                String.class, memberId)).isEqualTo("보존할 개인 할 일");
+        assertThat(jdbcTemplate.queryForObject(
+                "select content from member_task_items where member_id = ? and deleted = true",
+                String.class, memberId)).isEqualTo("삭제된 개인 할 일의 재시도 토큰");
+        assertThat(jdbcTemplate.queryForList(
+                "select client_request_id from member_task_items where member_id = ?", UUID.class, memberId))
+                .containsExactlyInAnyOrder(new UUID(memberId, 5L), new UUID(memberId, 6L));
     }
 
     private record Fixture(long adminId, long deletedId, long otherId, long branchId,

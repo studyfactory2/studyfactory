@@ -6,6 +6,8 @@ import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedA
 import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
 import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
+import com.example.studyfactory.domain.dailyTask.repository.DailyTaskDayRepository;
+import com.example.studyfactory.domain.dailyTask.repository.DailyTaskItemRepository;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
@@ -43,6 +45,8 @@ public class MemberDeletionCleanupService {
     private final TodoItemRepository todoItemRepository;
     private final TodoReplyRepository todoReplyRepository;
     private final WeeklyPlanService weeklyPlanService;
+    private final DailyTaskItemRepository dailyTaskItemRepository;
+    private final DailyTaskDayRepository dailyTaskDayRepository;
 
     public void cleanup(Long memberId) {
         beverageService.deleteAllByMemberId(memberId);
@@ -58,6 +62,8 @@ public class MemberDeletionCleanupService {
         todoReplyRepository.deleteByMemberId(memberId);
         todoItemRepository.deleteByTargetMemberId(memberId);
         weeklyPlanService.deleteAllByMemberId(memberId);
+        dailyTaskItemRepository.deleteByMemberId(memberId);
+        dailyTaskDayRepository.deleteByMemberId(memberId);
         suggestionRepository.deleteByReferenceInformationMemberId(memberId);
         sideDishRequestRepository.deleteByReferenceInformationMemberId(memberId);
         studyBreakSessionRepository.deleteByMemberId(memberId);

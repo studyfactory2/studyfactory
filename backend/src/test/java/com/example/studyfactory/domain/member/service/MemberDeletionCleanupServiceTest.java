@@ -9,6 +9,8 @@ import com.example.studyfactory.domain.attendance.repository.AttendanceReviewedA
 import com.example.studyfactory.domain.attendance.repository.AttendanceUnconfirmedSlotRepository;
 import com.example.studyfactory.domain.auth.repository.RefreshTokenRepository;
 import com.example.studyfactory.domain.beverage.service.BeverageService;
+import com.example.studyfactory.domain.dailyTask.repository.DailyTaskDayRepository;
+import com.example.studyfactory.domain.dailyTask.repository.DailyTaskItemRepository;
 import com.example.studyfactory.domain.leave.repository.FixedLeaveRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveRequestRepository;
 import com.example.studyfactory.domain.leave.repository.LeaveOccurrenceCancellationRepository;
@@ -89,6 +91,12 @@ class MemberDeletionCleanupServiceTest {
     @Mock
     private WeeklyPlanService weeklyPlanService;
 
+    @Mock
+    private DailyTaskItemRepository dailyTaskItemRepository;
+
+    @Mock
+    private DailyTaskDayRepository dailyTaskDayRepository;
+
     @Test
     @DisplayName("회원 삭제 시 회원이 가진 참조 데이터를 함께 정리한다")
     void cleanupMemberReferences() {
@@ -107,6 +115,8 @@ class MemberDeletionCleanupServiceTest {
         then(todoReplyRepository).should().deleteByMemberId(1L);
         then(todoItemRepository).should().deleteByTargetMemberId(1L);
         then(weeklyPlanService).should().deleteAllByMemberId(1L);
+        then(dailyTaskItemRepository).should().deleteByMemberId(1L);
+        then(dailyTaskDayRepository).should().deleteByMemberId(1L);
         then(suggestionRepository).should().deleteByReferenceInformationMemberId(1L);
         then(sideDishRequestRepository).should().deleteByReferenceInformationMemberId(1L);
         then(studyBreakSessionRepository).should().deleteByMemberId(1L);
@@ -129,6 +139,7 @@ class MemberDeletionCleanupServiceTest {
 
         var order = inOrder(leaveOccurrenceCancellationRepository, specialLeaveRepository,
                 fixedLeaveRepository, todoReplyRepository, todoItemRepository,
+                dailyTaskItemRepository, dailyTaskDayRepository,
                 studyBreakSessionRepository, studyPresenceSessionRepository);
         order.verify(leaveOccurrenceCancellationRepository).deleteByMemberId(1L);
         order.verify(specialLeaveRepository).deleteByMemberId(1L);
@@ -136,6 +147,8 @@ class MemberDeletionCleanupServiceTest {
         order.verify(todoReplyRepository).deleteByTodoTargetMemberId(1L);
         order.verify(todoReplyRepository).deleteByMemberId(1L);
         order.verify(todoItemRepository).deleteByTargetMemberId(1L);
+        order.verify(dailyTaskItemRepository).deleteByMemberId(1L);
+        order.verify(dailyTaskDayRepository).deleteByMemberId(1L);
         order.verify(studyBreakSessionRepository).deleteByMemberId(1L);
         order.verify(studyPresenceSessionRepository).deleteByMemberId(1L);
     }
