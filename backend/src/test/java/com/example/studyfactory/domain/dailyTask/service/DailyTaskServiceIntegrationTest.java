@@ -479,6 +479,10 @@ class DailyTaskServiceIntegrationTest {
         assertThat(before.totals().recognizedPeriodDuration().totalSeconds()).isEqualTo(105 * 60);
         assertThat(before.totals().recognizedBreakDuration().totalSeconds()).isEqualTo(9 * 60);
 
+        // Compare persisted timestamps: database precision may differ from the audited in-memory values.
+        var weeklyUpdatedBefore = weeklyItems.findById(weekly.getId()).orElseThrow().getUpdatedAt();
+        var staffTodoUpdatedBefore = staffTodos.findById(staffTodo.getId()).orElseThrow().getUpdatedAt();
+
         Long id = create(member, DATE, 0L, "새 개인 할 일").items().getFirst().id();
         tasks.updateMine(member.getId(), id, new DailyTaskUpdateRequest(DATE, 1L, "수정 및 완료", true));
         tasks.deleteMine(member.getId(), id, DATE, 2L);
@@ -487,12 +491,12 @@ class DailyTaskServiceIntegrationTest {
         assertThat(preserved.getContent()).isEqualTo(weekly.getContent());
         assertThat(preserved.isDone()).isTrue();
         assertThat(preserved.getSortOrder()).isEqualTo(4);
-        assertThat(preserved.getUpdatedAt()).isEqualTo(weekly.getUpdatedAt());
+        assertThat(preserved.getUpdatedAt()).isEqualTo(weeklyUpdatedBefore);
         assertThat(weeklyGoals.findById(goal.getId()).orElseThrow().getGoal()).isEqualTo("주간 목표");
         TodoItem preservedTodo = staffTodos.findById(staffTodo.getId()).orElseThrow();
         assertThat(preservedTodo.getContent()).isEqualTo("운영용 할 일");
         assertThat(preservedTodo.isCompleted()).isFalse();
-        assertThat(preservedTodo.getUpdatedAt()).isEqualTo(staffTodo.getUpdatedAt());
+        assertThat(preservedTodo.getUpdatedAt()).isEqualTo(staffTodoUpdatedBefore);
         assertThat(studyReports.findMine(member.getId(), DATE, DATE)).isEqualTo(before);
         assertThat(presences.findById(presence.getId())).isPresent();
         assertThat(breaks.findById(breakSession.getId()).orElseThrow().getEndedAt())
