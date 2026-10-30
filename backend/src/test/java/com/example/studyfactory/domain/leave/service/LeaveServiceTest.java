@@ -37,6 +37,7 @@ import com.example.studyfactory.domain.member.entity.Member;
 import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.DayOfWeek;
@@ -48,6 +49,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -262,11 +265,59 @@ class LeaveServiceTest {
     @Test
     @DisplayName("본인의 휴무 신청을 삭제한다")
     void deleteLeave() {
-        LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
+        LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.now(clock), LeaveType.FULL);
         Member member = createMemberWithId(1L, MemberRole.MEMBER);
         given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
         given(memberRepository.findById(1L)).willReturn(Optional.of(member));
         given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+
+        leaveService.delete(1L, 10L);
+
+        then(leaveRequestRepository).should().delete(leaveRequest);
+    }
+
+    @ParameterizedTest(name = "{0} / 휴무 {1} / 취소 허용 {2}")
+    @CsvSource({
+            "2026-10-30T14:59:59Z, 2026-10-30, true",
+            "2026-10-30T15:00:00Z, 2026-10-30, false",
+            "2026-10-30T15:00:00Z, 2026-10-31, true",
+            "2026-10-30T15:00:00Z, 2026-11-01, true"
+    })
+    @DisplayName("회원의 휴무 취소는 서울 자정을 기준으로 지난 날짜만 거절한다")
+    void memberCancellationUsesSeoulDate(String instant, LocalDate leaveDate, boolean allowed) {
+        ReflectionTestUtils.setField(leaveService, "clock", Clock.fixed(
+                Instant.parse(instant), ZoneId.of("Asia/Seoul")));
+        LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, leaveDate, LeaveType.MORNING);
+        Member member = createMemberWithId(1L, MemberRole.MEMBER);
+        given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(member));
+
+        if (allowed) {
+            leaveService.delete(1L, 10L);
+            then(leaveRequestRepository).should().delete(leaveRequest);
+        } else {
+            assertThatThrownBy(() -> leaveService.delete(1L, 10L))
+                    .isInstanceOf(LeaveException.class)
+                    .hasMessageContaining("지난 날짜의 휴무는 취소할 수 없습니다.");
+            then(leaveRequestRepository).should(never()).delete(any(LeaveRequest.class));
+        }
+        then(attendanceRepository).shouldHaveNoInteractions();
+        then(attendanceUnconfirmedSlotRepository).shouldHaveNoInteractions();
+        then(specialLeaveRepository).shouldHaveNoInteractions();
+        then(fixedLeaveRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("스태프의 본인 지난 휴무 취소 권한은 유지한다")
+    void staffCanStillDeleteOwnPastLeave() {
+        ReflectionTestUtils.setField(leaveService, "clock", Clock.fixed(
+                Instant.parse("2026-10-30T15:00:00Z"), ZoneId.of("Asia/Seoul")));
+        LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.of(2026, 10, 30), LeaveType.FULL);
+        Member staff = createMemberWithId(1L, MemberRole.STAFF);
+        given(leaveRequestRepository.findById(10L)).willReturn(Optional.of(leaveRequest));
+        given(memberRepository.findById(1L)).willReturn(Optional.of(staff));
+        given(memberRepository.findByIdForUpdate(1L)).willReturn(Optional.of(staff));
 
         leaveService.delete(1L, 10L);
 

@@ -141,6 +141,9 @@ public class LeaveService {
         Member member = memberRepository.findById(memberId).orElseThrow(MemberException::memberNotFound);
         validateOwner(member, leaveRequest);
         findMemberForUpdate(leaveRequest.getMemberId());
+        if (member.getRole() == MemberRole.MEMBER && leaveRequest.getLeaveDate().isBefore(LocalDate.now(clock))) {
+            throw LeaveException.pastLeaveCancellationNotAllowed();
+        }
         leaveRequestRepository.delete(leaveRequest);
     }
 

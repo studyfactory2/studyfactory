@@ -178,7 +178,7 @@ class LeaveControllerTest {
     void deleteLeave() throws Exception {
         Branch branch = branchRepository.save(new Branch("강남점", "서울 강남구"));
         Member member = memberRepository.save(createMember("kim", branch.getId()));
-        LeaveRequest leaveRequest = leaveRequestRepository.save(new LeaveRequest(member.getId(), branch.getId(), LocalDate.of(2026, 7, 1), LeaveType.FULL));
+        LeaveRequest leaveRequest = leaveRequestRepository.save(new LeaveRequest(member.getId(), branch.getId(), LocalDate.now(STUDY_FACTORY_ZONE), LeaveType.FULL));
         String accessToken = jwtTokenProvider.createAccessToken(member);
 
         mockMvc.perform(delete("/api/leaves/{leaveId}", leaveRequest.getId())

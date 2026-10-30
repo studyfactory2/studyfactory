@@ -13,6 +13,10 @@ public class LeaveException extends BaseException {
         return new LeaveException(HttpStatus.BAD_REQUEST, "오늘보다 이전 날짜는 휴무 신청을 할 수 없습니다.");
     }
 
+    public static LeaveException pastLeaveCancellationNotAllowed() {
+        return new LeaveException(HttpStatus.BAD_REQUEST, "지난 날짜의 휴무는 취소할 수 없습니다.");
+    }
+
     public static LeaveException leaveNotFound() {
         return new LeaveException(HttpStatus.NOT_FOUND, "존재하지 않는 휴무 신청입니다.");
     }

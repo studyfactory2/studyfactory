@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import com.example.studyfactory.domain.attendance.entity.Attendance;
 import com.example.studyfactory.domain.attendance.entity.AttendanceReferenceInformation;
@@ -16,6 +17,7 @@ import com.example.studyfactory.domain.branch.entity.Branch;
 import com.example.studyfactory.domain.branch.repository.BranchRepository;
 import com.example.studyfactory.domain.leave.entity.FixedLeave;
 import com.example.studyfactory.domain.leave.entity.LeaveOccurrenceCancellation;
+import com.example.studyfactory.domain.leave.entity.LeaveRequest;
 import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
 import com.example.studyfactory.domain.leave.entity.SpecialLeave;
@@ -160,6 +162,27 @@ class WeeklyLeaveAllowanceWorkflowTest {
         assertThat(warnings).hasSize(1);
         assertThat(((Number) warnings.getFirst().get("leaveId")).longValue()).isEqualTo(id(replacement));
         assertAllowance(byId(mine(member), fourth), TODAY, 1, 2, 3, 4, false);
+    }
+
+    @Test
+    @DisplayName("회원의 지난 휴무 취소는 거절하고 저장된 휴무와 출석을 보존한다")
+    void pastMemberCancellationPreservesEveryStoredRecord() throws Exception {
+        LocalDate yesterday = TODAY.minusDays(1);
+        LeaveRequest past = leaveRequestRepository.save(new LeaveRequest(
+                member.getId(), branch.getId(), yesterday, LeaveType.MORNING));
+        SpecialLeave office = special(yesterday, "1", "학교");
+        FixedLeave recurring = fixed(yesterday, "2", "알바");
+        Attendance actual = present(yesterday, 4);
+        request(member, TODAY, LeaveType.AFTERNOON);
+        List<String> before = persistedSnapshot();
+
+        mockMvc.perform(delete("/api/leaves/{leaveId}", past.getId()).header("Authorization", token(member)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("지난 날짜의 휴무는 취소할 수 없습니다."));
+
+        assertThat(leaveRequestRepository.existsById(past.getId())).isTrue();
+        assertThat(persistedSnapshot()).isEqualTo(before);
+        assertProtectedRecords(office, recurring, actual);
     }
 
     @Test
