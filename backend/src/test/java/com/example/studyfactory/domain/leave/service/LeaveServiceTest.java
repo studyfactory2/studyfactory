@@ -102,6 +102,7 @@ class LeaveServiceTest {
         ReflectionTestUtils.setField(leaveService, "effectiveLeaveService", new EffectiveLeaveService(
                 leaveRequestRepository, specialLeaveRepository, fixedLeaveRepository, cancellationRepository));
         ReflectionTestUtils.setField(leaveService, "weeklyLeaveAllowanceCalculator", new WeeklyLeaveAllowanceCalculator());
+        ReflectionTestUtils.setField(leaveService, "attendanceLeaveProjection", new AttendanceLeaveProjection(attendanceRepository));
     }
 
     @Test

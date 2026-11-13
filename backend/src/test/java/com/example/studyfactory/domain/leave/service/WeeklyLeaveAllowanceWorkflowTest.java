@@ -292,7 +292,8 @@ class WeeklyLeaveAllowanceWorkflowTest {
         Map<String, Object> partial = plan(member, TODAY).stream()
                 .filter(item -> "LEAVE".equals(item.get("source")) && id(item) == full)
                 .findFirst().orElseThrow();
-        assertThat(partial.get("slots")).isEqualTo("2,3,4,5,6,7");
+        // The attended fourth period is hidden in the active plan, without refunding leave units.
+        assertThat(partial.get("slots")).isEqualTo("2,3,5,6,7");
 
         for (int slot = 2; slot <= 7; slot++) cancelSlot(full, slot);
 

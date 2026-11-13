@@ -72,6 +72,7 @@ public class LeaveService {
     private final AttendanceReviewedAbsenceRepository attendanceReviewedAbsenceRepository;
     private final LeaveOccurrenceCancellationRepository cancellationRepository;
     private final EffectiveLeaveService effectiveLeaveService;
+    private final AttendanceLeaveProjection attendanceLeaveProjection;
     private final WeeklyLeaveAllowanceCalculator weeklyLeaveAllowanceCalculator;
     private final Clock clock;
 
@@ -109,7 +110,9 @@ public class LeaveService {
                         leaves.stream().map(LeaveRequest::getLeaveDate).max(LocalDate::compareTo).orElseThrow());
         Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(
                 effectiveRequests, Map.of(memberId, findMember(memberId).getRole()));
-        return leaves.stream().filter(leave -> allowances.containsKey(leave.getId()))
+        Set<Long> visibleRequestIds = attendanceLeaveProjection.withoutPresentPeriods(effectiveRequests).stream()
+                .map(EffectiveLeaveOccurrence::sourceId).collect(Collectors.toSet());
+        return leaves.stream().filter(leave -> visibleRequestIds.contains(leave.getId()))
                 .map(leave -> LeaveResponse.from(leave, allowances.get(leave.getId())))
                 .toList();
     }
@@ -123,7 +126,7 @@ public class LeaveService {
         Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(
                 history, Map.of(memberId, findMember(memberId).getRole()));
         Map<String, MemberLeavePlanResponse> responses = new LinkedHashMap<>();
-        history.stream()
+        attendanceLeaveProjection.withoutPresentPeriods(history).stream()
                 .forEach(leave -> {
                     String source = responseSource(leave);
                     Long id = leave.sourceType() == LeaveSourceType.SPECIAL_LEAVE ? null : leave.sourceId();
@@ -162,7 +165,8 @@ public class LeaveService {
         LocalDate targetDate = resolveDate(date);
         String searchName = toSearchName(name);
         Long targetBranchId = ManagerAccessPolicy.resolveOptionalAdminBranch(currentMember, branchId);
-        List<EffectiveLeaveOccurrence> effective = effectiveLeaveService.findForBranch(targetBranchId, targetDate, targetDate);
+        List<EffectiveLeaveOccurrence> effective = attendanceLeaveProjection.withoutPresentPeriods(
+                effectiveLeaveService.findForBranch(targetBranchId, targetDate, targetDate));
         Map<Long, String> branchNames = new LinkedHashMap<>();
         leaveRequestRepository.findDailyStatuses(targetDate, searchName, targetBranchId, leaveType)
                 .forEach(value -> branchNames.putIfAbsent(value.memberId(), value.branch()));
@@ -194,7 +198,8 @@ public class LeaveService {
         YearMonth yearMonth = resolveYearMonth(year, month);
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
-        return effectiveLeaveService.findForMember(memberId, startDate, endDate).stream()
+        return attendanceLeaveProjection.withoutPresentPeriods(
+                        effectiveLeaveService.findForMember(memberId, startDate, endDate)).stream()
                 .map(leave -> new MonthlyLeaveCalendarResponse(leave.date(),
                         leave.leaveType() == null ? leave.reason() : toLeaveTypeLabel(leave.leaveType()),
                         responseSource(leave), toSlots(leave.slots().stream().toList()), leave.sourceType(), leave.sourceId()))
@@ -452,7 +457,8 @@ public class LeaveService {
 
         List<SpecialLeave> leaves = specialLeaveRepository.findByMemberIdOrderByLeaveDateDescCreatedAtDesc(memberId);
         if (leaves.isEmpty()) return List.of();
-        List<EffectiveLeaveOccurrence> effective = effectiveLeaveService.findMemberSpecialHistory(memberId);
+        List<EffectiveLeaveOccurrence> effective = attendanceLeaveProjection.withoutPresentPeriods(
+                effectiveLeaveService.findMemberSpecialHistory(memberId));
         List<SpecialLeaveResponse> responses = new ArrayList<>();
         for (SpecialLeave leave : leaves) {
             effective.stream().filter(value -> value.date().equals(leave.getLeaveDate()))
