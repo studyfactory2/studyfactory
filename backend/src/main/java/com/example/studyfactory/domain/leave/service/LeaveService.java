@@ -94,7 +94,8 @@ public class LeaveService {
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
         LocalDate weekStart = WeeklyLeaveAllowanceCalculator.weekStart(saved.getLeaveDate());
         Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(
-                effectiveLeaveService.findMemberRequestOccurrences(memberId, weekStart, weekStart.plusDays(6)));
+                effectiveLeaveService.findMemberRequestOccurrences(memberId, weekStart, weekStart.plusDays(6)),
+                Map.of(memberId, member.getRole()));
         // The allowance is informational: excess requests are saved just like any other request.
         return LeaveResponse.from(saved, allowances.get(saved.getId()));
     }
@@ -106,7 +107,8 @@ public class LeaveService {
         List<EffectiveLeaveOccurrence> effectiveRequests = effectiveLeaveService.findMemberRequestOccurrences(memberId,
                         leaves.stream().map(LeaveRequest::getLeaveDate).min(LocalDate::compareTo).orElseThrow(),
                         leaves.stream().map(LeaveRequest::getLeaveDate).max(LocalDate::compareTo).orElseThrow());
-        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(effectiveRequests);
+        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(
+                effectiveRequests, Map.of(memberId, findMember(memberId).getRole()));
         return leaves.stream().filter(leave -> allowances.containsKey(leave.getId()))
                 .map(leave -> LeaveResponse.from(leave, allowances.get(leave.getId())))
                 .toList();
@@ -118,7 +120,8 @@ public class LeaveService {
         // This history includes every stored member request, so weeks spanning months remain complete.
         List<EffectiveLeaveOccurrence> history = effectiveLeaveService.findMemberHistory(
                 memberId, visibleMonth.atDay(1), visibleMonth.atEndOfMonth());
-        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(history);
+        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(
+                history, Map.of(memberId, findMember(memberId).getRole()));
         Map<String, MemberLeavePlanResponse> responses = new LinkedHashMap<>();
         history.stream()
                 .forEach(leave -> {

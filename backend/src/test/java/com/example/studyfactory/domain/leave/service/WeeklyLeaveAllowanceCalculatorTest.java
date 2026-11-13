@@ -7,6 +7,7 @@ import com.example.studyfactory.domain.leave.dto.EffectiveLeaveOccurrence;
 import com.example.studyfactory.domain.leave.dto.WeeklyLeaveAllowanceResponse;
 import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,12 +26,12 @@ class WeeklyLeaveAllowanceCalculatorTest {
 
     @Test
     void emptyOccurrencesHaveNoAllowanceMetadata() {
-        assertThat(calculator.calculate(List.of())).isEmpty();
+        assertThat(calculateMemberAllowances(List.of())).isEmpty();
     }
 
     @Test
     void oneFullDayAndOneHalfDayUseTheAllowanceWithoutExcess() {
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 request(1L, MONDAY, LeaveType.FULL),
                 request(2L, MONDAY.plusDays(1), LeaveType.MORNING)));
 
@@ -40,7 +41,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
 
     @Test
     void threeHalfDaysAreWithinAllowanceEvenOnTheSameDate() {
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 request(1L, MONDAY, LeaveType.MORNING),
                 request(2L, MONDAY, LeaveType.AFTERNOON),
                 request(3L, MONDAY, LeaveType.MORNING)));
@@ -52,7 +53,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
 
     @Test
     void secondFullDayIsEntirelyFlaggedWhenItCrossesTheAllowance() {
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 request(1L, MONDAY, LeaveType.FULL),
                 request(2L, MONDAY.plusDays(1), LeaveType.FULL)));
 
@@ -62,7 +63,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
 
     @Test
     void fourthHalfDayIsFlaggedWithoutChangingEarlierRequests() {
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 request(1L, MONDAY, LeaveType.MORNING),
                 request(2L, MONDAY, LeaveType.AFTERNOON),
                 request(3L, MONDAY, LeaveType.MORNING),
@@ -74,6 +75,73 @@ class WeeklyLeaveAllowanceCalculatorTest {
         assertState(result.get(4L), MONDAY, 1, 3, 4, 4, true);
     }
 
+    @ParameterizedTest
+    @CsvSource({"2, 0", "1, 2", "0, 4"})
+    void staffCanUseFourUnitsInFullHalfOrMixedRequestsAndOnlyTheNextRequestIsExcess(
+            int fullDays, int halfDays) {
+        List<EffectiveLeaveOccurrence> requests = new ArrayList<>();
+        for (int index = 0; index < fullDays + halfDays; index++) {
+            requests.add(request(index + 1L, MONDAY.plusDays(index),
+                    index < fullDays ? LeaveType.FULL : LeaveType.MORNING));
+        }
+        Map<Long, MemberRole> roles = Map.of(1L, MemberRole.STAFF);
+        Map<Long, WeeklyLeaveAllowanceResponse> within = calculator.calculate(requests, roles);
+
+        assertThat(within.values()).allSatisfy(value -> {
+            assertThat(value.allowanceUnits()).isEqualTo(4);
+            assertThat(value.totalUnits()).isEqualTo(4);
+            assertThat(value.excess()).isFalse();
+        });
+        long nextId = requests.size() + 1L;
+        requests.add(request(nextId, MONDAY.plusDays(6), LeaveType.AFTERNOON));
+        Map<Long, WeeklyLeaveAllowanceResponse> above = calculator.calculate(requests, roles);
+
+        assertThat(above.get(nextId)).isEqualTo(new WeeklyLeaveAllowanceResponse(
+                MONDAY, MONDAY.plusDays(6), 4, 1, 4, 5, 5, true));
+        assertThat(above.entrySet()).filteredOn(entry -> entry.getKey() != nextId)
+                .allSatisfy(entry -> assertThat(entry.getValue().excess()).isFalse());
+    }
+
+    @Test
+    void eachRequestUsesItsOwnerRoleAndAdminKeepsTheExistingAllowance() {
+        List<EffectiveLeaveOccurrence> requests = new ArrayList<>();
+        for (long memberId = 1; memberId <= 3; memberId++) {
+            requests.add(request(memberId * 10, memberId, 10L, MONDAY,
+                    LeaveType.FULL, SUBMITTED_AT, Set.of(1)));
+            requests.add(request(memberId * 10 + 1, memberId, 10L, MONDAY.plusDays(1),
+                    LeaveType.FULL, SUBMITTED_AT.plusMinutes(1), Set.of(1)));
+        }
+
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(requests,
+                Map.of(1L, MemberRole.MEMBER, 2L, MemberRole.STAFF, 3L, MemberRole.ADMIN));
+
+        assertState(result.get(11L), MONDAY, 2, 2, 4, 4, true);
+        assertThat(result.get(21L)).isEqualTo(new WeeklyLeaveAllowanceResponse(
+                MONDAY, MONDAY.plusDays(6), 4, 2, 2, 4, 4, false));
+        assertState(result.get(31L), MONDAY, 2, 2, 4, 4, true);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"2026-10-26, 2026-11-01", "2026-12-28, 2027-01-03"})
+    void staffFourUnitsIncludeSundayAndResetOnMondayAcrossMonthAndYearBoundaries(
+            LocalDate monday, LocalDate sunday) {
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+                request(1L, monday, LeaveType.FULL),
+                request(2L, sunday, LeaveType.FULL),
+                request(3L, sunday.plusDays(1), LeaveType.FULL)), Map.of(1L, MemberRole.STAFF));
+
+        assertThat(result.get(2L)).isEqualTo(new WeeklyLeaveAllowanceResponse(
+                monday, sunday, 4, 2, 2, 4, 4, false));
+        assertThat(result.get(3L)).isEqualTo(new WeeklyLeaveAllowanceResponse(
+                sunday.plusDays(1), sunday.plusDays(7), 4, 2, 0, 2, 2, false));
+    }
+
+    @Test
+    void requestOwnerRoleCannotBeSilentlyOmitted() {
+        assertThatThrownBy(() -> calculator.calculate(List.of(request(1L, MONDAY, LeaveType.FULL)), Map.of()))
+                .isInstanceOf(NullPointerException.class).hasMessageContaining("owner role");
+    }
+
     @Test
     void submissionOrderControlsExcessRatherThanLeaveDateInputOrderOrRequestId() {
         EffectiveLeaveOccurrence firstSubmission = request(20L, 1L, 10L, MONDAY.plusDays(4),
@@ -81,7 +149,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
         EffectiveLeaveOccurrence laterSubmission = request(10L, 1L, 10L, MONDAY,
                 LeaveType.FULL, SUBMITTED_AT.plusMinutes(1), Set.of(1));
 
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(
                 List.of(laterSubmission, firstSubmission));
 
         assertState(result.get(20L), MONDAY, 2, 0, 2, 4, false);
@@ -90,7 +158,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
 
     @Test
     void requestIdBreaksEqualCreationTimeTiesDeterministically() {
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 request(30L, 1L, 10L, MONDAY, LeaveType.AFTERNOON, SUBMITTED_AT, Set.of(7)),
                 request(20L, 1L, 10L, MONDAY, LeaveType.FULL, SUBMITTED_AT, Set.of(1)),
                 request(10L, 1L, 10L, MONDAY, LeaveType.MORNING, SUBMITTED_AT, Set.of(1))));
@@ -107,7 +175,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
     })
     void leaveDateWeeksSpanMonthAndYearBoundariesAndResetOnMonday(
             LocalDate monday, LocalDate sunday, LocalDate nextMonday) {
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 request(1L, monday, LeaveType.FULL),
                 request(2L, sunday, LeaveType.AFTERNOON),
                 request(3L, nextMonday, LeaveType.FULL)));
@@ -121,7 +189,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
 
     @Test
     void usageIsIsolatedByMemberButCombinedAcrossBranches() {
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 request(1L, 1L, 10L, MONDAY, LeaveType.FULL, SUBMITTED_AT, Set.of(1)),
                 request(2L, 1L, 20L, MONDAY, LeaveType.FULL, SUBMITTED_AT.plusMinutes(1), Set.of(1)),
                 request(3L, 2L, 10L, MONDAY, LeaveType.FULL, SUBMITTED_AT.plusMinutes(2), Set.of(1))));
@@ -138,7 +206,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
         EffectiveLeaveOccurrence office = new EffectiveLeaveOccurrence(1L, 10L, LeaveSourceType.SPECIAL_LEAVE,
                 2L, MONDAY, Set.of(1, 2, 3, 4, 5, 6, 7), "학교", null, SUBMITTED_AT);
 
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 recurring, request(1L, MONDAY, LeaveType.MORNING), office));
 
         assertThat(result).containsOnlyKeys(1L);
@@ -147,7 +215,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
 
     @Test
     void partialRequestsRetainOriginalUnitsAndEmptyRequestsDoNotCount() {
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(List.of(
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(List.of(
                 request(1L, 1L, 10L, MONDAY, LeaveType.FULL, SUBMITTED_AT, Set.of(7)),
                 request(2L, 1L, 10L, MONDAY, LeaveType.MORNING, SUBMITTED_AT.plusMinutes(1), Set.of(4)),
                 request(3L, 1L, 10L, MONDAY, LeaveType.AFTERNOON, SUBMITTED_AT.plusMinutes(2), Set.of(7)),
@@ -163,8 +231,8 @@ class WeeklyLeaveAllowanceCalculatorTest {
     void fullyCancellingEarlierRequestRecalculatesRemainingRequests() {
         EffectiveLeaveOccurrence first = request(1L, MONDAY, LeaveType.FULL);
         EffectiveLeaveOccurrence second = request(2L, MONDAY, LeaveType.FULL);
-        Map<Long, WeeklyLeaveAllowanceResponse> before = calculator.calculate(List.of(first, second));
-        Map<Long, WeeklyLeaveAllowanceResponse> after = calculator.calculate(List.of(second));
+        Map<Long, WeeklyLeaveAllowanceResponse> before = calculateMemberAllowances(List.of(first, second));
+        Map<Long, WeeklyLeaveAllowanceResponse> after = calculateMemberAllowances(List.of(second));
 
         assertThat(before.get(2L).excess()).isTrue();
         assertThat(after).containsOnlyKeys(2L);
@@ -178,7 +246,7 @@ class WeeklyLeaveAllowanceCalculatorTest {
         List<EffectiveLeaveOccurrence> input = new ArrayList<>(List.of(second, first));
         List<EffectiveLeaveOccurrence> snapshot = List.copyOf(input);
 
-        Map<Long, WeeklyLeaveAllowanceResponse> result = calculator.calculate(input);
+        Map<Long, WeeklyLeaveAllowanceResponse> result = calculateMemberAllowances(input);
 
         assertThat(input).containsExactlyElementsOf(snapshot);
         assertThat(first.slots()).containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7);
@@ -193,10 +261,15 @@ class WeeklyLeaveAllowanceCalculatorTest {
         EffectiveLeaveOccurrence missingId = request(null, 1L, 10L, MONDAY,
                 LeaveType.MORNING, SUBMITTED_AT, Set.of(1));
 
-        assertThatThrownBy(() -> calculator.calculate(List.of(missingCreationTime)))
+        assertThatThrownBy(() -> calculateMemberAllowances(List.of(missingCreationTime)))
                 .isInstanceOf(NullPointerException.class).hasMessageContaining("creation time");
-        assertThatThrownBy(() -> calculator.calculate(List.of(missingId)))
+        assertThatThrownBy(() -> calculateMemberAllowances(List.of(missingId)))
                 .isInstanceOf(NullPointerException.class).hasMessageContaining("id");
+    }
+
+    private Map<Long, WeeklyLeaveAllowanceResponse> calculateMemberAllowances(
+            List<EffectiveLeaveOccurrence> occurrences) {
+        return calculator.calculate(occurrences, Map.of(1L, MemberRole.MEMBER, 2L, MemberRole.MEMBER));
     }
 
     private EffectiveLeaveOccurrence request(Long id, LocalDate date, LeaveType type) {

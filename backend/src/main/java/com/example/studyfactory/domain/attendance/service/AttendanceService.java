@@ -36,6 +36,7 @@ import com.example.studyfactory.domain.leave.repository.SpecialLeaveRepository;
 import com.example.studyfactory.domain.leave.service.EffectiveLeaveService;
 import com.example.studyfactory.domain.leave.service.WeeklyLeaveAllowanceCalculator;
 import com.example.studyfactory.domain.member.entity.Member;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import com.example.studyfactory.domain.member.exception.MemberException;
 import com.example.studyfactory.domain.member.repository.MemberRepository;
 import com.example.studyfactory.domain.member.service.ManagerAccessPolicy;
@@ -608,7 +609,10 @@ public class AttendanceService {
         // Branch changes must not reset a member's personal weekly allowance.
         List<EffectiveLeaveOccurrence> requests = effectiveLeaveService.findMemberRequestOccurrencesForMembers(
                 members.stream().map(Member::getId).toList(), weekStart, weekStart.plusDays(6));
-        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(requests);
+        Map<Long, MemberRole> rolesByMemberId = members.stream()
+                .collect(Collectors.toMap(Member::getId, Member::getRole));
+        Map<Long, WeeklyLeaveAllowanceResponse> allowances = weeklyLeaveAllowanceCalculator.calculate(
+                requests, rolesByMemberId);
         Map<Long, List<ExcessLeaveRequestResponse>> result = new HashMap<>();
         requests.stream()
                 .filter(leave -> leave.date().equals(date) && allowances.get(leave.sourceId()).excess())

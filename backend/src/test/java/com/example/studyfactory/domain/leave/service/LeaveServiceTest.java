@@ -142,6 +142,7 @@ class LeaveServiceTest {
     @Test
     @DisplayName("토큰의 사원 ID로 본인 휴무 목록을 조회한다")
     void findMine() {
+        given(memberRepository.findById(1L)).willReturn(Optional.of(createMemberWithId(1L, MemberRole.MEMBER)));
         LeaveRequest leaveRequest = new LeaveRequest(1L, 2L, LocalDate.of(2026, 7, 1), LeaveType.FULL);
         ReflectionTestUtils.setField(leaveRequest, "id", 10L);
         ReflectionTestUtils.setField(leaveRequest, "createdAt", LocalDateTime.of(2026, 6, 30, 9, 0));
@@ -161,6 +162,7 @@ class LeaveServiceTest {
     @Test
     @DisplayName("같은 날짜와 사유의 고정 휴무는 모든 교시를 합쳐 반환하고 원본은 유지한다")
     void findMyLeavePlanMergesAllFixedLeaveSlots() {
+        given(memberRepository.findById(1L)).willReturn(Optional.of(createMemberWithId(1L, MemberRole.MEMBER)));
         FixedLeave morning = new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "1", "학교", true);
         FixedLeave afternoon = new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5", "학교", true);
         ReflectionTestUtils.setField(morning, "id", 10L);
@@ -192,6 +194,7 @@ class LeaveServiceTest {
     @Test
     @DisplayName("같은 사유의 고정 휴무 교시는 여러 규칙에 걸쳐 중복 없이 정렬한다")
     void findMyLeavePlanSortsAndDeduplicatesFixedLeaveSlots() {
+        given(memberRepository.findById(1L)).willReturn(Optional.of(createMemberWithId(1L, MemberRole.MEMBER)));
         given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(1L)).willReturn(List.of(
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "7,5", "학교", true),
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5, 1", "학교", true),
@@ -207,6 +210,7 @@ class LeaveServiceTest {
     @Test
     @DisplayName("고정 휴무의 다른 사유와 다른 요일은 합치지 않는다")
     void findMyLeavePlanKeepsFixedLeaveReasonsAndDatesSeparate() {
+        given(memberRepository.findById(1L)).willReturn(Optional.of(createMemberWithId(1L, MemberRole.MEMBER)));
         given(fixedLeaveRepository.findByMemberIdOrderByCreatedAtAsc(1L)).willReturn(List.of(
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "1", "학교", true),
                 new FixedLeave(1L, 2L, DayOfWeek.TUESDAY, "5", "학교", true),
@@ -233,6 +237,7 @@ class LeaveServiceTest {
     @Test
     @DisplayName("고정 휴무 교시를 합쳐도 직접 신청과 특별 휴무의 출처 및 교시는 유지한다")
     void findMyLeavePlanKeepsOtherLeaveSourcesSeparate() {
+        given(memberRepository.findById(1L)).willReturn(Optional.of(createMemberWithId(1L, MemberRole.MEMBER)));
         LocalDate date = LocalDate.of(2026, 10, 13);
         LeaveRequest ownLeave = new LeaveRequest(1L, 2L, date, LeaveType.AFTERNOON);
         ReflectionTestUtils.setField(ownLeave, "id", 20L);

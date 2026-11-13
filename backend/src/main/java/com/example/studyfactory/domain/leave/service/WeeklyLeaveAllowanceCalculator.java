@@ -4,6 +4,7 @@ import com.example.studyfactory.domain.leave.dto.EffectiveLeaveOccurrence;
 import com.example.studyfactory.domain.leave.dto.WeeklyLeaveAllowanceResponse;
 import com.example.studyfactory.domain.leave.entity.LeaveSourceType;
 import com.example.studyfactory.domain.leave.entity.LeaveType;
+import com.example.studyfactory.domain.member.entity.MemberRole;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
@@ -18,7 +19,8 @@ import org.springframework.stereotype.Component;
 /** Pure projection of effective member requests; does not reject or change any leave or attendance. */
 @Component
 public class WeeklyLeaveAllowanceCalculator {
-    public static final int ALLOWANCE_UNITS = 3;
+    public static final int MEMBER_ALLOWANCE_UNITS = 3;
+    public static final int STAFF_ALLOWANCE_UNITS = 4;
 
     private static final Comparator<EffectiveLeaveOccurrence> SUBMISSION_ORDER =
             Comparator.comparing(EffectiveLeaveOccurrence::createdAt)
@@ -27,9 +29,12 @@ public class WeeklyLeaveAllowanceCalculator {
     /**
      * Callers supply complete weeks of cancellation-filtered occurrences. A request with any
      * remaining period uses its original type's units, independently of branch or attendance.
+     * Roles belong to the request owners, not the operator viewing their leave or attendance.
      */
-    public Map<Long, WeeklyLeaveAllowanceResponse> calculate(List<EffectiveLeaveOccurrence> occurrences) {
+    public Map<Long, WeeklyLeaveAllowanceResponse> calculate(
+            List<EffectiveLeaveOccurrence> occurrences, Map<Long, MemberRole> rolesByMemberId) {
         Objects.requireNonNull(occurrences, "occurrences must not be null");
+        Objects.requireNonNull(rolesByMemberId, "request owner roles must not be null");
         Map<MemberWeek, List<EffectiveLeaveOccurrence>> requestsByWeek = new HashMap<>();
         for (EffectiveLeaveOccurrence occurrence : occurrences) {
             if (occurrence.sourceType() != LeaveSourceType.MEMBER_LEAVE || occurrence.slots().isEmpty()) {
@@ -46,6 +51,9 @@ public class WeeklyLeaveAllowanceCalculator {
 
         Map<Long, WeeklyLeaveAllowanceResponse> result = new HashMap<>();
         requestsByWeek.forEach((week, requests) -> {
+            MemberRole role = Objects.requireNonNull(rolesByMemberId.get(week.memberId()),
+                    "member request must have an owner role");
+            int allowanceUnits = role == MemberRole.STAFF ? STAFF_ALLOWANCE_UNITS : MEMBER_ALLOWANCE_UNITS;
             requests.sort(SUBMISSION_ORDER);
             int totalUnits = requests.stream().mapToInt(request -> unitsFor(request.leaveType())).sum();
             int usedUnits = 0;
@@ -53,9 +61,9 @@ public class WeeklyLeaveAllowanceCalculator {
                 int requestUnits = unitsFor(request.leaveType());
                 int usedUnitsAfter = usedUnits + requestUnits;
                 result.put(request.sourceId(), new WeeklyLeaveAllowanceResponse(
-                        week.start(), week.start().plusDays(6), ALLOWANCE_UNITS,
+                        week.start(), week.start().plusDays(6), allowanceUnits,
                         requestUnits, usedUnits, usedUnitsAfter, totalUnits,
-                        usedUnitsAfter > ALLOWANCE_UNITS));
+                        usedUnitsAfter > allowanceUnits));
                 usedUnits = usedUnitsAfter;
             }
         });

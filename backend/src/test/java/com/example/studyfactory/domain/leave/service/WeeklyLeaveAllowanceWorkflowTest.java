@@ -138,6 +138,96 @@ class WeeklyLeaveAllowanceWorkflowTest {
         assertProtectedRecords(office, recurring, actual);
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("staffAllowanceCombinations")
+    @DisplayName("스태프는 조합에 관계없이 4단위를 사용하며 출석부 경고는 조회자가 아닌 신청자의 한도를 적용한다")
+    void staffCombinationsUseFourUnitsAndWarningsFollowEachOwner(List<LeaveType> types) throws Exception {
+        long first = 0;
+        int used = 0;
+        for (LeaveType type : types) {
+            Map<String, Object> created = request(staff, TODAY, type);
+            if (first == 0) first = id(created);
+            int units = type == LeaveType.FULL ? 2 : 1;
+            assertAllowance(created, TODAY, 4, units, used, used + units, used + units, false);
+            used += units;
+        }
+        assertThat(used).isEqualTo(4);
+        request(member, TODAY, LeaveType.FULL);
+        Map<String, Object> memberExcess = request(member, TODAY, LeaveType.FULL);
+        assertAllowance(memberExcess, TODAY, 2, 2, 4, 4, true);
+
+        for (Member operator : List.of(staff, admin)) {
+            List<Map<String, Object>> rows = board(operator, branch, TODAY);
+            assertThat(warnings(row(rows, staff))).isEmpty();
+            assertThat(warnings(row(rows, member))).singleElement().satisfies(warning ->
+                    assertThat(warning.get("weeklyAllowance")).isEqualTo(memberExcess.get("weeklyAllowance")));
+        }
+
+        Map<String, Object> staffExcess = request(staff, TODAY, LeaveType.MORNING);
+        long excessId = id(staffExcess);
+        assertAllowance(staffExcess, TODAY, 4, 1, 4, 5, 5, true);
+        assertThat(byId(mine(staff), excessId).get("weeklyAllowance"))
+                .isEqualTo(staffExcess.get("weeklyAllowance"));
+        assertThat(byId(plan(staff, TODAY), excessId).get("weeklyAllowance"))
+                .isEqualTo(staffExcess.get("weeklyAllowance"));
+        for (Member operator : List.of(staff, admin)) {
+            assertThat(warnings(row(board(operator, branch, TODAY), staff))).singleElement().satisfies(warning -> {
+                assertThat(((Number) warning.get("leaveId")).longValue()).isEqualTo(excessId);
+                assertThat(warning.get("weeklyAllowance")).isEqualTo(staffExcess.get("weeklyAllowance"));
+            });
+        }
+
+        mockMvc.perform(delete("/api/leaves/{leaveId}", first).header("Authorization", token(staff)))
+                .andExpect(status().isNoContent());
+        int remainingUnits = 5 - (types.getFirst() == LeaveType.FULL ? 2 : 1);
+        assertAllowance(byId(mine(staff), excessId), TODAY, 4, 1,
+                remainingUnits - 1, remainingUnits, remainingUnits, false);
+        List<Map<String, Object>> remainingRows = board(admin, branch, TODAY);
+        assertThat(warnings(row(remainingRows, staff))).isEmpty();
+        assertThat(warnings(row(remainingRows, member))).hasSize(1);
+        assertThat(leaveRequestRepository.findById(excessId)).isPresent();
+    }
+
+    @Test
+    @DisplayName("스태프의 부분 취소는 원래 단위를 유지하고 전체 취소 후에는 4단위 기준으로 경고를 재계산한다")
+    void cancellingStaffRequestPeriodsRetainsUnitsUntilTheLastPeriodIsRemoved() throws Exception {
+        long first = id(request(staff, TODAY, LeaveType.FULL));
+        request(staff, TODAY, LeaveType.FULL);
+        long excess = id(request(staff, TODAY, LeaveType.AFTERNOON));
+
+        cancelSlot(admin, staff, first, 1);
+
+        assertAllowance(byId(mine(staff), excess), TODAY, 4, 1, 4, 5, 5, true);
+        assertThat(warnings(row(board(admin, branch, TODAY), staff))).hasSize(1);
+        for (int slot = 2; slot <= 7; slot++) cancelSlot(admin, staff, first, slot);
+
+        assertAllowance(byId(mine(staff), excess), TODAY, 4, 1, 2, 3, 3, false);
+        assertThat(warnings(row(board(admin, branch, TODAY), staff))).isEmpty();
+        assertThat(leaveRequestRepository.findById(first)).isPresent();
+        assertThat(mine(staff)).noneMatch(item -> id(item) == first);
+    }
+
+    @Test
+    @DisplayName("스태프의 4단위 한도는 연도 경계를 넘는 일요일까지 합산하고 다음 월요일에 초기화한다")
+    void staffAllowanceIncludesSundayAcrossYearsAndResetsOnMonday() throws Exception {
+        LocalDate monday = LocalDate.of(2026, 12, 28);
+        LocalDate sunday = LocalDate.of(2027, 1, 3);
+        request(staff, monday, LeaveType.FULL);
+        Map<String, Object> withinAllowance = request(staff, sunday, LeaveType.FULL);
+        assertAllowance(withinAllowance, sunday, 4, 2, 2, 4, 4, false);
+        assertThat(warnings(row(board(admin, branch, sunday), staff))).isEmpty();
+
+        Map<String, Object> excess = request(staff, sunday, LeaveType.MORNING);
+        Map<String, Object> nextWeek = request(staff, sunday.plusDays(1), LeaveType.FULL);
+
+        assertAllowance(excess, sunday, 4, 1, 4, 5, 5, true);
+        assertAllowance(nextWeek, sunday.plusDays(1), 4, 2, 0, 2, 2, false);
+        assertThat(byId(plan(staff, sunday), id(excess)).get("weeklyAllowance"))
+                .isEqualTo(excess.get("weeklyAllowance"));
+        assertThat(warnings(row(board(admin, branch, sunday), staff))).hasSize(1);
+        assertThat(warnings(row(board(admin, branch, sunday.plusDays(1)), staff))).isEmpty();
+    }
+
     @Test
     @DisplayName("이전 신청을 삭제하면 뒤의 경고를 재계산하고 새 신청은 새 순서로 초과 처리한다")
     void deletingEarlierRequestRecalculatesLaterWarningsWithoutDeletingOtherRequests() throws Exception {
@@ -331,6 +421,13 @@ class WeeklyLeaveAllowanceWorkflowTest {
                 Stream.of(TODAY, TODAY.plusDays(1)).map(date -> Arguments.of(type, date)));
     }
 
+    private static Stream<Arguments> staffAllowanceCombinations() {
+        return Stream.of(
+                Arguments.of(List.of(LeaveType.FULL, LeaveType.FULL)),
+                Arguments.of(List.of(LeaveType.FULL, LeaveType.MORNING, LeaveType.AFTERNOON)),
+                Arguments.of(List.of(LeaveType.MORNING, LeaveType.AFTERNOON, LeaveType.MORNING, LeaveType.AFTERNOON)));
+    }
+
     private Map<String, Object> request(Member target, LocalDate date, LeaveType type) throws Exception {
         return JsonPath.read(mockMvc.perform(post("/api/leaves").header("Authorization", token(target))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -360,9 +457,13 @@ class WeeklyLeaveAllowanceWorkflowTest {
     }
 
     private void cancelSlot(long leaveId, int slot) throws Exception {
-        mockMvc.perform(post("/api/leaves/cancellations/occurrence").header("Authorization", token(staff))
+        cancelSlot(staff, member, leaveId, slot);
+    }
+
+    private void cancelSlot(Member operator, Member target, long leaveId, int slot) throws Exception {
+        mockMvc.perform(post("/api/leaves/cancellations/occurrence").header("Authorization", token(operator))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"memberId\":" + member.getId() + ",\"branchId\":" + branch.getId()
+                        .content("{\"memberId\":" + target.getId() + ",\"branchId\":" + branch.getId()
                                 + ",\"leaveDate\":\"" + TODAY + "\",\"slot\":" + slot
                                 + ",\"sourceType\":\"MEMBER_LEAVE\",\"sourceId\":" + leaveId + "}"))
                 .andExpect(status().isOk());
@@ -370,10 +471,15 @@ class WeeklyLeaveAllowanceWorkflowTest {
 
     private static void assertAllowance(Map<String, Object> response, LocalDate date, int requestUnits,
                                         int before, int after, int total, boolean excess) {
+        assertAllowance(response, date, 3, requestUnits, before, after, total, excess);
+    }
+
+    private static void assertAllowance(Map<String, Object> response, LocalDate date, int allowanceUnits, int requestUnits,
+                                        int before, int after, int total, boolean excess) {
         LocalDate monday = date.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
         assertThat(response.get("weeklyAllowance")).isEqualTo(Map.of(
                 "weekStart", monday.toString(), "weekEnd", monday.plusDays(6).toString(),
-                "allowanceUnits", 3, "requestUnits", requestUnits, "usedUnitsBefore", before,
+                "allowanceUnits", allowanceUnits, "requestUnits", requestUnits, "usedUnitsBefore", before,
                 "usedUnitsAfter", after, "totalUnits", total, "excess", excess));
     }
 
