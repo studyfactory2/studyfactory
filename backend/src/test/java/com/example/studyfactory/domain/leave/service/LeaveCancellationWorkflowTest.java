@@ -956,9 +956,18 @@ class LeaveCancellationWorkflowTest {
         assertThat(row(past).slots().subList(0, 2)).containsExactly("알바", "O");
         assertThat(calendar(past)).noneMatch(item -> "시험".equals(item.label()));
         assertThat(calendar(past).stream().filter(item -> "알바".equals(item.label())))
-                .singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("1,2"));
+                .singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("1"));
         assertThat(specialLeaveRepository.findById(corrected.getId())).isPresent();
         assertThat(attendanceRepository.findById(actual.getId())).isPresent();
+
+        // O only hides the fixed leave; undo must not revive the deliberately cancelled special leave.
+        attendanceService.updateSlotStatus(staff.getId(), new AttendanceSlotStatusUpdateRequest(
+                member.getId(), past, 2, AttendanceSlotStatusUpdateType.RESTORE, null));
+
+        assertThat(row(past).slots().subList(0, 2)).containsExactly("알바", "알바");
+        assertThat(calendar(past)).noneMatch(item -> "시험".equals(item.label()));
+        assertThat(calendar(past).stream().filter(item -> "알바".equals(item.label())))
+                .singleElement().satisfies(item -> assertThat(item.slots()).isEqualTo("1,2"));
     }
 
     @Test
